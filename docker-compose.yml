@@ -1,0 +1,15 @@
+version: '3.0'
+services:
+  gymbot:
+    container_name: gymbot_container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pull_policy: build
+    restart: unless-stopped
+    env_file: stack.env
+    entrypoint: ['python', 'bot.py']
+
+networks:
+  esnet:
+

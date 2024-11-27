@@ -45,7 +45,7 @@ class pr(commands.Cog, name="work"):
         
         # Bevestig dat het PR is toegevoegd
         await interaction.response.send_message(
-            f"PR van {pr} op {date_obj.strftime('%d/%m/%y %H:%M:%S')} is toegevoegd!"
+            f"PR van {pr}kg op {date_obj.strftime('%d/%m/%y %H:%M:%S')} is toegevoegd!"
         )
 
 async def setup(bot):

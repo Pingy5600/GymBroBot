@@ -37,7 +37,6 @@ def save_ids_func(cmds):
 bot.save_ids = save_ids_func
 
 
-
 class LoggingFormatter(logging.Formatter):
     # Colors
     black = "\x1b[30m"
