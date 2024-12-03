@@ -88,7 +88,7 @@ logger.addHandler(file_handler)
 bot.logger = logger
 
 def init_db():
-    time.sleep(10)
+    time.sleep(5)
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
