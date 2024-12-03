@@ -1,17 +1,25 @@
 import discord
+import dateparser
+
 from discord.ext import commands
 from datetime import datetime
-import dateparser
-import embeds
 from database import db_manager
+from embeds import DefaultEmbed
+
 
 class pr(commands.Cog, name="pr"):
     def __init__(self,bot):
         self.bot = bot
 
-    @discord.app_commands.command(name = "work", description = "checks to see if i am online")
-    async def work(self,interaction):
-        await interaction.response.send_message(f"I am just a chill guy! \n\nlatency: {self.bot.latency*1000} ms.")
+
+    @discord.app_commands.command(name="work", description="checks to see if I am online")
+    async def work(self, interaction: discord.Interaction):
+        embed = DefaultEmbed(
+            title="Bot Status",
+            description=f"I am just a chill guy! \n\nLatency: {self.bot.latency * 1000:.2f} ms."
+        )
+        await interaction.response.send_message(embed=embed)
+
 
     @discord.app_commands.command(name = "pr", description = "adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", user="Which user")
@@ -55,24 +63,5 @@ class pr(commands.Cog, name="pr"):
             f"Er is iets misgegaan: {resultaat[1]}"
         )
 
-
-
 async def setup(bot):
     await bot.add_cog(pr(bot))
-
-
-# await interaction.response.defer()
-
-        # # geen gebruiker meegegeven, gaat over zichzelf
-        # if user is None:
-        #     user = interaction.user
-
-        #   # creeer embed
-        # embed = embeds.DefaultEmbed(
-        #     f"**{user.display_name}'s Profile**", user=user
-        # )
-
-        # embed.set_author(
-        #     name=user.name,
-        #     icon_url=str(user.avatar.url)
-        # )
