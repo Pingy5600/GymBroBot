@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS pr (
+ id SERIAL PRIMARY KEY,
+ exercise varchar(30) NOT NULL,
+ weight decimal NOT NULL DEFAULT 0,
+ lifted_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

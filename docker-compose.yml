@@ -8,7 +8,35 @@ services:
     pull_policy: build
     restart: unless-stopped
     env_file: stack.env
-    entrypoint: ['python', 'bot.py']
+    entrypoint: ['python', 'src/bot.py']
+    depends_on:
+      gymbrobot_postgres:
+        condition: service_healthy
+
+
+  gymbrobot_postgres:
+    container_name: gymbrobot_postgres_container
+    image: postgres:16
+    restart: always
+    env_file: stack.env
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    expose:
+      - "5435"
+
+    volumes:
+      - ./database/postgres_data:/var/lib/postgresql/data
+ 
+    ports:
+      - 5435:5435
+
+volumes:
+  postgres_data:
 
 networks:
   esnet:

@@ -5,6 +5,8 @@ import asyncio
 import platform
 from dotenv import load_dotenv
 from discord.ext.commands import AutoShardedBot
+import psycopg2
+import time
 
 load_dotenv()
 
@@ -85,6 +87,20 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 bot.logger = logger
 
+def init_db():
+    time.sleep(10)
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        with con.cursor() as cursor:
+
+            with open(
+                f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
+            ) as file:
+                cursor.execute(file.read())
+
+    bot.logger.info(f"initializing db")
 
 @bot.event
 async def on_ready() -> None:
@@ -119,5 +135,6 @@ async def load_cogs() -> None:
                 bot.unloaded.add(extension)
 
 
+init_db()
 asyncio.run(load_cogs())
 bot.run(os.environ.get("BOT_TOKEN"))
