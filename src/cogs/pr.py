@@ -50,7 +50,6 @@ class pr(commands.Cog, name="pr"):
             pr = float(pr_cleaned)
 
         except ValueError:
-
             embed = OperationFailedEmbed(
                 description=
                 "You provided an invalid PR value. Please use the correct format.\n"
