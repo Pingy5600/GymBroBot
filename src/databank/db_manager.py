@@ -1,5 +1,6 @@
 import os
 import psycopg2
+from typing import Optional
 
 """"
 Copyright © Krypton 2019-2023 - https://github.com/kkrypt0nn (https://krypton.ninja)
@@ -8,6 +9,8 @@ Description:
 
 Version: 5.5.0
 """
+
+### PR ###
 
 async def add_pr(user_id: str, exercise:str, weight:float, lifted_at=None):
     try:
@@ -40,3 +43,105 @@ async def get_prs_from_user(user_id: str) -> list:
 
     except Exception as err:
         return [-1, err]
+
+
+### SCHEMA ###
+
+async def update_schema(
+    monday: Optional[str] = None,
+    tuesday: Optional[str] = None,
+    wednesday: Optional[str] = None,
+    thursday: Optional[str] = None,
+    friday: Optional[str] = None,
+    saturday: Optional[str] = None,
+    sunday: Optional[str] = None
+):
+    alreadyExists = await schema_exists()
+    if alreadyExists is None: return (False, 'Cannot determine if schema already exists')
+
+    fields_to_update = {
+        "monday": monday,
+        "tuesday": tuesday,
+        "wednesday": wednesday,
+        "thursday": thursday,
+        "friday": friday,
+        "saturday": saturday,
+        "sunday": sunday,
+    }
+    update_clauses = [f"{field} = %s" for field, value in fields_to_update.items() if value is not None]
+    update_values = [value for value in fields_to_update.values() if value is not None]
+
+    if not update_clauses:
+        return (False, "No fields to update")
+    
+    update_query = f"UPDATE schema SET {', '.join(update_clauses)} WHERE id = 1"
+
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                if alreadyExists:
+                    # Update only the specified fields
+                    cursor.execute(update_query, update_values)
+                else:
+                    # Insert a new row with all the values (replacing None with default empty strings)
+                    insert_query = """
+                    INSERT INTO schema (monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(insert_query, (
+                        monday or "", tuesday or "", wednesday or "",
+                        thursday or "", friday or "", saturday or "", sunday or ""
+                    ))
+
+                con.commit()
+                return (True, None)
+                
+        except Exception as err:
+            return (False, err)
+     
+        
+async def get_schema():
+    with psycopg2.connect( host=os.environ.get("POSTGRES_HOST"), dbname=os.environ.get("POSTGRES_DB"), user=os.environ.get("POSTGRES_USER"), password=os.environ.get("POSTGRES_PASSWORD"),
+    ) as con:
+        try:
+            with con.cursor() as cursor:
+                # Query to retrieve the schema
+                cursor.execute("SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday FROM schema WHERE id = 1")
+                row = cursor.fetchone()
+
+                if row:
+                    schema = {
+                        "Monday": row[0],
+                        "Tuesday": row[1],
+                        "Wednesday": row[2],
+                        "Thursday": row[3],
+                        "Friday": row[4],
+                        "Saturday": row[5],
+                        "Sunday": row[6],
+                    }
+                    return (True, schema)
+                else:
+                    return (False, "Schema not found")
+        except Exception as err:
+            return (False, str(err))
+        
+
+async def schema_exists():
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT * FROM schema",
+                )
+                result = cursor.fetchall()
+                return len(result) > 0
+                
+        except Exception as err:
+            return None
+
