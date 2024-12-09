@@ -114,7 +114,7 @@ class pr(commands.Cog, name="pr"):
             )
 
             for day, desc in errOrSchema.items():
-                embed.add_field(name=day,  value=desc, inline=True)
+                embed.add_field(name=day,  value=f'```{desc}```', inline=True)
 
         except Exception as err:
             embed = OperationFailedEmbed(
