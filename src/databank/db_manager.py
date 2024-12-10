@@ -43,6 +43,21 @@ async def get_prs_from_user(user_id: str, exercise: str) -> list:
 
     except Exception as err:
         return [-1, err]
+    
+
+async def getMaxOfUserWithExercise(user_id: str, exercise: str):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT weight, lifted_at FROM pr WHERE user_id=%s AND exercise=%s ORDER BY weight DESC LIMIT 1", (user_id, exercise,)
+                )
+                return (True, cursor.fetchone())
+
+    except Exception as err:
+        return [False, err]
 
 
 ### SCHEMA ###

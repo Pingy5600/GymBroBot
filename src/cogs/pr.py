@@ -9,77 +9,18 @@ from embeds import DefaultEmbed
 from embeds import OperationFailedEmbed
 from io import BytesIO
 import matplotlib.pyplot as plt
+from helpers import getDiscordTimeStamp
 
-
-
-class PRPaginator(discord.ui.View):
-    def __init__(self, prs, exercise, user):
-        super().__init__()
-        self.prs = prs
-        self.exercise = exercise
-        self.user = user
-        self.current_page = 0
-        self.items_per_page = 10
-        self.max_pages = math.ceil(len(prs) / self.items_per_page)
-
-        if self.max_pages <= 1:
-            self.clear_items()  # If only 1 page, remove buttons entirely
-
-    def generate_embed(self):
-        embed = DefaultEmbed(
-            title=f"{self.exercise.capitalize()} PRs of {self.user.display_name}",
-        )
-
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        page_prs = self.prs[start:end]
-
-        for pr in page_prs:
-            weight = pr[1]
-            # Format weight to two decimal places if it is a decimal number
-            if weight % 1 != 0:  # If it is a decimal
-                weight = f"{weight:.2f}"
-            else:
-                weight = f"{int(weight)}"  # Remove decimals if it's an integer
-
-            timestamp = int(pr[2].timestamp())
-            embed.add_field(
-                name=f"Date: <t:{timestamp}:D>",
-                value=f"**Weight:** {weight} kg",
-                inline=False
-            )
-
-        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
-        return embed
-
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page > 0:
-            self.current_page -= 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page < self.max_pages - 1:
-            self.current_page += 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    def update_buttons(self):
-        # Disable buttons based on the current page
-        self.previous_button.disabled = self.current_page == 0
-        self.next_button.disabled = self.current_page >= self.max_pages - 1
-
-        # If there's only one page, remove the buttons completely
-        if self.max_pages <= 1:
-            self.clear_items()  # Remove the buttons if there's only 1 page
-
-class pr(commands.Cog, name="pr"):
+class PR(commands.Cog, name="pr"):
     def __init__(self,bot):
         self.bot = bot
+
+    EXERCISE_CHOICES = [
+        discord.app_commands.Choice(name="Bench", value="bench"),
+        discord.app_commands.Choice(name="Deadlift", value="deadlift"),
+        discord.app_commands.Choice(name="Squats", value="squats"),
+    ]
+
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
@@ -103,13 +44,7 @@ class pr(commands.Cog, name="pr"):
 
     @command_pr_group.command(name = "add", description = "adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
-    @discord.app_commands.choices(
-        exercise=[
-            discord.app_commands.Choice(name="Bench", value="bench"),
-            discord.app_commands.Choice(name="Deadlift", value="deadlift"),
-            discord.app_commands.Choice(name="Squats", value="squats"),
-        ]
-    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
@@ -178,13 +113,7 @@ class pr(commands.Cog, name="pr"):
 
     @command_pr_group.command(name ="list", description ="Gives pr of the given user")
     @discord.app_commands.describe(user="Which user", exercise="which exercise")
-    @discord.app_commands.choices(
-        exercise=[
-            discord.app_commands.Choice(name="Bench", value="bench"),
-            discord.app_commands.Choice(name="Deadlift", value="deadlift"),
-            discord.app_commands.Choice(name="Squats", value="squats"),
-        ]
-    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def get_pr(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
@@ -324,13 +253,7 @@ class pr(commands.Cog, name="pr"):
         user2="Second user (optional)",
         user3="Third user (optional)"
     )
-    @discord.app_commands.choices(
-        exercise=[
-            discord.app_commands.Choice(name="Bench", value="bench"),
-            discord.app_commands.Choice(name="Deadlift", value="deadlift"),
-            discord.app_commands.Choice(name="Squats", value="squats"),
-        ]
-    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def graph(
         self,
         interaction: discord.Interaction,
@@ -375,5 +298,114 @@ class pr(commands.Cog, name="pr"):
             return await interaction.followup.send(embed=embed)
 
 
+    @discord.app_commands.command(
+        name="statistics",
+        description="Get a detailed analysis about an exercise"
+    )
+    @discord.app_commands.describe(user="Which user", exercise="which exercise")
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+        await interaction.response.defer(thinking=True)
+
+        if user == None:
+            user = interaction.user
+
+        embed = DefaultEmbed(
+            f"{exercise.capitalize()} analysis for {user}"
+        )
+
+        # max of exercise
+        try:
+            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
+            self.bot.logger.info(resultsOrErr)
+            if not success: raise ValueError(resultsOrErr)
+
+            weight, timestamp = resultsOrErr
+            embed.add_field(
+                name=f"💪 Max Lift",
+                value=f"{weight} kg ({getDiscordTimeStamp(timestamp)})",
+                inline=False
+            )
+
+        except Exception as err:
+            embed.add_field(
+                name=f"💪 Max Lift",
+                value=f"No max lift registered yet...",
+                inline=False
+            )
+
+        # TODO position in relation to every user in db
+
+        return await interaction.followup.send(embed=embed)
+
+
+
+class PRPaginator(discord.ui.View):
+    def __init__(self, prs, exercise, user):
+        super().__init__()
+        self.prs = prs
+        self.exercise = exercise
+        self.user = user
+        self.current_page = 0
+        self.items_per_page = 10
+        self.max_pages = math.ceil(len(prs) / self.items_per_page)
+
+        if self.max_pages <= 1:
+            self.clear_items()  # If only 1 page, remove buttons entirely
+
+    def generate_embed(self):
+        embed = DefaultEmbed(
+            title=f"{self.exercise.capitalize()} PRs of {self.user.display_name}",
+        )
+
+        start = self.current_page * self.items_per_page
+        end = start + self.items_per_page
+        page_prs = self.prs[start:end]
+
+        for pr in page_prs:
+            weight = pr[1]
+            # Format weight to two decimal places if it is a decimal number
+            if weight % 1 != 0:  # If it is a decimal
+                weight = f"{weight:.2f}"
+            else:
+                weight = f"{int(weight)}"  # Remove decimals if it's an integer
+
+            timestamp = getDiscordTimeStamp(pr[2])
+            embed.add_field(
+                name=f"Date: {timestamp}",
+                value=f"**Weight:** {weight} kg",
+                inline=False
+            )
+
+        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
+        return embed
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page > 0:
+            self.current_page -= 1
+            embed = self.generate_embed()
+            self.update_buttons()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page < self.max_pages - 1:
+            self.current_page += 1
+            embed = self.generate_embed()
+            self.update_buttons()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    def update_buttons(self):
+        # Disable buttons based on the current page
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.max_pages - 1
+
+        # If there's only one page, remove the buttons completely
+        if self.max_pages <= 1:
+            self.clear_items()  # Remove the buttons if there's only 1 page
+
+
+
 async def setup(bot):
-    await bot.add_cog(pr(bot))
+    await bot.add_cog(PR(bot))
