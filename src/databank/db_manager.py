@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from typing import Optional
+from datetime import datetime, timedelta
 
 """"
 Copyright © Krypton 2019-2023 - https://github.com/kkrypt0nn (https://krypton.ninja)
@@ -107,6 +108,57 @@ async def getPositionOfUserWithExercise(user_id: str, exercise: str):
     except Exception as err:
         return (False, err)
 
+
+async def getExerciseProgressionRate(user_id, exercise: str):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT weight, lifted_at 
+                    FROM pr 
+                    WHERE user_id = %s AND exercise = %s 
+                    ORDER BY lifted_at ASC
+                    """, 
+                    (user_id, exercise, )
+                )
+                lifts = cursor.fetchall()
+
+                if len(lifts) < 2:
+                    return (False, "Not enough data to calculate progression rate.")
+
+                six_months_ago = datetime.now() - timedelta(days=6 * 30)  # Approximation for 6 months
+
+                # Filter lifts to start from 6 months ago or the earliest record
+                relevant_lifts = [lift for lift in lifts if lift[1] >= six_months_ago]
+
+                # If no lifts in the last 6 months, use the first lift
+                if not relevant_lifts:
+                    relevant_lifts = lifts
+
+                # Extract start and end points
+                W_start, T_start = relevant_lifts[0]
+                W_end, T_end = relevant_lifts[-1]
+
+                # Calculate time difference in weeks
+                time_diff_weeks = (T_end - T_start).days / 7
+
+                if time_diff_weeks == 0:  # Avoid division by zero
+                    return (False, "Not enough time between lifts to calculate progression rate.")
+
+                # Calculate average weekly increase
+                progression_rate = (W_end - W_start) / time_diff_weeks
+
+                return (True, round(progression_rate, 2))  # Rounded to 2 decimal places
+
+    except Exception as err:
+        return (False, str(err))
+    
 
 ### SCHEMA ###
 

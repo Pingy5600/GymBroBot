@@ -322,7 +322,7 @@ class PR(commands.Cog, name="pr"):
             weight, timestamp = resultsOrErr
             embed.add_field(
                 name=f"💪 Max Lift",
-                value=f"{weight} kg ({getDiscordTimeStamp(timestamp)})",
+                value=f"**{weight} kg **({getDiscordTimeStamp(timestamp)})",
                 inline=False
             )
 
@@ -330,7 +330,7 @@ class PR(commands.Cog, name="pr"):
             embed.add_field(
                 name=f"💪 Max Lift",
                 value=f"No max lift registered yet...",
-                inline=False
+                inline=True
             )
 
         # position in relation to every user in db
@@ -343,8 +343,23 @@ class PR(commands.Cog, name="pr"):
             weight, timestamp = resultsOrErr
             embed.add_field(
                 name=f"{emoji_map[positionOrErr-1] if positionOrErr <= 3 else '🏆'} Position",
-                value=f"{positionOrErr}",
-                inline=False
+                value=f"**{positionOrErr}**",
+                inline=True
+            )
+
+        except Exception as err:
+            self.bot.logger.warning(f"Error in /statistic position: {err}")
+            pass
+
+        # add rate to see how fast you are progressing
+        try:
+            success, rateOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
+            if not success: raise ValueError(resultsOrErr)
+
+            embed.add_field(
+                name=f"📈 Progression rate",
+                value=f"Average weekly rate: **{rateOrErr} kg**",
+                inline=True
             )
 
         except Exception as err:
