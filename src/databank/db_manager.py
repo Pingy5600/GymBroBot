@@ -27,14 +27,14 @@ async def add_pr(user_id: str, exercise:str, weight:float, lifted_at=None):
         return (False, err)
 
 
-async def get_prs_from_user(user_id: str) -> list:
+async def get_prs_from_user(user_id: str, exercise: str) -> list:
     try:
         with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
-                    "SELECT exercise, weight, lifted_at FROM pr WHERE user_id=%s", (user_id, )
+                    "SELECT exercise, weight, lifted_at FROM pr WHERE user_id=%s AND exercise=%s ORDER BY lifted_at DESC", (user_id, exercise,)
                 )
                 return cursor.fetchall()
 

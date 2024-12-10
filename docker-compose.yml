@@ -1,7 +1,7 @@
 version: '3.0'
 services:
   gymbot:
-    container_name: gymbot_container
+    container_name: gymbrobot_container
     build:
       context: .
       dockerfile: Dockerfile

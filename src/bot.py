@@ -96,7 +96,7 @@ def init_db():
         with con.cursor() as cursor:
 
             with open(
-                f"{os.path.realpath(os.path.dirname(__file__))}/database/schema.sql"
+                f"{os.path.realpath(os.path.dirname(__file__))}/databank/schema.sql"
             ) as file:
                 cursor.execute(file.read())
 
