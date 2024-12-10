@@ -58,6 +58,54 @@ async def getMaxOfUserWithExercise(user_id: str, exercise: str):
 
     except Exception as err:
         return [False, err]
+    
+
+async def getPositionOfUserWithExercise(user_id: str, exercise: str):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            with con.cursor() as cursor:
+                # Fetch the user's max lift for the given exercise
+                cursor.execute(
+                    """
+                    SELECT weight, lifted_at 
+                    FROM pr 
+                    WHERE user_id = %s AND exercise = %s 
+                    ORDER BY weight DESC 
+                    LIMIT 1
+                    """,
+                    (user_id, exercise,)
+                )
+                user_lift = cursor.fetchone()
+
+                if not user_lift:
+                    # If the user has no lifts for the exercise
+                    return (False, None)
+
+                user_max_weight = user_lift[0]
+
+                # Calculate the user's rank by considering only the heaviest lift of each user
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) + 1
+                    FROM (
+                        SELECT MAX(weight) AS max_weight
+                        FROM pr
+                        WHERE exercise = %s
+                        GROUP BY user_id
+                    ) AS grouped_lifts
+                    WHERE max_weight > %s
+                    """,
+                    (exercise, user_max_weight)
+                )
+                rank = cursor.fetchone()[0]
+
+                # Return the rank and the user's max lift details
+                return (True, rank)
+
+    except Exception as err:
+        return (False, err)
 
 
 ### SCHEMA ###

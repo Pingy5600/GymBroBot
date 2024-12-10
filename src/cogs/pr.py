@@ -317,7 +317,6 @@ class PR(commands.Cog, name="pr"):
         # max of exercise
         try:
             success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
-            self.bot.logger.info(resultsOrErr)
             if not success: raise ValueError(resultsOrErr)
 
             weight, timestamp = resultsOrErr
@@ -334,7 +333,23 @@ class PR(commands.Cog, name="pr"):
                 inline=False
             )
 
-        # TODO position in relation to every user in db
+        # position in relation to every user in db
+        try:
+            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
+            if not success: raise ValueError(resultsOrErr)
+
+            emoji_map = ["🥇", "🥈", "🥉"]
+
+            weight, timestamp = resultsOrErr
+            embed.add_field(
+                name=f"{emoji_map[positionOrErr-1] if positionOrErr <= 3 else '🏆'} Position",
+                value=f"{positionOrErr}",
+                inline=False
+            )
+
+        except Exception as err:
+            self.bot.logger.warning(f"Error in /statistic position: {err}")
+            pass
 
         return await interaction.followup.send(embed=embed)
 
