@@ -3,15 +3,19 @@ import tempfile
 import matplotlib.pyplot as plt
 
 from matplotlib.animation import FuncAnimation
-from itertools import chain
 
 
 def getDiscordTimeStamp(old_timestamp):
     timestamp = int(old_timestamp.timestamp())
     return f"<t:{timestamp}:D>"
 
+async def setGraph(POOL, loop, message, users_prs, embed):
+    file = await loop.run_in_executor(POOL, generate_graph, users_prs)
+    embed.set_image(url="attachment://graph.gif")
 
-async def generate_graph(users_prs):
+    await message.edit(embed=embed, attachments=[file])
+
+def generate_graph(users_prs):
 
     # Prepare the data
     colors = ['#2a9d8f', '#e76f51', "r", "c", "m", "y", "k"]  # Possible colors
@@ -87,8 +91,9 @@ async def generate_graph(users_prs):
     ani = FuncAnimation(
         fig=fig,
         func=update,
-        frames=extended_frames,
-        interval=interval, # in ms
+        frames=max_frames,
+        interval=300, # in ms
+        blit=False,
         repeat=False
     )
 

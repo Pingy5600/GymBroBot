@@ -1,12 +1,16 @@
 import discord
 import dateparser
 import math
+import asyncio
 
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed
 from embeds import OperationFailedEmbed
-from helpers import getDiscordTimeStamp, generate_graph
+from helpers import getDiscordTimeStamp, setGraph
+from concurrent.futures import ThreadPoolExecutor
+
+POOL = ThreadPoolExecutor()
 
 class PR(commands.Cog, name="pr"):
     def __init__(self,bot):
@@ -235,16 +239,20 @@ class PR(commands.Cog, name="pr"):
                 embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
                 return await interaction.followup.send(embed=embed)
 
-            # Genereer de grafiek
-            graph_file = await generate_graph(users_prs)
-
+            
             # Stuur de grafiek als bestand
             embed = DefaultEmbed(
                 title=f"{exercise.capitalize()} PR Graph",
                 description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
             )
-            embed.set_image(url="attachment://graph.gif")
-            await interaction.followup.send(embed=embed, file=graph_file)
+            message = await interaction.followup.send(embed=embed)
+
+            # Genereer de grafiek, in task zodat thread niet geblocked is
+            loop = asyncio.get_event_loop()
+            loop.create_task(
+                setGraph(POOL, loop, message, users_prs, embed)
+            )
+
 
         except Exception as e:
             self.bot.logger.warning(e)
