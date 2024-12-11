@@ -2,7 +2,7 @@ import discord
 import tempfile
 import matplotlib.pyplot as plt
 
-from matplotlib.animation import FuncAnimation
+from matplotlib.animation import FuncAnimation, ImageMagickWriter
 
 
 def getDiscordTimeStamp(old_timestamp):
@@ -79,20 +79,13 @@ def generate_graph(users_prs):
 
         return ax
     
-    interval = 600
     max_frames = max(len(dates) for _, dates, _, _ in user_data) + 1
-    hold_duration = 5000  # Hold duration for the last frame in ms
-    hold_frames = int(hold_duration / interval)
-
-
-    # Add extra frames for holding the last frame
-    extended_frames = chain(range(max_frames), [max_frames - 1] * hold_frames)
     
     ani = FuncAnimation(
         fig=fig,
         func=update,
         frames=max_frames,
-        interval=300, # in ms
+        interval=600, # in ms
         blit=False,
         repeat=False
     )
@@ -101,7 +94,7 @@ def generate_graph(users_prs):
     
     # Save the GIF to a temporary file
     with tempfile.NamedTemporaryFile(suffix=".gif") as temp_file:
-        ani.save(temp_file.name, writer="pillow")
+        ani.save(temp_file.name, writer=ImageMagickWriter(fps=5, extra_args=['-loop', '1']))
         temp_file.seek(0)
         discord_file = discord.File(temp_file.name, filename='graph.gif')
 
