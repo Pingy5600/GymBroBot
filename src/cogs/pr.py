@@ -18,7 +18,6 @@ class PR(commands.Cog, name="pr"):
         discord.app_commands.Choice(name="Squats", value="squats"),
     ]
 
-
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
     @discord.app_commands.command(name="work", description="checks to see if I am online")

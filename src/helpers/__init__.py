@@ -75,10 +75,11 @@ async def generate_graph(users_prs):
 
         return ax
     
-    interval = 300
-    max_frames = max(len(dates) for _, dates, _, _ in user_data)
+    interval = 600
+    max_frames = max(len(dates) for _, dates, _, _ in user_data) + 1
     hold_duration = 5000  # Hold duration for the last frame in ms
     hold_frames = int(hold_duration / interval)
+
 
     # Add extra frames for holding the last frame
     extended_frames = chain(range(max_frames), [max_frames - 1] * hold_frames)
