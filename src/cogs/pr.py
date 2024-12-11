@@ -1,15 +1,12 @@
 import discord
 import dateparser
 import math
-import random
 
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed
 from embeds import OperationFailedEmbed
-from io import BytesIO
-import matplotlib.pyplot as plt
-from helpers import getDiscordTimeStamp
+from helpers import getDiscordTimeStamp, generate_graph
 
 class PR(commands.Cog, name="pr"):
     def __init__(self,bot):
@@ -200,48 +197,6 @@ class PR(commands.Cog, name="pr"):
 
         return await interaction.followup.send(embed=embed)
 
-    async def generate_graph(self, users_prs):
-        # Maak de grafiek
-        plt.figure(figsize=(10, 6))
-
-        colors = ["b", "g", "r", "c", "m", "y", "k"]  # Mogelijke kleuren
-        random.shuffle(colors)  # Schud de kleuren om diversiteit te garanderen
-
-        # Voeg data voor elke gebruiker toe
-        for idx, (user, prs) in enumerate(users_prs):
-            prs.sort(key=lambda x: x[2])  # Sorteer PR's op datum
-            dates = [pr[2] for pr in prs]
-            weights = [pr[1] for pr in prs]
-
-            # Kies een kleur en plot de data
-            color = colors[idx % len(colors)]
-            plt.plot(dates, weights, marker="o", linestyle="-", color=color, label=user.display_name)
-
-            # Voeg annotaties toe
-            for i, weight in enumerate(weights):
-                plt.annotate(
-                    f"{weight:.2f} kg",
-                    (dates[i], weights[i]),
-                    textcoords="offset points",
-                    xytext=(0, 10),
-                    ha="center",
-                    fontsize=8,
-                    color="black",
-                    bbox=dict(facecolor="white", edgecolor="black", boxstyle="round,pad=0.3")
-                )
-
-        # Algemene instellingen voor de grafiek
-        plt.xlabel("Date")
-        plt.ylabel("Weight (kg)")
-        plt.grid(True)
-        plt.legend(title="Users")
-
-        # Opslaan als afbeelding in geheugen
-        buf = BytesIO()
-        plt.savefig(buf, format="png")
-        buf.seek(0)
-        plt.close()
-        return buf
 
     @discord.app_commands.command(
         name="graph",
@@ -269,33 +224,33 @@ class PR(commands.Cog, name="pr"):
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
-        try:
-            # Haal PR's op voor elke gebruiker
-            users_prs = []
-            for user in users:
-                prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-                if prs and prs[0] != -1:  # Controleer op fouten
-                    users_prs.append((user, prs))
+        # try: # TODO uncomment
+        # Haal PR's op voor elke gebruiker
+        users_prs = []
+        for user in users:
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+            if prs and prs[0] != -1:  # Controleer op fouten
+                users_prs.append((user, prs))
 
-            if not users_prs:
-                embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
-                return await interaction.followup.send(embed=embed)
-
-            # Genereer de grafiek
-            graph = await self.generate_graph(users_prs)
-
-            # Stuur de grafiek als bestand
-            file = discord.File(graph, filename="pr_graph.png")
-            embed = DefaultEmbed(
-                title=f"{exercise.capitalize()} PR Graph",
-                description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
-            )
-            embed.set_image(url="attachment://pr_graph.png")
-            await interaction.followup.send(embed=embed, file=file)
-
-        except Exception as e:
-            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
+        if not users_prs:
+            embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
             return await interaction.followup.send(embed=embed)
+
+        # Genereer de grafiek
+        graph_file = await generate_graph(users_prs)
+
+        # Stuur de grafiek als bestand
+        embed = DefaultEmbed(
+            title=f"{exercise.capitalize()} PR Graph",
+            description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
+        )
+        embed.set_image(url="attachment://graph.gif")
+        await interaction.followup.send(embed=embed, file=graph_file)
+
+        # except Exception as e:
+        #     self.bot.logger.warning(e)
+        #     embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
+        #     return await interaction.followup.send(embed=embed)
 
 
     @discord.app_commands.command(
