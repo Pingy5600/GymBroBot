@@ -224,33 +224,33 @@ class PR(commands.Cog, name="pr"):
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
-        # try: # TODO uncomment
-        # Haal PR's op voor elke gebruiker
-        users_prs = []
-        for user in users:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-            if prs and prs[0] != -1:  # Controleer op fouten
-                users_prs.append((user, prs))
+        try:
+            # Haal PR's op voor elke gebruiker
+            users_prs = []
+            for user in users:
+                prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+                if prs and prs[0] != -1:  # Controleer op fouten
+                    users_prs.append((user, prs))
 
-        if not users_prs:
-            embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
+            if not users_prs:
+                embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
+                return await interaction.followup.send(embed=embed)
+
+            # Genereer de grafiek
+            graph_file = await generate_graph(users_prs)
+
+            # Stuur de grafiek als bestand
+            embed = DefaultEmbed(
+                title=f"{exercise.capitalize()} PR Graph",
+                description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
+            )
+            embed.set_image(url="attachment://graph.gif")
+            await interaction.followup.send(embed=embed, file=graph_file)
+
+        except Exception as e:
+            self.bot.logger.warning(e)
+            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
             return await interaction.followup.send(embed=embed)
-
-        # Genereer de grafiek
-        graph_file = await generate_graph(users_prs)
-
-        # Stuur de grafiek als bestand
-        embed = DefaultEmbed(
-            title=f"{exercise.capitalize()} PR Graph",
-            description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
-        )
-        embed.set_image(url="attachment://graph.gif")
-        await interaction.followup.send(embed=embed, file=graph_file)
-
-        # except Exception as e:
-        #     self.bot.logger.warning(e)
-        #     embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
-        #     return await interaction.followup.send(embed=embed)
 
 
     @discord.app_commands.command(
