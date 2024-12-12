@@ -279,7 +279,7 @@ class PR(commands.Cog, name="pr"):
         except Exception as err:
             embed.add_field(
                 name=f"💪 Max Lift",
-                value=f"No max lift registered yet...",
+                value=f"No lifts registered yet...",
                 inline=True
             )
 
@@ -338,9 +338,8 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic closest: {err}")
 
         try:
-            success, rateOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
-            if not success: 
-                raise ValueError(resultsOrErr)
+            success, rateOrErr = await db_manager.getExerciseProgressionRate(str(user.id), exercise)
+            if not success: raise ValueError(rateOrErr)
 
             embed.add_field(
                 name=f"📈 Progression rate (past 6 months)",
@@ -349,7 +348,7 @@ class PR(commands.Cog, name="pr"):
             )
 
         except Exception as err:
-            self.bot.logger.warning(f"Error in /statistic position: {err}")
+            self.bot.logger.warning(f"Error in /statistic rate: {err}")
             pass
 
         message = await interaction.followup.send(embed=embed)

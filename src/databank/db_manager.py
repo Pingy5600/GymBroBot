@@ -152,7 +152,7 @@ async def getExerciseProgressionRate(user_id, exercise: str):
                     return (False, "Not enough time between lifts to calculate progression rate.")
 
                 # Calculate average weekly increase
-                progression_rate = (W_end - W_start) / time_diff_weeks
+                progression_rate = float(W_end - W_start) / time_diff_weeks
 
                 return (True, round(progression_rate, 2))  # Rounded to 2 decimal places
 
