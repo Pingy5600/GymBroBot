@@ -6,7 +6,7 @@ import asyncio
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import getDiscordTimeStamp, setGraph
+from helpers import getDiscordTimeStamp, setGraph, ordinal
 from concurrent.futures import ThreadPoolExecutor
 
 POOL = ThreadPoolExecutor()
@@ -293,7 +293,7 @@ class PR(commands.Cog, name="pr"):
             weight, timestamp = resultsOrErr
             embed.add_field(
                 name=f"{emoji_map[positionOrErr-1] if positionOrErr <= 3 else '🏆'} Position",
-                value=f"**{positionOrErr}**",
+                value=f"**{ordinal(positionOrErr)}**",
                 inline=True
             )
 
