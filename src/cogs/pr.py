@@ -5,8 +5,7 @@ import asyncio
 
 from discord.ext import commands
 from databank import db_manager
-from embeds import DefaultEmbed
-from embeds import OperationFailedEmbed
+from embeds import DefaultEmbed, OperationFailedEmbed
 from helpers import getDiscordTimeStamp, setGraph
 from concurrent.futures import ThreadPoolExecutor
 
@@ -24,23 +23,6 @@ class PR(commands.Cog, name="pr"):
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
-    @discord.app_commands.command(name="work", description="checks to see if I am online")
-    async def work(self, interaction: discord.Interaction):
-        embed = DefaultEmbed(
-            title="Bot Status",
-            description=f"I am just a chill guy! \n\nLatency: {self.bot.latency * 1000:.2f} ms."
-        )
-        await interaction.response.send_message(embed=embed)
-
-    @discord.app_commands.command(name="info", description="Provides information about the bot")
-    async def info(self, interaction: discord.Interaction):
-        embed = DefaultEmbed(
-            title="Bot Info",
-            description="This bot was created to track PRs and help wi      th fitness goals! 🏋️‍♂️"
-        )
-        embed.add_field(name="Version", value="1.0.0", inline=True)
-        embed.add_field(name="Developer", value="Pingy1", inline=True)
-        await interaction.response.send_message(embed=embed)
 
     @command_pr_group.command(name = "add", description = "adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
@@ -111,6 +93,7 @@ class PR(commands.Cog, name="pr"):
         )
         await interaction.followup.send(embed=embed)
 
+
     @command_pr_group.command(name ="list", description ="Gives pr of the given user")
     @discord.app_commands.describe(user="Which user", exercise="which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
@@ -142,188 +125,6 @@ class PR(commands.Cog, name="pr"):
         embed = view.generate_embed()
         await interaction.followup.send(embed=embed, view=view)
 
-    @discord.app_commands.command(name="schema", description = "Get the gym schema")
-    async def schema(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True)
-
-        try:
-            worked, errOrSchema = await db_manager.get_schema()
-            if not worked:
-                raise ValueError(errOrSchema)
-            
-            embed = DefaultEmbed(
-                '🗓️ Schema'
-            )
-
-            for day, desc in errOrSchema.items():
-                embed.add_field(name=day,  value=f'```{desc}```', inline=True)
-
-        except Exception as err:
-            embed = OperationFailedEmbed(
-                "Something went wrong..."
-            )
-
-        await interaction.followup.send(embed=embed)
-
-    @discord.app_commands.command(name="schema-edit", description="Edit the schema")
-    @discord.app_commands.default_permissions(administrator=True)
-    async def edit_schema(
-        self, interaction: discord.Interaction,
-        monday: str = None,
-        tuesday: str = None,
-        wednesday: str = None,
-        thursday: str = None,
-        friday: str = None,
-        saturday: str = None,
-        sunday: str = None,
-    ):
-        await interaction.response.defer(thinking=True)
-        
-        edit_schema_command_ref = f"</edit_schema:{self.bot.tree.get_command('edit_schema').id}>"
-        schema_command_ref = f"</schema:{self.bot.tree.get_command('schema').id}>"
-
-        try:
-            worked, err = await db_manager.update_schema(monday, tuesday, wednesday, thursday, friday, saturday, sunday)
-            if not worked:
-                raise ValueError(err)
-            
-            embed=DefaultEmbed('Schema updated!', f'Use {schema_command_ref} to see the schema.')
-            
-        except Exception as err:
-            embed = OperationFailedEmbed(
-                description=
-                "Something went wrong\n"
-                f"{err}\n"
-                f"Please try again: {edit_schema_command_ref}"
-            )
-
-        return await interaction.followup.send(embed=embed)
-
-    @discord.app_commands.command(
-        name="graph",
-        description="Generate a graph of PRs for the given users and exercise"
-    )
-    @discord.app_commands.describe(
-        exercise="Which exercise",
-        user1="First user",
-        user2="Second user",
-        user3="Third user"
-    )
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def graph(
-        self,
-        interaction: discord.Interaction,
-        exercise: str,
-        user1: discord.User = None,
-        user2: discord.User = None,
-        user3: discord.User = None
-    ):
-        await interaction.response.defer(thinking=True)
-
-        # Maak een lijst van gebruikers
-        users = [user for user in [user1, user2, user3] if user]
-        if not users:
-            users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
-
-        try:
-            # Haal PR's op voor elke gebruiker
-            users_prs = []
-            for user in users:
-                prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-                if prs and prs[0] != -1:  # Controleer op fouten
-                    users_prs.append((user, prs))
-
-            if not users_prs:
-                embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
-                return await interaction.followup.send(embed=embed)
-            
-            # Stuur de grafiek als bestand
-            embed = DefaultEmbed(
-                title=f"{exercise.capitalize()} PR Graph",
-                description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
-            )
-            message = await interaction.followup.send(embed=embed)
-
-            # Genereer de grafiek, in task zodat thread niet geblocked is
-            loop = asyncio.get_event_loop()
-            loop.create_task(
-                setGraph(POOL, loop, message, users_prs, embed)
-            )
-
-        except Exception as e:
-            self.bot.logger.warning(e)
-            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
-            return await interaction.followup.send(embed=embed)
-
-    @discord.app_commands.command(
-        name="statistics",
-        description="Get a detailed analysis about an exercise"
-    )
-    @discord.app_commands.describe(user="Which user", exercise="which exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
-        await interaction.response.defer(thinking=True)
-
-        if user == None:
-            user = interaction.user
-
-        embed = DefaultEmbed(
-            f"{exercise.capitalize()} analysis for {user}"
-        )
-
-        # max of exercise
-        try:
-            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
-            if not success: raise ValueError(resultsOrErr)
-
-            weight, timestamp = resultsOrErr
-            embed.add_field(
-                name=f"💪 Max Lift",
-                value=f"**{weight} kg **({getDiscordTimeStamp(timestamp)})",
-                inline=False
-            )
-
-        except Exception as err:
-            embed.add_field(
-                name=f"💪 Max Lift",
-                value=f"No max lift registered yet...",
-                inline=True
-            )
-
-        # position in relation to every user in db
-        try:
-            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
-            if not success: raise ValueError(resultsOrErr)
-
-            emoji_map = ["🥇", "🥈", "🥉"]
-
-            weight, timestamp = resultsOrErr
-            embed.add_field(
-                name=f"{emoji_map[positionOrErr-1] if positionOrErr <= 3 else '🏆'} Position",
-                value=f"**{positionOrErr}**",
-                inline=True
-            )
-
-        except Exception as err:
-            self.bot.logger.warning(f"Error in /statistic position: {err}")
-            pass
-
-        # add rate to see how fast you are progressing
-        try:
-            success, rateOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
-            if not success: raise ValueError(resultsOrErr)
-
-            embed.add_field(
-                name=f"📈 Progression rate",
-                value=f"Average weekly rate: **{rateOrErr} kg**",
-                inline=True
-            )
-
-        except Exception as err:
-            self.bot.logger.warning(f"Error in /statistic position: {err}")
-            pass
-
-        return await interaction.followup.send(embed=embed)
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
     @discord.app_commands.describe(
@@ -395,6 +196,146 @@ class PR(commands.Cog, name="pr"):
             embed = OperationFailedEmbed(description=f"An error occurred: {e}")
             await interaction.followup.send(embed=embed)
 
+
+    @discord.app_commands.command(
+        name="graph",
+        description="Generate a graph of PRs for the given users and exercise"
+    )
+    @discord.app_commands.describe(
+        exercise="Which exercise",
+        user1="First user",
+        user2="Second user",
+        user3="Third user"
+    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def graph(
+        self,
+        interaction: discord.Interaction,
+        exercise: str,
+        user1: discord.User = None,
+        user2: discord.User = None,
+        user3: discord.User = None
+    ):
+        await interaction.response.defer(thinking=True)
+
+        # Maak een lijst van gebruikers
+        users = [user for user in [user1, user2, user3] if user]
+        if not users:
+            users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
+
+        try:
+            # Haal PR's op voor elke gebruiker
+            users_prs = []
+            for user in users:
+                prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+                if prs and prs[0] != -1:  # Controleer op fouten
+                    users_prs.append((user, prs))
+
+            if not users_prs:
+                embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
+                return await interaction.followup.send(embed=embed)
+            
+            # Stuur de grafiek als bestand
+            embed = DefaultEmbed(
+                title=f"{exercise.capitalize()} PR Graph",
+                description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
+            )
+            message = await interaction.followup.send(embed=embed)
+
+            # Genereer de grafiek, in task zodat thread niet geblocked is
+            loop = asyncio.get_event_loop()
+            loop.create_task(
+                setGraph(POOL, loop, message, users_prs, embed)
+            )
+
+        except Exception as e:
+            self.bot.logger.warning(e)
+            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
+            return await interaction.followup.send(embed=embed)
+
+
+    @discord.app_commands.command(
+        name="statistics",
+        description="Get a detailed analysis about an exercise"
+    )
+    @discord.app_commands.describe(user="Which user", exercise="which exercise")
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+        await interaction.response.defer(thinking=True)
+
+        if user == None:
+            user = interaction.user
+
+        embed = DefaultEmbed(
+            f"{exercise.capitalize()} analysis for {user}"
+        )
+
+        # max of exercise
+        try:
+            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
+            if not success: raise ValueError(resultsOrErr)
+
+            weight, timestamp = resultsOrErr
+            embed.add_field(
+                name=f"💪 Max Lift",
+                value=f"**{weight} kg **({getDiscordTimeStamp(timestamp)})",
+                inline=False
+            )
+
+        except Exception as err:
+            embed.add_field(
+                name=f"💪 Max Lift",
+                value=f"No max lift registered yet...",
+                inline=True
+            )
+
+        # position in relation to every user in db
+        try:
+            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
+            if not success: raise ValueError(resultsOrErr)
+
+            emoji_map = ["🥇", "🥈", "🥉"]
+
+            weight, timestamp = resultsOrErr
+            embed.add_field(
+                name=f"{emoji_map[positionOrErr-1] if positionOrErr <= 3 else '🏆'} Position",
+                value=f"**{positionOrErr}**",
+                inline=True
+            )
+
+        except Exception as err:
+            self.bot.logger.warning(f"Error in /statistic position: {err}")
+            pass
+
+        # add rate to see how fast you are progressing
+        try:
+            success, rateOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
+            if not success: raise ValueError(resultsOrErr)
+
+            embed.add_field(
+                name=f"📈 Progression rate",
+                value=f"Average weekly rate: **{rateOrErr} kg**",
+                inline=True
+            )
+
+        except Exception as err:
+            self.bot.logger.warning(f"Error in /statistic position: {err}")
+            pass
+
+        message = await interaction.followup.send(embed=embed)
+
+        try:
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+            if prs and prs[0] != -1:  # Controleer op fouten
+                loop = asyncio.get_event_loop()
+                loop.create_task(
+                    setGraph(POOL, loop, message, [(user, prs)], embed)
+                )
+
+        except:
+            self.bot.logger.warning(f"Error in /statistic graph: {err}")
+            pass
+        
 
 
 class PRPaginator(discord.ui.View):
