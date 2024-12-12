@@ -306,33 +306,22 @@ class PR(commands.Cog, name="pr"):
             if not success:
                 raise ValueError(closestOrErr)
 
-            user_below, user_above = closestOrErr  # Verwacht een tuple met gebruikers boven/onder
+            user_below, user_above = closestOrErr
+            # Haal de namen en gewichten van de dichtstbijzijnde gebruikers
+            user_below_info = f"<@{user_below[0]}> ({user_below[1]} kg)" if user_below else "No one below"
+            user_above_info = f"<@{user_above[0]}> ({user_above[1]} kg)" if user_above else "No one above"
 
-            if user_below:
-                embed.add_field(
-                    name="⬇️ Closest Below",
-                    value=f"**{user_below[0]}** ({user_below[1]} kg)",
-                    inline=True
-                )
-            else:
-                embed.add_field(
-                    name="⬇️ Closest Below",
-                    value="No one below.",
-                    inline=True
-                )
+            embed.add_field(
+                name="⬇️ Closest Below",
+                value=user_below_info,
+                inline=True
+            )
 
-            if user_above:
-                embed.add_field(
-                    name="⬆️ Closest Above",
-                    value=f"**{user_above[0]}** ({user_above[1]} kg)",
-                    inline=True
-                )
-            else:
-                embed.add_field(
-                    name="⬆️ Closest Above",
-                    value="No one above.",
-                    inline=True
-                )
+            embed.add_field(
+                name="⬆️ Closest Above",
+                value=user_above_info,
+                inline=True
+            )
 
         except Exception as err:
             self.bot.logger.warning(f"Error in /statistic closest: {err}")

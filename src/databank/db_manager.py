@@ -182,33 +182,26 @@ async def getClosestUsersWithExercise(user_id: str, exercise: str):
                 users_prs = cursor.fetchall()
 
                 if not users_prs:
-                    return [False, "No PRs found for the exercise"]
-
-                # Maak een lijst met gebruikers en hun PR's
-                sorted_users = users_prs  # De lijst is al gesorteerd van klein naar groot
+                    return (False, "No PRs found for the exercise")
 
                 # Zoek de opgegeven gebruiker in de lijst
                 user_position = None
-                for idx, (user, weight) in enumerate(sorted_users):
+                for idx, (user, weight) in enumerate(users_prs):
                     if user == user_id:
                         user_position = idx
                         break
 
                 if user_position is None:
-                    return [False, "User's PR not found in the list"]
+                    return (False, "User's PR not found in the list")
 
                 # Haal de gebruiker boven en onder de opgegeven gebruiker
-                user_below = sorted_users[user_position - 1] if user_position > 0 else None
-                user_above = sorted_users[user_position + 1] if user_position < len(sorted_users) - 1 else None
+                user_below = users_prs[user_position - 1] if user_position > 0 else None
+                user_above = users_prs[user_position + 1] if user_position < len(users_prs) - 1 else None
 
-                # Haal de namen en gewichten van de dichtstbijzijnde gebruikers
-                user_below_info = f"{user_below[0]} ({user_below[1]} kg)" if user_below else "No one below"
-                user_above_info = f"{user_above[0]} ({user_above[1]} kg)" if user_above else "No one above"
-
-                return [True, {"user_below": user_below_info, "user_above": user_above_info}]
+                return (True, (user_below,  user_above))
 
     except Exception as err:
-        return [False, err]
+        return (False, err)
 
     
 
