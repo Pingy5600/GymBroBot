@@ -259,4 +259,22 @@ async def schema_exists():
                 
         except Exception as err:
             return None
+        
+
+async def delete_pr(user_id: str, exercise: str, lifted_at: datetime) -> tuple:
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM pr WHERE user_id=%s AND exercise=%s AND lifted_at=%s",
+                    (user_id, exercise, lifted_at)
+                )
+                con.commit()
+                return (True, None)
+            
+        except Exception as err:
+            return (False, err)
 

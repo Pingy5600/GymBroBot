@@ -142,7 +142,6 @@ class PR(commands.Cog, name="pr"):
         embed = view.generate_embed()
         await interaction.followup.send(embed=embed, view=view)
 
-
     @discord.app_commands.command(name="schema", description = "Get the gym schema")
     async def schema(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
@@ -200,7 +199,6 @@ class PR(commands.Cog, name="pr"):
 
         return await interaction.followup.send(embed=embed)
 
-
     @discord.app_commands.command(
         name="graph",
         description="Generate a graph of PRs for the given users and exercise"
@@ -208,8 +206,8 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.describe(
         exercise="Which exercise",
         user1="First user",
-        user2="Second user (optional)",
-        user3="Third user (optional)"
+        user2="Second user",
+        user3="Third user"
     )
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def graph(
@@ -238,7 +236,6 @@ class PR(commands.Cog, name="pr"):
             if not users_prs:
                 embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
                 return await interaction.followup.send(embed=embed)
-
             
             # Stuur de grafiek als bestand
             embed = DefaultEmbed(
@@ -253,12 +250,10 @@ class PR(commands.Cog, name="pr"):
                 setGraph(POOL, loop, message, users_prs, embed)
             )
 
-
         except Exception as e:
             self.bot.logger.warning(e)
             embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
             return await interaction.followup.send(embed=embed)
-
 
     @discord.app_commands.command(
         name="statistics",
@@ -330,6 +325,76 @@ class PR(commands.Cog, name="pr"):
 
         return await interaction.followup.send(embed=embed)
 
+    @command_pr_group.command(name="delete", description="Delete a specific PR")
+    @discord.app_commands.describe(
+        exercise="Exercise for the PR",
+        user="User whose PR to delete (optional)"
+    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def delete_pr(
+        self, 
+        interaction: discord.Interaction, 
+        exercise: str, 
+        user: discord.User = None
+    ):
+        await interaction.response.defer(thinking=True)
+
+        # Als geen gebruiker is opgegeven, gebruik de aanroeper
+        if user is None:
+            user = interaction.user
+
+        # Controleer permissies als de aanroeper een andere gebruiker probeert te beheren
+        if user != interaction.user and not interaction.user.guild_permissions.administrator:
+            embed = OperationFailedEmbed(
+                description="You do not have permission to delete PRs for other users."
+            )
+            return await interaction.followup.send(embed=embed)
+
+        try:
+            # Haal PR's van de gebruiker op
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+
+            if len(prs) == 0:
+                embed = OperationFailedEmbed(description="No PRs found for the specified exercise.")
+                return await interaction.followup.send(embed=embed)
+            elif prs[0] == -1:
+                raise Exception(prs[1])
+
+            # Gebruik PRPaginator voor lijstweergave
+            paginator = PRPaginator(prs, exercise, user)
+            embed = paginator.generate_embed()
+            content = "Reply with the **number** of the PR you want to delete."
+            await interaction.followup.send(content=content, embed=embed, view=paginator)
+
+            def check(m):
+                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit()
+
+            msg = await self.bot.wait_for("message", check=check, timeout=60.0)
+            index = int(msg.content) - 1  # Converteer naar een lijstindex
+
+            if index < 0 or index >= len(prs):
+                raise ValueError("Invalid selection. Please try again.")
+
+            # Verwijder de geselecteerde PR
+            selected_pr = prs[index]
+            result, err = await db_manager.delete_pr(str(user.id), exercise, selected_pr[2])
+            if not result:
+                raise Exception(err)
+
+            # Bevestigingsbericht
+            embed = DefaultEmbed(
+                title="PR Deleted",
+                description=f"Successfully deleted the PR: {selected_pr[1]} kg on {selected_pr[2].strftime('%d/%m/%Y')}."
+            )
+            await interaction.followup.send(embed=embed)
+
+        except asyncio.TimeoutError:
+            embed = OperationFailedEmbed(description="You took too long to respond! Command cancelled.")
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            embed = OperationFailedEmbed(description=f"An error occurred: {e}")
+            await interaction.followup.send(embed=embed)
+
 
 
 class PRPaginator(discord.ui.View):
@@ -354,7 +419,7 @@ class PRPaginator(discord.ui.View):
         end = start + self.items_per_page
         page_prs = self.prs[start:end]
 
-        for pr in page_prs:
+        for idx, pr in enumerate(page_prs, start=start + 1):  # Voeg nummers toe aan de PR's
             weight = pr[1]
             # Format weight to two decimal places if it is a decimal number
             if weight % 1 != 0:  # If it is a decimal
@@ -364,13 +429,14 @@ class PRPaginator(discord.ui.View):
 
             timestamp = getDiscordTimeStamp(pr[2])
             embed.add_field(
-                name=f"Date: {timestamp}",
+                name=f"{idx}. Date: {timestamp}",  # Nummer voor de datum
                 value=f"**Weight:** {weight} kg",
                 inline=False
             )
 
         embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
         return embed
+
 
     @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -396,7 +462,6 @@ class PRPaginator(discord.ui.View):
         # If there's only one page, remove the buttons completely
         if self.max_pages <= 1:
             self.clear_items()  # Remove the buttons if there's only 1 page
-
 
 
 async def setup(bot):

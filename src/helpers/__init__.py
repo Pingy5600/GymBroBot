@@ -85,7 +85,7 @@ def generate_graph(users_prs):
         fig=fig,
         func=update,
         frames=max_frames,
-        interval=600, # in ms
+        interval=500, # in ms
         blit=False,
         repeat=False
     )
