@@ -135,7 +135,7 @@ async def getExerciseProgressionRate(user_id, exercise: str):
                 six_months_ago = datetime.now() - timedelta(days=6 * 30)  # Approximation for 6 months
 
                 # Filter lifts to start from 6 months ago or the earliest record
-                relevant_lifts = [lift for lift in lifts if lift[1] >= six_months_ago]
+                relevant_lifts = [lift for lift in lifts if lift[1] <= six_months_ago]
 
                 # If no lifts in the last 6 months, use the first lift
                 if not relevant_lifts:
@@ -158,6 +158,58 @@ async def getExerciseProgressionRate(user_id, exercise: str):
 
     except Exception as err:
         return (False, str(err))
+    
+async def getClosestUsersWithExercise(user_id: str, exercise: str):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                # Haal het hoogste PR per gebruiker voor de opgegeven oefening
+                cursor.execute(
+                    """
+                    SELECT user_id, MAX(weight) AS weight
+                    FROM pr 
+                    WHERE exercise = %s
+                    GROUP BY user_id
+                    ORDER BY weight ASC
+                    """,
+                    (exercise,)
+                )
+                users_prs = cursor.fetchall()
+
+                if not users_prs:
+                    return [False, "No PRs found for the exercise"]
+
+                # Maak een lijst met gebruikers en hun PR's
+                sorted_users = users_prs  # De lijst is al gesorteerd van klein naar groot
+
+                # Zoek de opgegeven gebruiker in de lijst
+                user_position = None
+                for idx, (user, weight) in enumerate(sorted_users):
+                    if user == user_id:
+                        user_position = idx
+                        break
+
+                if user_position is None:
+                    return [False, "User's PR not found in the list"]
+
+                # Haal de gebruiker boven en onder de opgegeven gebruiker
+                user_below = sorted_users[user_position - 1] if user_position > 0 else None
+                user_above = sorted_users[user_position + 1] if user_position < len(sorted_users) - 1 else None
+
+                # Haal de namen en gewichten van de dichtstbijzijnde gebruikers
+                user_below_info = f"{user_below[0]} ({user_below[1]} kg)" if user_below else "No one below"
+                user_above_info = f"{user_above[0]} ({user_above[1]} kg)" if user_above else "No one above"
+
+                return [True, {"user_below": user_below_info, "user_above": user_above_info}]
+
+    except Exception as err:
+        return [False, err]
+
     
 
 ### SCHEMA ###

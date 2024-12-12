@@ -97,7 +97,7 @@ class PR(commands.Cog, name="pr"):
     @command_pr_group.command(name ="list", description ="Gives pr of the given user")
     @discord.app_commands.describe(user="Which user", exercise="which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def get_pr(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -129,7 +129,7 @@ class PR(commands.Cog, name="pr"):
     @command_pr_group.command(name="delete", description="Delete a specific PR")
     @discord.app_commands.describe(
         exercise="Exercise for the PR",
-        user="User whose PR to delete (optional)"
+        user="User whose PR to delete"
     )
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def delete_pr(
@@ -185,7 +185,7 @@ class PR(commands.Cog, name="pr"):
             # Bevestigingsbericht
             embed = DefaultEmbed(
                 title="PR Deleted",
-                description=f"Successfully deleted the PR: {selected_pr[1]} kg on {selected_pr[2].strftime('%d/%m/%Y')}."
+                description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
             )
             await interaction.followup.send(embed=embed)
 
@@ -197,10 +197,7 @@ class PR(commands.Cog, name="pr"):
             await interaction.followup.send(embed=embed)
 
 
-    @discord.app_commands.command(
-        name="graph",
-        description="Generate a graph of PRs for the given users and exercise"
-    )
+    @discord.app_commands.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
     @discord.app_commands.describe(
         exercise="Which exercise",
         user1="First user",
@@ -254,10 +251,7 @@ class PR(commands.Cog, name="pr"):
             return await interaction.followup.send(embed=embed)
 
 
-    @discord.app_commands.command(
-        name="statistics",
-        description="Get a detailed analysis about an exercise"
-    )
+    @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")
     @discord.app_commands.describe(user="Which user", exercise="which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
@@ -306,14 +300,50 @@ class PR(commands.Cog, name="pr"):
         except Exception as err:
             self.bot.logger.warning(f"Error in /statistic position: {err}")
             pass
+        
+        try:
+            success, closestOrErr = await db_manager.getClosestUsersWithExercise(str(user.id), exercise)
+            if not success:
+                raise ValueError(closestOrErr)
 
-        # add rate to see how fast you are progressing
+            user_below, user_above = closestOrErr  # Verwacht een tuple met gebruikers boven/onder
+
+            if user_below:
+                embed.add_field(
+                    name="⬇️ Closest Below",
+                    value=f"**{user_below[0]}** ({user_below[1]} kg)",
+                    inline=True
+                )
+            else:
+                embed.add_field(
+                    name="⬇️ Closest Below",
+                    value="No one below.",
+                    inline=True
+                )
+
+            if user_above:
+                embed.add_field(
+                    name="⬆️ Closest Above",
+                    value=f"**{user_above[0]}** ({user_above[1]} kg)",
+                    inline=True
+                )
+            else:
+                embed.add_field(
+                    name="⬆️ Closest Above",
+                    value="No one above.",
+                    inline=True
+                )
+
+        except Exception as err:
+            self.bot.logger.warning(f"Error in /statistic closest: {err}")
+
         try:
             success, rateOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
-            if not success: raise ValueError(resultsOrErr)
+            if not success: 
+                raise ValueError(resultsOrErr)
 
             embed.add_field(
-                name=f"📈 Progression rate",
+                name=f"📈 Progression rate (past 6 months)",
                 value=f"Average weekly rate: **{rateOrErr} kg**",
                 inline=True
             )
@@ -336,7 +366,6 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic graph: {err}")
             pass
         
-
 
 class PRPaginator(discord.ui.View):
     def __init__(self, prs, exercise, user):
