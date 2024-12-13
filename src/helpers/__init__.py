@@ -1,4 +1,5 @@
 from .graph import *
+from .reps_calc import *
 
 def getDiscordTimeStamp(old_timestamp):
     timestamp = int(old_timestamp.timestamp())
