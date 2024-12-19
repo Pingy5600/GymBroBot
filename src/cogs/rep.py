@@ -2,12 +2,21 @@ import discord
 import dateparser
 import math
 import asyncio
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
 from helpers import getDiscordTimeStamp, setGraph, ordinal, create_1rm_table_embed
 from concurrent.futures import ThreadPoolExecutor
+from matplotlib import cbook, cm
+from matplotlib.colors import LightSource
+from itertools import groupby
+from datetime import datetime
+import matplotlib.pyplot as plt
+from itertools import groupby
 
 
 class Rep(commands.Cog, name="rep"):
@@ -46,7 +55,359 @@ class Rep(commands.Cog, name="rep"):
             )
 
         return await interaction.followup.send(embed=embed)
+    
+    @command_rep_group.command(name="add", description="Adds reps for a specific exercise and weight")
+    @discord.app_commands.describe(
+        date="The date of the reps",
+        reps="The number of reps",
+        weight="The weight lifted",
+        exercise="Which exercise",
+        user="Which user"
+    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def add_reps(
+        self,
+        interaction: discord.Interaction,
+        reps: int,
+        weight: str,
+        exercise: str,
+        date: str = None,
+        user: discord.User = None
+    ):
+        await interaction.response.defer(thinking=True)
 
+        if user is None:
+            user = interaction.user
+
+        if date is None:
+            date = "vandaag"
+
+        reps_cleaned = weight.replace(',', '.')
+        reps_command_ref = f"</add_reps:{self.bot.tree.get_command('rep').id}>"
+
+        try:
+            pr = float(reps_cleaned)
+
+        except ValueError:
+            embed = OperationFailedEmbed(
+                description=
+                "You provided an invalid PR value. Please use the correct format.\n"
+                f"Please try again: {reps_command_ref}"
+            )
+            return await interaction.followup.send(embed=embed)
+
+        try:
+            # Controleer of reps een integer is
+            reps = int(reps)
+            if reps <= 0:
+                raise ValueError("The number of reps must be greater than 0.")
+
+            # Controleer of weight een float is
+            weight = float(weight)
+            if weight <= 0:
+                raise ValueError("The weight must be greater than 0.")
+
+        except ValueError as e:
+            embed = OperationFailedEmbed(
+                description=f"Invalid input: {e}\nPlease try again: {reps_command_ref}"
+            )
+            return await interaction.followup.send(embed=embed)
+
+        try:
+            # Datum verwerken
+            date_obj = dateparser.parse(date, settings={
+                'DATE_ORDER': 'DMY',
+                'TIMEZONE': 'CET',
+                'PREFER_DAY_OF_MONTH': 'first',
+                'PREFER_DATES_FROM': 'past',
+                'DEFAULT_LANGUAGES': ["en", "nl"]
+            })
+
+            if date_obj is None:
+                raise ValueError("Invalid date format")
+
+        except ValueError:
+            embed = OperationFailedEmbed(
+                description=(
+                    "Invalid date. Use a format like '2024-11-25' or 'November 25, 2024'.\n"
+                    f"Please try again: {reps_command_ref}"
+                )
+            )
+            return await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
+            return await interaction.followup.send(embed=embed)
+
+        # Voeg de reps toe aan de database
+        resultaat = await db_manager.add_reps(user.id, exercise, weight, reps, date_obj)
+
+        if resultaat[0]:
+            embed = DefaultEmbed(
+                title="Reps Added!",
+                description=f"Added {reps} reps at {weight}kg for {exercise.capitalize()}."
+            )
+            embed.add_field(name="User", value=user.mention, inline=True)
+            embed.add_field(name="Exercise", value=exercise, inline=True)
+            embed.add_field(name="Date", value=date_obj.strftime('%d/%m/%y'), inline=True)
+            return await interaction.followup.send(embed=embed)
+
+        embed = OperationFailedEmbed(description=f"Something went wrong: {resultaat[1]}")
+        await interaction.followup.send(embed=embed)
+
+
+    @command_rep_group.command(name="list", description="Gives reps of the given user")
+    @discord.app_commands.describe(user="Which user", exercise="Which exercise")
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
+        await interaction.response.defer(thinking=True)
+
+        if user is None:
+            user = interaction.user
+
+        try:
+            reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
+
+            if len(reps) == 0:
+                embed = OperationFailedEmbed(
+                    description=f"No reps found for the specified exercise."
+                )
+                return await interaction.followup.send(embed=embed)
+
+            elif reps[0] == -1:
+                raise Exception(reps[1])
+
+        except Exception as e:
+            embed = OperationFailedEmbed(
+                description=f"An error has occurred: {e}"
+            )
+            return await interaction.followup.send(embed=embed)
+
+        view = RepPaginator(reps, exercise, user)
+        embed = view.generate_embed()
+        await interaction.followup.send(embed=embed, view=view)
+
+
+    @command_rep_group.command(name="delete", description="Delete specific reps")
+    @discord.app_commands.describe(exercise="Exercise", user="User whose reps to delete")
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def delete(
+        self, 
+        interaction: discord.Interaction, 
+        exercise: str, 
+        user: discord.User = None
+    ):
+        await interaction.response.defer(thinking=True)
+
+        if user is None:
+            user = interaction.user
+
+        if user != interaction.user and not interaction.user.guild_permissions.administrator:
+            embed = OperationFailedEmbed(
+                description="You do not have permission to delete reps for other users."
+            )
+            return await interaction.followup.send(embed=embed)
+
+        try:
+            reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
+
+            if len(reps_data) == 0:
+                embed = OperationFailedEmbed(description="No reps found for the specified exercise.")
+                return await interaction.followup.send(embed=embed)
+            elif reps_data[0] == -1:
+                raise Exception(reps_data[1])
+
+            paginator = RepPaginator(reps_data, exercise, user)
+            embed = paginator.generate_embed()
+            content = "Reply with the **number** of the rep you want to delete."
+            message = await interaction.followup.send(content=content, embed=embed, view=paginator)
+
+            # Save the message_id
+            message_id = message.id
+
+            def check(m):
+                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
+
+            msg = await self.bot.wait_for("message", check=check, timeout=60.0)
+            index = int(msg.content) - 1
+
+            if index < 0 or index >= len(reps_data):
+                raise ValueError("Invalid selection. Please try again.")
+
+            selected_rep = reps_data[index]
+            result, err = await db_manager.delete_reps(str(user.id), exercise, selected_rep['weight'], selected_rep['lifted_at'])
+            if not result:
+                raise Exception(err)
+
+            embed = DefaultEmbed(
+                title="Reps Deleted",
+                description=f"Successfully deleted **{selected_rep['reps']} reps** of **{int(selected_rep['weight'])} kg** on {getDiscordTimeStamp(selected_rep['lifted_at'])}."
+            )
+            await interaction.followup.send(embed=embed)
+
+        except asyncio.TimeoutError:
+            embed = OperationFailedEmbed(description="You took too long to respond! Command cancelled.")
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            embed = OperationFailedEmbed(description=f"An error occurred: {e}")
+            await interaction.followup.send(embed=embed)
+
+
+    @command_rep_group.command(name="graph", description="Genereer een 3D-plot van PRs.")
+    @discord.app_commands.describe(
+        exercise="Which exercise",
+        user1="First user",
+        user2="Second user (optional)",
+        user3="Third user (optional)"
+    )
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def three_d_plot(
+        self,
+        interaction: discord.Interaction,
+        exercise: str,
+        user1: discord.User = None,
+        user2: discord.User = None,
+        user3: discord.User = None
+    ):
+        await interaction.response.defer(thinking=True)
+
+        # Gebruikers toevoegen aan de lijst
+        users = [user for user in [user1, user2, user3] if user]
+        if not users:
+            users.append(interaction.user)
+
+        try:
+            # Haal data van alle gebruikers op
+            data = []
+            for user in users:
+                prs = await db_manager.get_prs_with_reps(str(user.id), exercise)
+                if prs and prs[0] != False:  # Controleer op fouten
+                    for pr in prs:
+                        # Converteer naar float voor compatibiliteit
+                        data.append((
+                            user.display_name,
+                            int(pr['reps']),                          # Aantal reps als integer
+                            float(pr['lifted_at'].timestamp()),       # Datum als float-timestamp
+                            float(pr['weight'])                      # Gewicht als float
+                        ))
+
+            if not data:
+                await interaction.followup.send("No data found for the specified users and exercise.")
+                return
+
+            # Data voorbereiden voor plotting
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot(111, projection='3d')
+
+            for user_name, user_data in groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0]):
+                user_data = list(user_data)  # Maak van de iterator een lijst
+                user_reps = [pr[1] for pr in user_data]
+                user_dates = [pr[2] for pr in user_data]
+                user_weights = [pr[3] for pr in user_data]
+
+                # Gebruik plot_trisurf om de punten te verbinden
+                ax.plot_trisurf(user_reps, user_dates, user_weights, cmap='viridis', alpha=0.8)
+
+            # Assen labels instellen
+            ax.set_xlabel("Reps")
+            ax.set_ylabel("Date")
+            ax.set_zlabel("Weight (kg)")
+
+            # Bereken begin-, midden- en einddatums
+            unique_dates = sorted(set(pr[2] for pr in data))  # Unieke datums ophalen
+            if len(unique_dates) >= 2:
+                start_date = unique_dates[0]
+                end_date = unique_dates[-1]
+                mid_date = (start_date + end_date) / 2  # Gemiddelde tijdstempel
+                sampled_dates = [start_date, mid_date, end_date]
+            else:
+                sampled_dates = unique_dates  # Als er minder dan 2 datums zijn
+
+            # Stel ticks en labels in
+            ax.set_yticks(sampled_dates)
+            ax.set_yticklabels([datetime.fromtimestamp(date).strftime('%Y-%m-%d') for date in sampled_dates])
+
+            # Opslaan en versturen
+            file_path = "3d_pr_plot.png"
+            plt.savefig(file_path)
+            plt.close(fig)
+
+            with open(file_path, "rb") as file:
+                await interaction.followup.send(file=discord.File(file, filename="3d_pr_plot.png"))
+
+            # Verwijder tijdelijke afbeelding
+            os.remove(file_path)
+
+        except Exception as e:
+            await interaction.followup.send(f"An error occurred: {e}")
+
+
+class RepPaginator(discord.ui.View):
+    def __init__(self, reps, exercise, user):
+        super().__init__()
+        self.reps = reps
+        self.exercise = exercise
+        self.user = user
+        self.current_page = 0
+        self.items_per_page = 10
+        self.max_pages = math.ceil(len(reps) / self.items_per_page)
+
+        if self.max_pages <= 1:
+            self.clear_items()  # If only 1 page, remove buttons entirely
+
+    def generate_embed(self):
+        embed = DefaultEmbed(
+            title=f"{self.exercise.capitalize()} Reps of {self.user.display_name}",
+        )
+
+        start = self.current_page * self.items_per_page
+        end = start + self.items_per_page
+        page_reps = self.reps[start:end]
+
+        for idx, rep in enumerate(page_reps, start=start + 1):  # Voeg nummers toe aan de reps
+            weight = rep['weight']
+            reps = rep['reps']
+            timestamp = getDiscordTimeStamp(rep['lifted_at'])
+
+            # Format weight to two decimal places if it is a decimal number
+            if weight % 1 != 0:  # If it is a decimal
+                weight = f"{weight:.2f}"
+            else:
+                weight = f"{int(weight)}"  # Remove decimals if it's an integer
+
+            embed.add_field(
+                name=f"{idx}. {timestamp}",  # Nummer voor de datum
+                value=f"**Weight:** {weight} kg | **Reps:** {reps}",
+                inline=False
+            )
+
+        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
+        return embed
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page > 0:
+            self.current_page -= 1
+            embed = self.generate_embed()
+            self.update_buttons()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.current_page < self.max_pages - 1:
+            self.current_page += 1
+            embed = self.generate_embed()
+            self.update_buttons()
+            await interaction.response.edit_message(embed=embed, view=self)
+
+    def update_buttons(self):
+        # Disable buttons based on the current page
+        self.previous_button.disabled = self.current_page == 0
+        self.next_button.disabled = self.current_page >= self.max_pages - 1
+
+        # If there's only one page, remove the buttons completely
+        if self.max_pages <= 1:
+            self.clear_items()  # Remove the buttons if there's only 1 page
 
 async def setup(bot):
     await bot.add_cog(Rep(bot))

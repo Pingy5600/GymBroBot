@@ -2,6 +2,7 @@ import os
 import psycopg2
 from typing import Optional
 from datetime import datetime, timedelta
+from psycopg2.extras import RealDictCursor
 
 """"
 Copyright © Krypton 2019-2023 - https://github.com/kkrypt0nn (https://krypton.ninja)
@@ -45,6 +46,24 @@ async def get_prs_from_user(user_id: str, exercise: str) -> list:
     except Exception as err:
         return [-1, err]
     
+
+async def delete_pr(user_id: str, exercise: str, lifted_at: datetime) -> tuple:
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM pr WHERE user_id=%s AND exercise=%s AND lifted_at=%s",
+                    (user_id, exercise, lifted_at)
+                )
+                con.commit()
+                return (True, None)
+            
+        except Exception as err:
+            return (False, err)
+
 
 async def getMaxOfUserWithExercise(user_id: str, exercise: str):
     try:
@@ -203,7 +222,77 @@ async def getClosestUsersWithExercise(user_id: str, exercise: str):
     except Exception as err:
         return (False, err)
 
+### REPS ###
+
+async def add_reps(user_id: str, exercise: str, weight: float, reps: int, lifted_at=None):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO reps (user_id, exercise, weight, reps, lifted_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (str(user_id), str(exercise), float(weight), int(reps), lifted_at)
+                )
+                con.commit()
+                return [True, None]
+    except Exception as err:
+        return [False, err]
+
+async def get_prs_with_reps(user_id: str, exercise: str):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute(
+                    """
+                    SELECT exercise, weight, reps, lifted_at
+                    FROM reps
+                    WHERE user_id = %s AND exercise = %s
+                    ORDER BY lifted_at DESC
+                    """,
+                    (user_id, exercise)
+                )
+                return cursor.fetchall()
+    except Exception as err:
+        return [False, err]
     
+async def delete_reps(user_id: str, exercise: str, weight: float, lifted_at: str):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM reps
+                    WHERE user_id = %s AND exercise = %s AND weight = %s AND lifted_at = %s
+                    """,
+                    (user_id, exercise, weight, lifted_at)
+                )
+                con.commit()
+                
+                # Check if any rows were affected (if not, return an error message)
+                if cursor.rowcount == 0:
+                    return [False, "No matching reps found to delete."]
+                
+                return [True, None]
+    except Exception as err:
+        return [False, err]
+
 
 ### SCHEMA ###
 
@@ -304,22 +393,3 @@ async def schema_exists():
                 
         except Exception as err:
             return None
-        
-
-async def delete_pr(user_id: str, exercise: str, lifted_at: datetime) -> tuple:
-    with psycopg2.connect(
-        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
-    ) as con:
-            
-        try:
-            with con.cursor() as cursor:
-                cursor.execute(
-                    "DELETE FROM pr WHERE user_id=%s AND exercise=%s AND lifted_at=%s",
-                    (user_id, exercise, lifted_at)
-                )
-                con.commit()
-                return (True, None)
-            
-        except Exception as err:
-            return (False, err)
-

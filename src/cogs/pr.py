@@ -127,10 +127,7 @@ class PR(commands.Cog, name="pr"):
 
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
-    @discord.app_commands.describe(
-        exercise="Exercise for the PR",
-        user="User whose PR to delete"
-    )
+    @discord.app_commands.describe(exercise="Exercise for the PR", user="User whose PR to delete")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def delete_pr(
         self, 
@@ -140,11 +137,9 @@ class PR(commands.Cog, name="pr"):
     ):
         await interaction.response.defer(thinking=True)
 
-        # Als geen gebruiker is opgegeven, gebruik de aanroeper
         if user is None:
             user = interaction.user
 
-        # Controleer permissies als de aanroeper een andere gebruiker probeert te beheren
         if user != interaction.user and not interaction.user.guild_permissions.administrator:
             embed = OperationFailedEmbed(
                 description="You do not have permission to delete PRs for other users."
@@ -152,7 +147,6 @@ class PR(commands.Cog, name="pr"):
             return await interaction.followup.send(embed=embed)
 
         try:
-            # Haal PR's van de gebruiker op
             prs = await db_manager.get_prs_from_user(str(user.id), exercise)
 
             if len(prs) == 0:
@@ -161,28 +155,28 @@ class PR(commands.Cog, name="pr"):
             elif prs[0] == -1:
                 raise Exception(prs[1])
 
-            # Gebruik PRPaginator voor lijstweergave
             paginator = PRPaginator(prs, exercise, user)
             embed = paginator.generate_embed()
             content = "Reply with the **number** of the PR you want to delete."
-            await interaction.followup.send(content=content, embed=embed, view=paginator)
+            message = await interaction.followup.send(content=content, embed=embed, view=paginator)
+
+            # Save the message_id
+            message_id = message.id
 
             def check(m):
-                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit()
+                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
 
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-            index = int(msg.content) - 1  # Converteer naar een lijstindex
+            index = int(msg.content) - 1
 
             if index < 0 or index >= len(prs):
                 raise ValueError("Invalid selection. Please try again.")
 
-            # Verwijder de geselecteerde PR
             selected_pr = prs[index]
             result, err = await db_manager.delete_pr(str(user.id), exercise, selected_pr[2])
             if not result:
                 raise Exception(err)
 
-            # Bevestigingsbericht
             embed = DefaultEmbed(
                 title="PR Deleted",
                 description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
@@ -197,7 +191,8 @@ class PR(commands.Cog, name="pr"):
             await interaction.followup.send(embed=embed)
 
 
-    @discord.app_commands.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
+
+    @command_pr_group.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
     @discord.app_commands.describe(
         exercise="Which exercise",
         user1="First user",
@@ -252,7 +247,7 @@ class PR(commands.Cog, name="pr"):
 
 
     @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")
-    @discord.app_commands.describe(user="Which user", exercise="which exercise")
+    @discord.app_commands.describe(user="Which user", exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
@@ -353,7 +348,7 @@ class PR(commands.Cog, name="pr"):
         except:
             self.bot.logger.warning(f"Error in /statistic graph: {err}")
             pass
-        
+
 
 class PRPaginator(discord.ui.View):
     def __init__(self, prs, exercise, user):
@@ -387,7 +382,7 @@ class PRPaginator(discord.ui.View):
 
             timestamp = getDiscordTimeStamp(pr[2])
             embed.add_field(
-                name=f"{idx}. Date: {timestamp}",  # Nummer voor de datum
+                name=f"{idx}. {timestamp}",  # Nummer voor de datum
                 value=f"**Weight:** {weight} kg",
                 inline=False
             )
