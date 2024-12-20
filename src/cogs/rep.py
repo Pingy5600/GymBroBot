@@ -9,7 +9,7 @@ import os
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import getDiscordTimeStamp, setGraph, ordinal, create_1rm_table_embed
+from helpers import getDiscordTimeStamp, setGraph, ordinal, create_1rm_table_embed, EXERCISE_CHOICES, getImageFromExercise
 from concurrent.futures import ThreadPoolExecutor
 from matplotlib import cbook, cm
 from matplotlib.colors import LightSource
@@ -24,14 +24,6 @@ class Rep(commands.Cog, name="rep"):
         self.bot = bot
 
     command_rep_group = discord.app_commands.Group(name="rep", description="rep Group")
-
-    # TODO 
-    EXERCISE_CHOICES = [
-        discord.app_commands.Choice(name="Bench", value="bench"),
-        discord.app_commands.Choice(name="Deadlift", value="deadlift"),
-        discord.app_commands.Choice(name="Squats", value="squats"),
-    ]
-
 
     @command_rep_group.command(name="calculator", description="Calculate the amount of reps you should do for your 1RM")
     @discord.app_commands.describe(exercise="which exercise", user="Which user")
@@ -48,6 +40,7 @@ class Rep(commands.Cog, name="rep"):
             if not success: raise ValueError(resultsOrErr)
 
             embed = create_1rm_table_embed(*resultsOrErr)
+            embed.set_thumbnail(url=getImageFromExercise(exercise))
 
         except Exception as err:
             embed = OperationFailedEmbed(
@@ -149,7 +142,8 @@ class Rep(commands.Cog, name="rep"):
             )
             embed.add_field(name="User", value=user.mention, inline=True)
             embed.add_field(name="Exercise", value=exercise, inline=True)
-            embed.add_field(name="Date", value=date_obj.strftime('%d/%m/%y'), inline=True)
+            embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
+            embed.set_thumbnail(url=getImageFromExercise(exercise))
             return await interaction.followup.send(embed=embed)
 
         embed = OperationFailedEmbed(description=f"Something went wrong: {resultaat[1]}")
@@ -185,6 +179,7 @@ class Rep(commands.Cog, name="rep"):
 
         view = RepPaginator(reps, exercise, user)
         embed = view.generate_embed()
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
         await interaction.followup.send(embed=embed, view=view)
 
 

@@ -6,7 +6,7 @@ import asyncio
 from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import getDiscordTimeStamp, setGraph, ordinal
+from helpers import getDiscordTimeStamp, setGraph, ordinal, EXERCISE_CHOICES, getImageFromExercise
 from concurrent.futures import ThreadPoolExecutor
 
 POOL = ThreadPoolExecutor()
@@ -14,12 +14,6 @@ POOL = ThreadPoolExecutor()
 class PR(commands.Cog, name="pr"):
     def __init__(self,bot):
         self.bot = bot
-
-    EXERCISE_CHOICES = [
-        discord.app_commands.Choice(name="Bench", value="bench"),
-        discord.app_commands.Choice(name="Deadlift", value="deadlift"),
-        discord.app_commands.Choice(name="Squats", value="squats"),
-    ]
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
@@ -85,7 +79,9 @@ class PR(commands.Cog, name="pr"):
             )
             embed.add_field(name="User", value=user.mention, inline=True)
             embed.add_field(name="Excercise", value=exercise, inline=True)
-            embed.add_field(name="Date", value=date_obj.strftime('%d/%m/%y'), inline=True)
+            embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
+            embed.set_thumbnail(url=getImageFromExercise(exercise))
+
             return await interaction.followup.send(embed=embed)
         
         embed = OperationFailedEmbed(
@@ -123,6 +119,7 @@ class PR(commands.Cog, name="pr"):
         
         view = PRPaginator(prs, exercise, user)
         embed = view.generate_embed()
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
         await interaction.followup.send(embed=embed, view=view)
 
 
@@ -157,6 +154,7 @@ class PR(commands.Cog, name="pr"):
 
             paginator = PRPaginator(prs, exercise, user)
             embed = paginator.generate_embed()
+            embed.set_thumbnail(url=getImageFromExercise(exercise))
             content = "Reply with the **number** of the PR you want to delete."
             message = await interaction.followup.send(content=content, embed=embed, view=paginator)
 
@@ -335,6 +333,7 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic rate: {err}")
             pass
 
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
         message = await interaction.followup.send(embed=embed)
 
         try:
