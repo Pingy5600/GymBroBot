@@ -162,7 +162,6 @@ def generate_3d_graph(data):
 
     # Assen labels instellen
     ax.set_xlabel("Reps")
-    ax.set_ylabel("Date")
     ax.set_zlabel("Weight (kg)")
 
     # Bereken begin-, midden- en einddatums
@@ -187,7 +186,7 @@ def generate_3d_graph(data):
     
     # Save the GIF to a temporary file
     with tempfile.NamedTemporaryFile(suffix=".gif") as temp_file:
-        ani.save(temp_file.name, writer=ImageMagickWriter(fps=5, extra_args=['-loop', '1']))
+        ani.save(temp_file.name)
         temp_file.seek(0)
         discord_file = discord.File(temp_file.name, filename='3d_graph.gif')
 
