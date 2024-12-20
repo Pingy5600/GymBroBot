@@ -1,23 +1,17 @@
-import discord
-import dateparser
-import math
 import asyncio
-import matplotlib.pyplot as plt
-import numpy as np
-import os
+import math
+from concurrent.futures import ThreadPoolExecutor
 
+import dateparser
+import discord
 from discord.ext import commands
+
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import getDiscordTimeStamp, setGraph, ordinal, create_1rm_table_embed, EXERCISE_CHOICES, getImageFromExercise
-from concurrent.futures import ThreadPoolExecutor
-from matplotlib import cbook, cm
-from matplotlib.colors import LightSource
-from itertools import groupby
-from datetime import datetime
-import matplotlib.pyplot as plt
-from itertools import groupby
+from helpers import (EXERCISE_CHOICES, create_1rm_table_embed,
+                     getDiscordTimeStamp, getImageFromExercise, set3DGraph)
 
+POOL = ThreadPoolExecutor()
 
 class Rep(commands.Cog, name="rep"):
     def __init__(self,bot):
@@ -271,70 +265,18 @@ class Rep(commands.Cog, name="rep"):
         if not users:
             users.append(interaction.user)
 
-        try:
-            # Haal data van alle gebruikers op
-            data = []
-            for user in users:
-                prs = await db_manager.get_prs_with_reps(str(user.id), exercise)
-                if prs and prs[0] != False:  # Controleer op fouten
-                    for pr in prs:
-                        # Converteer naar float voor compatibiliteit
-                        data.append((
-                            user.display_name,
-                            int(pr['reps']),                          # Aantal reps als integer
-                            float(pr['lifted_at'].timestamp()),       # Datum als float-timestamp
-                            float(pr['weight'])                      # Gewicht als float
-                        ))
+        embed = DefaultEmbed(
+            title=f"{exercise.capitalize()} PR Graph",
+            description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."
+        )
+        embed.set_footer(text="This may take a while...")
+        message = await interaction.followup.send(embed=embed)
 
-            if not data:
-                await interaction.followup.send("No data found for the specified users and exercise.")
-                return
+        loop = asyncio.get_event_loop()
+        loop.create_task(
+            set3DGraph(POOL, loop, message, users, exercise, embed)
+        )
 
-            # Data voorbereiden voor plotting
-            fig = plt.figure(figsize=(10, 6))
-            ax = fig.add_subplot(111, projection='3d')
-
-            for user_name, user_data in groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0]):
-                user_data = list(user_data)  # Maak van de iterator een lijst
-                user_reps = [pr[1] for pr in user_data]
-                user_dates = [pr[2] for pr in user_data]
-                user_weights = [pr[3] for pr in user_data]
-
-                # Gebruik plot_trisurf om de punten te verbinden
-                ax.plot_trisurf(user_reps, user_dates, user_weights, cmap='viridis', alpha=0.8)
-
-            # Assen labels instellen
-            ax.set_xlabel("Reps")
-            ax.set_ylabel("Date")
-            ax.set_zlabel("Weight (kg)")
-
-            # Bereken begin-, midden- en einddatums
-            unique_dates = sorted(set(pr[2] for pr in data))  # Unieke datums ophalen
-            if len(unique_dates) >= 2:
-                start_date = unique_dates[0]
-                end_date = unique_dates[-1]
-                mid_date = (start_date + end_date) / 2  # Gemiddelde tijdstempel
-                sampled_dates = [start_date, mid_date, end_date]
-            else:
-                sampled_dates = unique_dates  # Als er minder dan 2 datums zijn
-
-            # Stel ticks en labels in
-            ax.set_yticks(sampled_dates)
-            ax.set_yticklabels([datetime.fromtimestamp(date).strftime('%Y-%m-%d') for date in sampled_dates])
-
-            # Opslaan en versturen
-            file_path = "3d_pr_plot.png"
-            plt.savefig(file_path)
-            plt.close(fig)
-
-            with open(file_path, "rb") as file:
-                await interaction.followup.send(file=discord.File(file, filename="3d_pr_plot.png"))
-
-            # Verwijder tijdelijke afbeelding
-            os.remove(file_path)
-
-        except Exception as e:
-            await interaction.followup.send(f"An error occurred: {e}")
 
 
 class RepPaginator(discord.ui.View):
