@@ -6,6 +6,7 @@ import discord
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, ImageMagickWriter
+from matplotlib.patches import Patch
 
 from databank import db_manager
 
@@ -146,19 +147,29 @@ def generate_3d_graph(data):
     # Haal data van alle gebruikers op
     if not data:
         return "No data found for the specified users and exercise."
+    
+    colors = ['#2a9d8f', '#e76f51', "r", "c", "m", "y", "k"]  # Possible colors
+    background_color = '#fef9ef'
 
     # Data voorbereiden voor plotting
     fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111, projection='3d')
+    ax.set_facecolor(background_color)
 
-    for user_name, user_data in groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0]):
+    legend_labels = []
+    legend_handles = []
+
+    for idx, (user_name, user_data) in enumerate(groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0])):
         user_data = list(user_data)  # Maak van de iterator een lijst
         user_reps = [pr[1] for pr in user_data]
         user_dates = [pr[2] for pr in user_data]
         user_weights = [pr[3] for pr in user_data]
 
         # Gebruik plot_trisurf om de punten te verbinden
-        ax.plot_trisurf(user_reps, user_dates, user_weights, cmap='viridis', alpha=0.8)
+        ax.plot_trisurf(user_reps, user_dates, user_weights, color=colors[idx])
+
+        legend_labels.append(user_name)
+        legend_handles.append(Patch(color=colors[idx], label=user_name))
 
     # Assen labels instellen
     ax.set_xlabel("Reps")
@@ -177,6 +188,8 @@ def generate_3d_graph(data):
     # Stel ticks en labels in
     ax.set_yticks(sampled_dates)
     ax.set_yticklabels([datetime.fromtimestamp(date).strftime('%Y-%m-%d') for date in sampled_dates])
+
+    ax.legend(legend_handles, legend_labels, loc="upper left", title="Users")
 
     def update(frame):
         ax.view_init(elev=30, azim=frame)  # Rotate azimuthal angle
