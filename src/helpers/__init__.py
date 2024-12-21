@@ -23,27 +23,26 @@ EXERCISE_CHOICES = [
 ]
 
 EXERCISE_IMAGES = {
-    "bench": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/Barbell-Bench-Press-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "incline-bench": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/11/incline-barbell-bench-press-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "deadlift": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/Barbell-Deadlift-1.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "squats": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/10/barbell-squat-resized-FIXED-2.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "pushups": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/10/push-up-tall-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "pullups": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/10/pull-up-2-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "dips": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/Triceps-Dip-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "dumbbell-curl": "https://cdn-0.weighttraining.guide/wp-content/uploads/2022/06/Two-arm-dumbbell-curl.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "incline-dumbbell-curl": "https://cdn-0.weighttraining.guide/wp-content/uploads/2022/02/Incline-dumbbell-inner-biceps-curl.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "barbell-curl": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/barbell-curl-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "hammer-curl": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/11/Dumbbell-Hammer-Curl-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "tricep-rope-pushdown": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/Triceps-Rope-Pushdown-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "dumbbell-lateral-raise": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/dumbbell-lateral-raise-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "lat-pulldown": "https://cdn-0.weighttraining.guide/wp-content/uploads/2017/01/Lat-pull-down-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "rows": "https://cdn-0.weighttraining.guide/wp-content/uploads/2023/09/Straight-back-seated-cable-row-with-straight-bar.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "leg-extension": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/05/lever-leg-extension-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
-    "leg-curl": "https://cdn-0.weighttraining.guide/wp-content/uploads/2016/10/seated-leg-curl-resized.png?ezimgfmt=ng%3Awebp%2Fngcb4",
+    "bench": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Bench-Press.gif",
+    "incline-bench": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Barbell-Bench-Press.gif",
+    "deadlift": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Deadlift.gif",
+    "squats": "https://fitnessprogramer.com/wp-content/uploads/2021/02/BARBELL-SQUAT.gif",
+    "pushups": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif",
+    "pullups": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif",
+    "dips": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Chest-Dips.gif",
+    "dumbbell-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif",
+    "incline-dumbbell-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Incline-Dumbbell-Curl.gif",
+    "barbell-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
+    "hammer-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Hammer-Curl.gif",
+    "tricep-rope-pushdown": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pushdown.gif",
+    "dumbbell-lateral-raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
+    "lat-pulldown": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
+    "rows": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif",
+    "leg-extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif",
+    "leg-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Seated-Leg-Curl.gif",
 }
 
 def getImageFromExercise(exercise):
-
     return EXERCISE_IMAGES[exercise]
 
 def getDiscordTimeStamp(old_timestamp):
