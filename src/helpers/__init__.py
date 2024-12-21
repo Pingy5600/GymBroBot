@@ -20,6 +20,7 @@ EXERCISE_CHOICES = [
     discord.app_commands.Choice(name="Rows", value="rows"),
     discord.app_commands.Choice(name="Leg Extension", value="leg-extension"),
     discord.app_commands.Choice(name="Leg Curl", value="leg-curl"),
+    discord.app_commands.Choice(name="Leg Press", value="leg-press"),
 ]
 
 EXERCISE_IMAGES = {
@@ -40,6 +41,7 @@ EXERCISE_IMAGES = {
     "rows": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif",
     "leg-extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif",
     "leg-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Seated-Leg-Curl.gif",
+    "leg-press": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Lever-Horizontal-Leg-Press.gif",
 }
 
 def getImageFromExercise(exercise):
