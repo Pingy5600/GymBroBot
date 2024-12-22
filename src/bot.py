@@ -2,7 +2,9 @@ import discord
 import logging
 import os
 import asyncio
+import random
 import platform
+from discord.ext import tasks
 from dotenv import load_dotenv
 from discord.ext.commands import AutoShardedBot
 import psycopg2
@@ -87,6 +89,7 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 bot.logger = logger
 
+
 def init_db():
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
@@ -100,6 +103,7 @@ def init_db():
                 cursor.execute(file.read())
 
     bot.logger.info(f"initializing db")
+
 
 @bot.event
 async def on_ready() -> None:
@@ -115,6 +119,7 @@ async def on_ready() -> None:
 
     cmds = await bot.tree.sync()
     bot.save_ids(cmds)
+
 
 async def load_cogs() -> None:
     """
@@ -132,6 +137,22 @@ async def load_cogs() -> None:
                 exception = f"{type(e).__name__}: {e}"
                 bot.logger.error(f"Failed to load extension {extension}\n{exception}")
                 bot.unloaded.add(extension)
+
+
+@tasks.loop(minutes=1.0)
+async def change_status_loop() -> None:
+    """
+    Setup the game status task of the bot.
+    """
+
+    statuses = [
+        f"🦾 Lifting heavy!",
+        f"💪 Getting stronger!",
+        f"🏋️‍♂️ Powerlifting!",
+    ]
+
+    picked_status = random.choice(statuses)
+    await bot.change_presence(activity=discord.CustomActivity(name=picked_status))
 
 
 init_db()
