@@ -178,6 +178,7 @@ async def getExerciseProgressionRate(user_id, exercise: str):
     except Exception as err:
         return (False, str(err))
     
+
 async def getClosestUsersWithExercise(user_id: str, exercise: str):
     try:
         with psycopg2.connect(
@@ -222,6 +223,7 @@ async def getClosestUsersWithExercise(user_id: str, exercise: str):
     except Exception as err:
         return (False, err)
 
+
 ### REPS ###
 
 async def add_reps(user_id: str, exercise: str, weight: float, reps: int, lifted_at=None):
@@ -245,6 +247,7 @@ async def add_reps(user_id: str, exercise: str, weight: float, reps: int, lifted
     except Exception as err:
         return [False, err]
 
+
 async def get_prs_with_reps(user_id: str, exercise: str):
     try:
         with psycopg2.connect(
@@ -264,9 +267,11 @@ async def get_prs_with_reps(user_id: str, exercise: str):
                     (user_id, exercise)
                 )
                 return cursor.fetchall()
+            
     except Exception as err:
         return [False, err]
     
+
 async def delete_reps(user_id: str, exercise: str, weight: float, lifted_at: str):
     try:
         with psycopg2.connect(
@@ -290,6 +295,7 @@ async def delete_reps(user_id: str, exercise: str, weight: float, lifted_at: str
                     return [False, "No matching reps found to delete."]
                 
                 return [True, None]
+            
     except Exception as err:
         return [False, err]
 
@@ -395,51 +401,48 @@ async def schema_exists():
             return None
 
 
-###reminders###
-
+### REMINDERS ###
 
 async def set_reminder(user_id, subject, time):
-    try:
-        with psycopg2.connect(
+    with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
+        try:
             
             with con.cursor() as cursor:
                 cursor.execute(
-                        "INSERT INTO reminders (user_id, subject, time) VALUES (%s, %s, %s)",
-                        (str(user_id), subject, time)
-                    )
+                    "INSERT INTO reminders (user_id, subject, time) VALUES (%s, %s, %s)",
+                    (str(user_id), subject, time)
+                )
                     
                 con.commit()
                 return True
-            
-    except Exception as err:
-        print(err)
-        return False
+                
+        except Exception as err:
+            print(err)
+            return False
     
 
 async def get_reminders() -> list:
-    try:
-        with psycopg2.connect(
+    with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
-            
+        try:
             with con.cursor() as cursor:
                 cursor.execute(
                     "SELECT id, user_id, subject, time FROM reminders"
                 )
                 return cursor.fetchall()
             
-    except Exception as err:
-        return [-1, err]
+        except Exception as err:
+            return [-1, err]
     
 
 async def delete_reminder(id):
-    try:
-        with psycopg2.connect(
+    with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
-            
+        try:
             with con.cursor() as cursor:
                 cursor.execute(
                         "DELETE FROM reminders WHERE id=%s",
@@ -449,6 +452,7 @@ async def delete_reminder(id):
                 con.commit()
                 return True
             
-    except Exception as err:
-        print(err)
-        return False
+        except Exception as err:
+            print(err)
+            return False
+        

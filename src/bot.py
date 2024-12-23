@@ -1,18 +1,18 @@
-import discord
+import asyncio
 import logging
 import os
-import asyncio
-import random
 import platform
-from discord.ext import tasks
-from dotenv import load_dotenv
-from discord.ext.commands import AutoShardedBot
-import psycopg2
-import embeds
-
-from discord.ext import tasks
-from helpers import db_manager
+import random
 from datetime import datetime, timedelta
+
+import discord
+import psycopg2
+from discord.ext import tasks
+from discord.ext.commands import AutoShardedBot
+from dotenv import load_dotenv
+
+import embeds
+from helpers import db_manager
 
 load_dotenv()
 
@@ -122,6 +122,7 @@ async def on_ready() -> None:
 
     try:
         check_remindme.start()
+        change_status_loop.start()
 
     except Exception as e:
         bot.logger.warning(e)
@@ -130,7 +131,6 @@ async def on_ready() -> None:
     bot.save_ids(cmds)
 
 
-<<<<<<< HEAD
 @tasks.loop(seconds=30)
 async def check_remindme():
     bot.logger.info("Running reminder check...")
@@ -151,14 +151,13 @@ async def check_remindme():
         id, user_id, subject, time = tuple(reminder)
 
         # Controleer of de reminder-tijd is bereikt of overschreden
-        if datetime.strptime(time, '%Y-%m-%d %H:%M:%S') <= datetime.utcnow():
+        if time <= datetime.now() + timedelta(hours=1): # we moten +1 uur doen omdat de timezone in utc+1 is
             try:
                 # Stuur een bericht naar de gebruiker
                 user = await bot.fetch_user(int(user_id))
                 embed = embeds.DefaultEmbed(
                     "⏰ Reminder!",
                     f"```{subject}```",
-                    user=user
                 )
                 await user.send(embed=embed)
 
@@ -175,8 +174,6 @@ async def check_remindme():
                 bot.logger.error(f"Failed to send reminder: {e}")
 
 
-=======
->>>>>>> d4e326891ca92009937da315b0b2a14b05563cbd
 async def load_cogs() -> None:
     """
     The code in this function is executed whenever the bot will start.

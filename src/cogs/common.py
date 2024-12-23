@@ -55,7 +55,7 @@ class Common(commands.Cog, name="common"):
             time=t.strftime('%Y-%m-%d %H:%M:%S')  # Correcte ISO 8601 notatie
         )
 
-        desc = f"I will remind you at `{t.strftime('%Y-%m-%d %H:%M:%S')} CEST` for `{waarover}`" if succes else "Something went wrong!"
+        desc = f"I will remind you at `{t.strftime('%Y-%m-%d %H:%M:%S')}` for `{waarover}`" if succes else "Something went wrong!"
 
         await interaction.response.send_message(
             embed=embeds.OperationSucceededEmbed(
