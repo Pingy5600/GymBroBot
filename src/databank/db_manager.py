@@ -393,3 +393,62 @@ async def schema_exists():
                 
         except Exception as err:
             return None
+
+
+###reminders###
+
+
+async def set_reminder(user_id, subject, time):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                        "INSERT INTO reminders (user_id, subject, time) VALUES (%s, %s, %s)",
+                        (str(user_id), subject, time)
+                    )
+                    
+                con.commit()
+                return True
+            
+    except Exception as err:
+        print(err)
+        return False
+    
+
+async def get_reminders() -> list:
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id, user_id, subject, time FROM reminders"
+                )
+                return cursor.fetchall()
+            
+    except Exception as err:
+        return [-1, err]
+    
+
+async def delete_reminder(id):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                        "DELETE FROM reminders WHERE id=%s",
+                        (id,)
+                    )
+                    
+                con.commit()
+                return True
+            
+    except Exception as err:
+        print(err)
+        return False

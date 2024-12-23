@@ -6,7 +6,11 @@ import platform
 from dotenv import load_dotenv
 from discord.ext.commands import AutoShardedBot
 import psycopg2
-import time
+import embeds
+
+from discord.ext import tasks
+from helpers import db_manager
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -112,9 +116,59 @@ async def on_ready() -> None:
     bot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
     bot.logger.info("-------------------")
 
+    try:
+        check_remindme.start()
+
+    except Exception as e:
+        bot.logger.warning(e)
 
     cmds = await bot.tree.sync()
     bot.save_ids(cmds)
+
+
+@tasks.loop(seconds=30)
+async def check_remindme():
+    bot.logger.info("Running reminder check...")
+
+    # Haal reminders op uit de database
+    reminders = await db_manager.get_reminders()
+
+    # Controleer of er reminders zijn
+    if not reminders:
+        bot.logger.info("No reminders to process.")  # Geen reminders gevonden
+        return
+    elif reminders[0] == -1:
+        bot.logger.warning(f"Could not fetch reminders: {reminders[1]}")
+        return
+
+    # Verwerk reminders
+    for reminder in reminders:
+        id, user_id, subject, time = tuple(reminder)
+
+        # Controleer of de reminder-tijd is bereikt of overschreden
+        if datetime.strptime(time, '%Y-%m-%d %H:%M:%S') <= datetime.utcnow():
+            try:
+                # Stuur een bericht naar de gebruiker
+                user = await bot.fetch_user(int(user_id))
+                embed = embeds.DefaultEmbed(
+                    "⏰ Reminder!",
+                    f"```{subject}```",
+                    user=user
+                )
+                await user.send(embed=embed)
+
+                # Verwijder reminder uit de database na succesvolle verzending
+                succes = await db_manager.delete_reminder(id)
+                if succes:
+                    bot.logger.info(f"Successfully sent reminder ({subject}) to user {user_id}")
+                else:
+                    bot.logger.warning(f"Failed to delete reminder with ID {id} from database")
+
+            except discord.Forbidden:
+                bot.logger.warning(f"Cannot send DM to user {user_id}. They might have DMs disabled.")
+            except Exception as e:
+                bot.logger.error(f"Failed to send reminder: {e}")
+
 
 async def load_cogs() -> None:
     """

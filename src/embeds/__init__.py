@@ -23,3 +23,12 @@ class OperationFailedEmbed(discord.Embed):
             color=ERROR_COLOR,
             timestamp=datetime.now()
         )
+
+class OperationSucceededEmbed(discord.Embed):
+    def __init__(self, title, description=None, emoji="✅"):
+        super().__init__(
+            title=f"{emoji} {title}",
+            description=description,
+            color=SUCCES_COLOR,
+            timestamp=datetime.now(),
+        )

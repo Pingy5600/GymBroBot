@@ -26,3 +26,11 @@ CREATE TABLE IF NOT EXISTS reps (
     reps INTEGER NOT NULL DEFAULT 0
 );
  
+ CREATE TABLE IF NOT EXISTS reminders (
+  id SERIAL PRIMARY KEY,
+  user_id varchar(20) NOT NULL,
+  subject varchar(100) NOT NULL,
+  time timestamp NOT NULL
+);
+
+SELECT * FROM reminders;
