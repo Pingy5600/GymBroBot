@@ -2,7 +2,9 @@ import discord
 import logging
 import os
 import asyncio
+import random
 import platform
+from discord.ext import tasks
 from dotenv import load_dotenv
 from discord.ext.commands import AutoShardedBot
 import psycopg2
@@ -91,6 +93,7 @@ logger.addHandler(console_handler)
 logger.addHandler(file_handler)
 bot.logger = logger
 
+
 def init_db():
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
@@ -104,6 +107,7 @@ def init_db():
                 cursor.execute(file.read())
 
     bot.logger.info(f"initializing db")
+
 
 @bot.event
 async def on_ready() -> None:
@@ -126,6 +130,7 @@ async def on_ready() -> None:
     bot.save_ids(cmds)
 
 
+<<<<<<< HEAD
 @tasks.loop(seconds=30)
 async def check_remindme():
     bot.logger.info("Running reminder check...")
@@ -170,6 +175,8 @@ async def check_remindme():
                 bot.logger.error(f"Failed to send reminder: {e}")
 
 
+=======
+>>>>>>> d4e326891ca92009937da315b0b2a14b05563cbd
 async def load_cogs() -> None:
     """
     The code in this function is executed whenever the bot will start.
@@ -186,6 +193,22 @@ async def load_cogs() -> None:
                 exception = f"{type(e).__name__}: {e}"
                 bot.logger.error(f"Failed to load extension {extension}\n{exception}")
                 bot.unloaded.add(extension)
+
+
+@tasks.loop(minutes=1.0)
+async def change_status_loop() -> None:
+    """
+    Setup the game status task of the bot.
+    """
+
+    statuses = [
+        f"🦾 Lifting heavy!",
+        f"💪 Getting stronger!",
+        f"🏋️‍♂️ Powerlifting!",
+    ]
+
+    picked_status = random.choice(statuses)
+    await bot.change_presence(activity=discord.CustomActivity(name=picked_status))
 
 
 init_db()
