@@ -20,13 +20,17 @@ class Common(commands.Cog, name="common"):
 
     @discord.app_commands.command(name="info", description="Provides information about the bot")
     async def info(self, interaction: discord.Interaction):
+        # Verkrijg de gebruikerobjecten via hun gebruikers-ID
+        developer = await self.bot.fetch_user(464400950702899211)
+        contributer = await self.bot.fetch_user(462932133170774036)
+        
         embed = DefaultEmbed(
             title="Bot Info",
             description="This bot was created to track PRs and help with fitness goals! 🏋️‍♂️"
         )
         embed.add_field(name="Version", value="1.0.0", inline=True)
-        embed.add_field(name="Developer", value="Pingy1", inline=True)
-        embed.add_field(name="Contributers", value="Solosdv", inline=True)
+        embed.add_field(name="Developer", value=developer.mention, inline=True)  # Gebruik .mention
+        embed.add_field(name="Contributers", value=contributer.mention, inline=True)  # Gebruik .mention
         await interaction.response.send_message(embed=embed)
 
 
