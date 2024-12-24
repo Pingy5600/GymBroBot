@@ -10,13 +10,12 @@ from matplotlib.patches import Patch
 
 from databank import db_manager
 
-# fallback_colors = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
-
 async def setGraph(POOL, loop, message, users_prs, embed):
     file = await loop.run_in_executor(POOL, generate_graph, users_prs)
     embed.set_image(url="attachment://graph.gif")
 
     await message.edit(embed=embed, attachments=[file])
+
 
 async def set3DGraph(POOL, loop, message, users, exercise, embed):
 
@@ -41,6 +40,7 @@ async def set3DGraph(POOL, loop, message, users, exercise, embed):
     embed.set_footer(text=f"")
 
     await message.edit(embed=embed, attachments=[file])
+
 
 def generate_graph(users_prs):
     # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
@@ -176,7 +176,7 @@ def generate_3d_graph(data):
         "548544519793016861": "#30D5C8",
     }
     
-    fallback_colors = ['#2a9d8f', '#e76f51', '#264653', '#e9c46a', '#f4a261', '#2b2d42', '#8d99ae']
+    fallback_colors = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
     background_color = '#fef9ef'
     
     # Data voorbereiden voor plotting
