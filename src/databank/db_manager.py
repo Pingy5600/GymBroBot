@@ -438,21 +438,20 @@ async def get_reminders() -> list:
             return [-1, err]
     
 
-async def delete_reminder(id):
+async def update_reminder_time(id, new_time):
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
         try:
             with con.cursor() as cursor:
                 cursor.execute(
-                        "DELETE FROM reminders WHERE id=%s",
-                        (id,)
-                    )
-                    
+                    "UPDATE reminders SET time = %s WHERE id = %s",
+                    (new_time.strftime('%Y-%m-%d %H:%M:%S'), id)
+                )
                 con.commit()
                 return True
-            
         except Exception as err:
             print(err)
             return False
+
         

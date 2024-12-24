@@ -151,7 +151,7 @@ async def check_remindme():
         id, user_id, subject, time = tuple(reminder)
 
         # Controleer of de reminder-tijd is bereikt of overschreden
-        if time <= datetime.now() + timedelta(hours=1): # we moten +1 uur doen omdat de timezone in utc+1 is
+        if time <= datetime.now() + timedelta(hours=1):  # Compensatie voor UTC+1
             try:
                 # Stuur een bericht naar de gebruiker
                 user = await bot.fetch_user(int(user_id))
@@ -161,12 +161,13 @@ async def check_remindme():
                 )
                 await user.send(embed=embed)
 
-                # Verwijder reminder uit de database na succesvolle verzending
-                succes = await db_manager.delete_reminder(id)
+                # Verplaats de reminder met 5 minuten vooruit
+                new_time = time + timedelta(days=1)
+                succes = await db_manager.update_reminder_time(id, new_time)
                 if succes:
-                    bot.logger.info(f"Successfully sent reminder ({subject}) to user {user_id}")
+                    bot.logger.info(f"Successfully rescheduled reminder ({subject}) to {new_time}")
                 else:
-                    bot.logger.warning(f"Failed to delete reminder with ID {id} from database")
+                    bot.logger.warning(f"Failed to update reminder with ID {id} in database")
 
             except discord.Forbidden:
                 bot.logger.warning(f"Cannot send DM to user {user_id}. They might have DMs disabled.")
