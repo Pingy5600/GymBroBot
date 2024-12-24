@@ -278,7 +278,6 @@ class Rep(commands.Cog, name="rep"):
         )
 
 
-
 class RepPaginator(discord.ui.View):
     def __init__(self, reps, exercise, user):
         super().__init__()
@@ -345,6 +344,7 @@ class RepPaginator(discord.ui.View):
         # If there's only one page, remove the buttons completely
         if self.max_pages <= 1:
             self.clear_items()  # Remove the buttons if there's only 1 page
+
 
 async def setup(bot):
     await bot.add_cog(Rep(bot))

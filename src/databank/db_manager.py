@@ -130,11 +130,7 @@ async def getPositionOfUserWithExercise(user_id: str, exercise: str):
 
 async def getExerciseProgressionRate(user_id, exercise: str):
     try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
+        with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
@@ -181,11 +177,7 @@ async def getExerciseProgressionRate(user_id, exercise: str):
 
 async def getClosestUsersWithExercise(user_id: str, exercise: str):
     try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
+        with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
                 # Haal het hoogste PR per gebruiker voor de opgegeven oefening
@@ -228,11 +220,7 @@ async def getClosestUsersWithExercise(user_id: str, exercise: str):
 
 async def add_reps(user_id: str, exercise: str, weight: float, reps: int, lifted_at=None):
     try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
+        with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
@@ -250,11 +238,7 @@ async def add_reps(user_id: str, exercise: str, weight: float, reps: int, lifted
 
 async def get_prs_with_reps(user_id: str, exercise: str):
     try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
+        with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(
@@ -274,11 +258,7 @@ async def get_prs_with_reps(user_id: str, exercise: str):
 
 async def delete_reps(user_id: str, exercise: str, weight: float, lifted_at: str):
     try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
+        with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
@@ -454,4 +434,34 @@ async def update_reminder_time(id, new_time):
             print(err)
             return False
 
-        
+
+async def get_reminders_by_user(user_id: str) -> list:
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT id, subject, time FROM reminders WHERE user_id = %s ORDER BY time ASC",
+                    (user_id,)
+                )
+                reminders = cursor.fetchall()
+                return [{"id": r[0], "subject": r[1], "time": r[2]} for r in reminders]
+        except Exception as err:
+            return [-1, err]
+
+
+async def delete_reminder(reminder_id: int) -> bool:
+    with psycopg2.connect(host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "DELETE FROM reminders WHERE id = %s",
+                    (reminder_id,)
+                )
+                con.commit()
+                return cursor.rowcount > 0  # True if a row was deleted, False otherwise
+        except Exception as err:
+            print(f"Error deleting reminder: {err}")
+            return False
