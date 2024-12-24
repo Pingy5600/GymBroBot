@@ -8,8 +8,7 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import (EXERCISE_CHOICES, create_1rm_table_embed,
-                     getDiscordTimeStamp, getImageFromExercise, set3DGraph)
+from helpers import (EXERCISE_CHOICES, create_1rm_table_embed, getDiscordTimeStamp, getImageFromExercise, set3DGraph)
 
 POOL = ThreadPoolExecutor()
 
