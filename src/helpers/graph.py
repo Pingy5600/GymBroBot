@@ -10,6 +10,7 @@ from matplotlib.patches import Patch
 
 from databank import db_manager
 
+# fallback_colors = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
 
 async def setGraph(POOL, loop, message, users_prs, embed):
     file = await loop.run_in_executor(POOL, generate_graph, users_prs)
@@ -42,30 +43,47 @@ async def set3DGraph(POOL, loop, message, users, exercise, embed):
     await message.edit(embed=embed, attachments=[file])
 
 def generate_graph(users_prs):
+    # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
+    color_map = {
+        "464400950702899211": "#4169e1",
+        "462932133170774036": "#ff0000",
+        "559715606014984195": "#084808",
+        "733845345225670686": "#2ecc71",
+        "334371900170043402": "#fe6900",
+        "222415043550117888": "#fff200",
+        "548544519793016861": "#30D5C8",
+    }
 
-    # Prepare the data
-    colors = ['#2a9d8f', '#e76f51', "r", "c", "m", "y", "k"]  # Possible colors
+    # Mogelijke kleuren voor andere gebruikers
+    fallback_colors = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
     background_color = '#fef9ef'
 
-    # structure data
+    # Structuur van de data
     user_data = []
+    fallback_index = 0
+
     for idx, (user, prs) in enumerate(users_prs):
-        prs.sort(key=lambda x: x[2])  # Sort PRs by date
+        prs.sort(key=lambda x: x[2])  # Sorteer PR's op datum
         dates = [pr[2] for pr in prs]
         weights = [pr[1] for pr in prs]
-        color = colors[idx % len(colors)]
+
+        # Gebruik een specifieke kleur als die beschikbaar is, anders een fallback
+        color = color_map.get(str(user.id), fallback_colors[fallback_index % len(fallback_colors)])
+        if str(user.id) not in color_map:
+            fallback_index += 1
+
         user_data.append((user.display_name, dates, weights, color))
 
-    # flatten it, so each frame has corresponding data
+    # Flatten de data zodat elk frame overeenkomt met data
     flattened_data = []
     for user, dates, weights, color in user_data:
         for date, weight in zip(dates, weights):
             flattened_data.append((date, weight, user, color))
 
-    # Sort flattened_data by date
+    # Sorteer de platte data op datum
     flattened_data.sort(key=lambda x: x[0])
 
-    # create figure and axis
+    # Maak de figuur en as
     fig, ax = plt.subplots(figsize=(12, 8))
     fig.set_facecolor(background_color)
     ax.set_facecolor(background_color)
@@ -79,11 +97,11 @@ def generate_graph(users_prs):
         ax.set_xlabel("Date")
         ax.set_ylabel("Weight (kg)")
         ax.grid(True)
-        
+
         lines = []
         users_in_lines = set()
 
-        # Group data by user for plotting lines
+        # Groepeer data per gebruiker voor het plotten van lijnen
         user_points = {}
         for date, weight, user, color in flattened_data[:frame + 1]:
             if user not in user_points:
@@ -91,16 +109,15 @@ def generate_graph(users_prs):
             user_points[user]['dates'].append(date)
             user_points[user]['weights'].append(weight)
 
-
         for user, data in user_points.items():
             dates = data['dates']
             weights = data['weights']
             color = data['color']
 
-            # Plot the line connecting points
+            # Plot de lijn die punten verbindt
             line, = ax.plot(dates, weights, marker="o", linestyle="-", color=color, label=user)
 
-            # Annotate the last point
+            # Annoteer het laatste punt
             for i in range(len(dates)):
                 ax.annotate(
                     f"{weights[i]:.2f} kg",
@@ -120,19 +137,19 @@ def generate_graph(users_prs):
         ax.legend(handles=lines, loc='upper left')
 
         return ax
-    
+
     ani = FuncAnimation(
         fig=fig,
         func=update,
         frames=len(flattened_data),
-        interval=500, # in ms
+        interval=500,  # in ms
         blit=False,
         repeat=False
     )
 
     plt.legend(title="Users")
-    
-    # Save the GIF to a temporary file
+
+    # Sla de GIF op naar een tijdelijk bestand
     with tempfile.NamedTemporaryFile(suffix=".gif") as temp_file:
         ani.save(temp_file.name, writer=ImageMagickWriter(fps=5, extra_args=['-loop', '1']))
         temp_file.seek(0)
@@ -148,9 +165,20 @@ def generate_3d_graph(data):
     if not data:
         return "No data found for the specified users and exercise."
     
-    colors = ['#2a9d8f', '#e76f51', "r", "c", "m", "y", "k"]  # Possible colors
+    # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
+    color_map = {
+        "464400950702899211": "#4169e1",
+        "462932133170774036": "#ff0000",
+        "559715606014984195": "#084808",
+        "733845345225670686": "#2ecc71",
+        "334371900170043402": "#fe6900",
+        "222415043550117888": "#fff200",
+        "548544519793016861": "#30D5C8",
+    }
+    
+    fallback_colors = ['#2a9d8f', '#e76f51', '#264653', '#e9c46a', '#f4a261', '#2b2d42', '#8d99ae']
     background_color = '#fef9ef'
-
+    
     # Data voorbereiden voor plotting
     fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111, projection='3d')
@@ -158,21 +186,33 @@ def generate_3d_graph(data):
 
     legend_labels = []
     legend_handles = []
+    
+    fallback_index = 0  # Index voor fallback kleuren
 
-    for idx, (user_name, user_data) in enumerate(groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0])):
+    for user_id, user_data in groupby(sorted(data, key=lambda x: x[0]), key=lambda x: x[0]):
         user_data = list(user_data)  # Maak van de iterator een lijst
+        if not user_data:
+            continue  # Sla lege datasets over
+
         user_reps = [pr[1] for pr in user_data]
         user_dates = [pr[2] for pr in user_data]
         user_weights = [pr[3] for pr in user_data]
 
-        # Gebruik plot_trisurf om de punten te verbinden
-        ax.plot_trisurf(user_reps, user_dates, user_weights, color=colors[idx])
+        # Gebruik een specifieke kleur als die beschikbaar is, anders een fallback
+        color = color_map.get(str(user_id), fallback_colors[fallback_index % len(fallback_colors)])
+        if str(user_id) not in color_map:
+            fallback_index += 1
 
-        legend_labels.append(user_name)
-        legend_handles.append(Patch(color=colors[idx], label=user_name))
+        # Gebruik plot_trisurf om de punten te verbinden
+        ax.plot_trisurf(user_reps, user_dates, user_weights, color=color, alpha=0.8)
+
+        # Voeg de gebruikersnaam toe aan de legenda
+        legend_labels.append(user_data[0][4] if len(user_data[0]) > 4 else f"User {user_id}")
+        legend_handles.append(Patch(color=color, label=legend_labels[-1]))
 
     # Assen labels instellen
     ax.set_xlabel("Reps")
+    ax.set_ylabel("Date")
     ax.set_zlabel("Weight (kg)")
 
     # Bereken begin-, midden- en einddatums

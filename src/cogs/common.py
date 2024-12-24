@@ -29,8 +29,8 @@ class Common(commands.Cog, name="common"):
             description="This bot was created to track PRs and help with fitness goals! 🏋️‍♂️"
         )
         embed.add_field(name="Version", value="1.0.0", inline=True)
-        embed.add_field(name="Developer", value=developer.mention, inline=True)  # Gebruik .mention
-        embed.add_field(name="Contributers", value=contributer.mention, inline=True)  # Gebruik .mention
+        embed.add_field(name="Developer", value=developer.mention, inline=True)
+        embed.add_field(name="Contributers", value=contributer.mention, inline=True)
         await interaction.response.send_message(embed=embed)
 
 

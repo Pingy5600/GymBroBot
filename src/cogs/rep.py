@@ -245,23 +245,27 @@ class Rep(commands.Cog, name="rep"):
     @command_rep_group.command(name="graph", description="Genereer een 3D-plot van PRs.")
     @discord.app_commands.describe(
         exercise="Which exercise",
-        user1="First user",
-        user2="Second user (optional)",
-        user3="Third user (optional)"
+        user_a="First user",
+        user_b="Second user",
+        user_c="Third user",
+        user_d="Fourth user",
+        user_e="Fifth user"
     )
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def three_d_plot(
         self,
         interaction: discord.Interaction,
         exercise: str,
-        user1: discord.User = None,
-        user2: discord.User = None,
-        user3: discord.User = None
+        user_a: discord.User = None,
+        user_b: discord.User = None,
+        user_c: discord.User = None,
+        user_d: discord.User = None,
+        user_e: discord.User = None
     ):
         await interaction.response.defer(thinking=True)
 
         # Gebruikers toevoegen aan de lijst
-        users = [user for user in [user1, user2, user3] if user]
+        users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
         if not users:
             users.append(interaction.user)
 
