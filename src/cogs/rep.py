@@ -7,11 +7,11 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, OperationFailedEmbed
+from embeds import DefaultEmbed, DefaultEmbedWithExercise, OperationFailedEmbed
 from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
                         TimeoutCommand)
-from helpers import (EXERCISE_CHOICES, create_1rm_table_embed,
-                     getDiscordTimeStamp, getImageFromExercise, set3DGraph)
+from helpers import (EXERCISE_CHOICES, calculate_1rm_table,
+                     getDiscordTimeStamp, set3DGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -33,10 +33,26 @@ class Rep(commands.Cog, name="rep"):
         # get 1RM for that exercise for user
         success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
         if not success: raise ValueError(resultsOrErr)
+        
+        one_rep_max, date = resultsOrErr
 
-        embed = create_1rm_table_embed(*resultsOrErr)
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
+        table_data = calculate_1rm_table(float(one_rep_max))
 
+        embed = DefaultEmbedWithExercise(
+            title="📊 1RM Percentage Table",
+            exercise=exercise,
+            description=f"Based on a 1RM of **{one_rep_max} kg** achieved on {getDiscordTimeStamp(date)}",
+        )
+        
+        # Format the table
+        table = "```"
+        table += f"{'Percentage':<15}{'Lift Weight':<15}{'Reps':<10}\n"
+        table += "-" * 40 + "\n"
+        for row in table_data:
+            table += f"{row['percentage']:<15}{row['weight']:<15}{row['reps']:<10}\n"
+        table += "```"
+
+        embed.add_field(name="Workout Plan", value=table, inline=False)
 
         return await interaction.followup.send(embed=embed)
     
@@ -106,14 +122,15 @@ class Rep(commands.Cog, name="rep"):
         if not resultaat[0]:
             raise Exception(resultaat[1])
         
-        embed = DefaultEmbed(
+        embed = DefaultEmbedWithExercise(
             title="Reps Added!",
+            exercise=exercise,
             description=f"Added {reps} reps at {weight}kg for {exercise.capitalize()}."
         )
         embed.add_field(name="User", value=user.mention, inline=True)
         embed.add_field(name="Exercise", value=exercise, inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
+
         return await interaction.followup.send(embed=embed)
 
 
@@ -137,7 +154,6 @@ class Rep(commands.Cog, name="rep"):
 
         view = RepPaginator(reps, exercise, user)
         embed = view.generate_embed()
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
         await interaction.followup.send(embed=embed, view=view)
 
 
@@ -265,8 +281,9 @@ class RepPaginator(discord.ui.View):
             self.clear_items()  # If only 1 page, remove buttons entirely
 
     def generate_embed(self):
-        embed = DefaultEmbed(
+        embed = DefaultEmbedWithExercise(
             title=f"{self.exercise.capitalize()} Reps of {self.user.display_name}",
+            exercise=self.exercise,
         )
 
         start = self.current_page * self.items_per_page

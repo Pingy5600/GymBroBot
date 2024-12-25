@@ -7,11 +7,11 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed
+from embeds import DefaultEmbed, DefaultEmbedWithExercise
 from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
                         TimeoutCommand)
 from helpers import (EXERCISE_CHOICES, getDiscordTimeStamp,
-                     getImageFromExercise, ordinal, setGraph)
+                     ordinal, setGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -63,14 +63,14 @@ class PR(commands.Cog, name="pr"):
         if not resultaat[0]:
             raise Exception(resultaat[1])
 
-        embed = DefaultEmbed(
+        embed = DefaultEmbedWithExercise(
             title="PR added!",
+            exercise=exercise,
             description=f"PR of {pr}kg added"
         )
         embed.add_field(name="User", value=user.mention, inline=True)
         embed.add_field(name="Excercise", value=exercise, inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
 
         return await interaction.followup.send(embed=embed)
 
@@ -92,10 +92,9 @@ class PR(commands.Cog, name="pr"):
         elif prs[0] == -1:
             raise Exception(prs[1])
         
-        
         view = PRPaginator(prs, exercise, user)
         embed = view.generate_embed()
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
+
         await interaction.followup.send(embed=embed, view=view)
 
 
@@ -129,7 +128,6 @@ class PR(commands.Cog, name="pr"):
 
             paginator = PRPaginator(prs, exercise, user)
             embed = paginator.generate_embed()
-            embed.set_thumbnail(url=getImageFromExercise(exercise))
             content = "Reply with the **number** of the PR you want to delete."
             message = await interaction.followup.send(content=content, embed=embed, view=paginator)
 
@@ -221,8 +219,9 @@ class PR(commands.Cog, name="pr"):
         if user == None:
             user = interaction.user
 
-        embed = DefaultEmbed(
-            f"{exercise.capitalize()} analysis for {user}"
+        embed = DefaultEmbedWithExercise(
+            f"{exercise.capitalize()} analysis for {user}",
+            exercise=exercise
         )
 
         # max of exercise
@@ -301,7 +300,6 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic rate: {err}")
             pass
 
-        embed.set_thumbnail(url=getImageFromExercise(exercise))
         message = await interaction.followup.send(embed=embed)
 
         try:
@@ -331,8 +329,9 @@ class PRPaginator(discord.ui.View):
             self.clear_items()  # If only 1 page, remove buttons entirely
 
     def generate_embed(self):
-        embed = DefaultEmbed(
+        embed = DefaultEmbedWithExercise(
             title=f"{self.exercise.capitalize()} PRs of {self.user.display_name}",
+            exercise=self.exercise
         )
 
         start = self.current_page * self.items_per_page
