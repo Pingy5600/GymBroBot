@@ -18,7 +18,7 @@ class DefaultEmbed(discord.Embed):
 class OperationFailedEmbed(discord.Embed):
     def __init__(self, title="Error", description=None, emoji="❌"):
         super().__init__(
-            title=f"{title} {emoji}", 
+            title=f" {emoji} {title}", 
             description=description,
             color=ERROR_COLOR,
             timestamp=datetime.now()

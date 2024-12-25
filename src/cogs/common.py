@@ -1,15 +1,16 @@
-import discord
-import embeds
-import dateparser
-import math
 import asyncio
-import pytz
-
-
-from discord.ext import commands
-from embeds import DefaultEmbed
+import math
 from datetime import datetime
-from helpers import db_manager
+
+import dateparser
+import discord
+import pytz
+from discord.ext import commands
+
+import embeds
+from embeds import DefaultEmbed
+from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
+from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
 
 
 class Common(commands.Cog, name="common"):
@@ -17,6 +18,7 @@ class Common(commands.Cog, name="common"):
         self.bot = bot
 
     command_remind_group = discord.app_commands.Group(name="remind", description="remind Group")
+
 
     @discord.app_commands.command(name="info", description="Provides information about the bot")
     async def info(self, interaction: discord.Interaction):
@@ -32,6 +34,7 @@ class Common(commands.Cog, name="common"):
         embed.add_field(name="Contributers", value=contributer.mention, inline=True)
         await interaction.response.send_message(embed=embed)
 
+
     @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
     @discord.app_commands.describe(user="Which user")
     async def profile(self, interaction: discord.Interaction, user: discord.User = None):
@@ -39,16 +42,6 @@ class Common(commands.Cog, name="common"):
 
         if user is None:
             user = interaction.user
-        
-        COLOR_MAP = {
-        "464400950702899211": "#4169e1",
-        "462932133170774036": "#ff0000",
-        "559715606014984195": "#084808",
-        "733845345225670686": "#2ecc71",
-        "334371900170043402": "#fe6900",
-        "222415043550117888": "#fff200",
-        "548544519793016861": "#30D5C8"
-        }
 
         # Haal de kleur op uit COLOR_MAP
         user_id = str(user.id)
@@ -72,6 +65,7 @@ class Common(commands.Cog, name="common"):
 
         await interaction.followup.send(embed=embed)
 
+
     @command_remind_group.command(name="me", description="Remind me when to take my creatine", extras={'cog': 'general'})
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
     async def remindme(self, interaction, wanneer: str, waarover: discord.app_commands.Range[str, 1, 100]) -> None:
@@ -89,7 +83,7 @@ class Common(commands.Cog, name="common"):
         })
 
         if t is None:
-            return await interaction.followup.send(embed=embeds.OperationFailedEmbed("Geen geldig tijdstip"))
+            raise InvalidTime("Geen geldig tijdstip")
 
         # Controleer of de parsed datetime 't' tijdzone-bewust is
         if t.tzinfo is None:
@@ -97,7 +91,7 @@ class Common(commands.Cog, name="common"):
 
         # Vergelijk de tijd met de huidige tijd in de juiste tijdzone
         if t < datetime.now(tz):
-            return await interaction.followup.send(embed=embeds.OperationFailedEmbed("De opgegeven tijd is in het verleden"))
+            raise InvalidTime("De opgegeven tijd is in het verleden")
 
         # Zet reminder in de database
         succes = await db_manager.set_reminder(
@@ -106,14 +100,13 @@ class Common(commands.Cog, name="common"):
             time=t.strftime('%Y-%m-%d %H:%M:%S')
         )
 
-        # Gebruik de Discord timestamp (<t:timestamp:F>) voor de herinnering
-        timestamp = f"<t:{int(t.timestamp())}:F>"  # Zet de tijd om naar een timestamp
+        if not succes:
+            raise Exception()
 
-        desc = f"I will remind you at {timestamp} for {waarover}" if succes else "Something went wrong!"
+        desc = f"I will remind you at {getDiscordTimeStamp(t)} for {waarover}"
         embed = embeds.OperationSucceededEmbed(
             "Reminder set!", desc, emoji="⏳"
-        ) if succes else embeds.OperationFailedEmbed("Oops!", desc)
-
+        )
         await interaction.followup.send(embed=embed)  # Gebruik followup na een defer
 
         
@@ -124,8 +117,8 @@ class Common(commands.Cog, name="common"):
         reminders = await db_manager.get_reminders_by_user(str(interaction.user.id))
 
         if len(reminders) == 0:
-            embed = embeds.OperationFailedEmbed(description="You have no reminders set.")
-            return await interaction.followup.send(embed=embed)
+            raise Exception("You have no reminders set.")
+
         elif reminders[0] == -1:
             raise Exception(reminders[1])
 
@@ -140,30 +133,27 @@ class Common(commands.Cog, name="common"):
 
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-            index = int(msg.content) - 1
-
-            if index < 0 or index >= len(reminders):
-                raise ValueError("Invalid selection. Please try again.")
-
-            selected_reminder = reminders[index]
-            success = await db_manager.delete_reminder(selected_reminder['id'])
-
-            if success:
-                embed = embeds.OperationSucceededEmbed(
-                    title="Reminder Deleted",
-                    description=f"Successfully deleted the reminder for <t:{int(selected_reminder['time'].timestamp())}:F>."
-                )
-            else:
-                embed = embeds.OperationFailedEmbed(description="Failed to delete the reminder.")
-            await interaction.followup.send(embed=embed)
 
         except asyncio.TimeoutError:
-            embed = embeds.OperationFailedEmbed(description="You took too long to respond! Command cancelled.")
-            await interaction.followup.send(embed=embed)
-        except Exception as e:
-            embed = embeds.OperationFailedEmbed(description=f"An error occurred: {e}")
-            await interaction.followup.send(embed=embed)
+            raise TimeoutCommand()
+        
+        index = int(msg.content) - 1
 
+        if index < 0 or index >= len(reminders):
+            raise ValueError("Invalid selection. Please try again.")
+
+        selected_reminder = reminders[index]
+        success = await db_manager.delete_reminder(selected_reminder['id'])
+
+        if not success:
+            raise DeletionFailed("Failed to delete the reminder.")
+
+        embed = embeds.OperationSucceededEmbed(
+            title="Reminder Deleted",
+            description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'])}."
+        )
+        await interaction.followup.send(embed=embed)
+        
 
 class ReminderPaginator(discord.ui.View):
     def __init__(self, reminders, user):
@@ -188,12 +178,9 @@ class ReminderPaginator(discord.ui.View):
         page_reminders = self.reminders[start:end]
 
         for idx, reminder in enumerate(page_reminders, start=start + 1):
-            subject = reminder['subject']
-            timestamp = int(reminder['time'].timestamp())  # Convert to UNIX timestamp
-
             embed.add_field(
-                name=f"{idx}. Reminder for <t:{timestamp}:F>",  # Use Discord timestamp
-                value=f"**Subject:** {subject}",
+                name=f"{idx}. Reminder for {getDiscordTimeStamp(reminder['time'])}",
+                value=f"**Subject:** {reminder['subject']}",
                 inline=False
             )
 

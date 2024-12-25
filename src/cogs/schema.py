@@ -1,8 +1,9 @@
 import discord
-
 from discord.ext import commands
+
 from databank import db_manager
-from embeds import DefaultEmbed, OperationFailedEmbed
+from embeds import DefaultEmbed
+
 
 class Schema(commands.Cog, name="schema"):
     def __init__(self,bot):
@@ -13,22 +14,14 @@ class Schema(commands.Cog, name="schema"):
     async def schema(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
 
-        try:
-            worked, errOrSchema = await db_manager.get_schema()
-            if not worked:
-                raise ValueError(errOrSchema)
-            
-            embed = DefaultEmbed(
-                '🗓️ Schema'
-            )
+        worked, errOrSchema = await db_manager.get_schema()
+        if not worked:
+            raise ValueError(errOrSchema)
+        
+        embed = DefaultEmbed('🗓️ Schema')
 
-            for day, desc in errOrSchema.items():
-                embed.add_field(name=day,  value=f'```{desc}```', inline=True)
-
-        except Exception as err:
-            embed = OperationFailedEmbed(
-                "Something went wrong..."
-            )
+        for day, desc in errOrSchema.items():
+            embed.add_field(name=day,  value=f'```{desc}```', inline=True)
 
         await interaction.followup.send(embed=embed)
 
@@ -47,23 +40,13 @@ class Schema(commands.Cog, name="schema"):
     ):
         await interaction.response.defer(thinking=True)
         
-        edit_schema_command_ref = f"</edit_schema:{self.bot.tree.get_command('edit_schema').id}>"
         schema_command_ref = f"</schema:{self.bot.tree.get_command('schema').id}>"
 
-        try:
-            worked, err = await db_manager.update_schema(monday, tuesday, wednesday, thursday, friday, saturday, sunday)
-            if not worked:
-                raise ValueError(err)
-            
-            embed=DefaultEmbed('Schema updated!', f'Use {schema_command_ref} to see the schema.')
-            
-        except Exception as err:
-            embed = OperationFailedEmbed(
-                description=
-                "Something went wrong\n"
-                f"{err}\n"
-                f"Please try again: {edit_schema_command_ref}"
-            )
+        worked, err = await db_manager.update_schema(monday, tuesday, wednesday, thursday, friday, saturday, sunday)
+        if not worked:
+            raise ValueError(err)
+        
+        embed=DefaultEmbed('Schema updated!', f'Use {schema_command_ref} to see the schema.')
 
         return await interaction.followup.send(embed=embed)
 

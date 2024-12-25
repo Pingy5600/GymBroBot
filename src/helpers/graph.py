@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, ImageMagickWriter
 from matplotlib.patches import Patch
-from embeds import OperationFailedEmbed
 
 from databank import db_manager
 
@@ -218,7 +217,6 @@ def generate_3d_graph(data):
 
     # Assen labels instellen
     ax.set_xlabel("Reps")
-    ax.set_ylabel("")
     ax.set_zlabel("Weight (kg)")
 
     # Bereken begin-, midden- en einddatums

@@ -12,6 +12,7 @@ from discord.ext.commands import AutoShardedBot
 from dotenv import load_dotenv
 
 import embeds
+import exceptions
 from helpers import db_manager
 
 load_dotenv()
@@ -175,6 +176,22 @@ async def check_remindme():
                 bot.logger.error(f"Failed to send reminder: {e}")
 
 
+@tasks.loop(minutes=1.0)
+async def change_status_loop() -> None:
+    """
+    Setup the game status task of the bot.
+    """
+
+    statuses = [
+        f"🦾 Lifting heavy!",
+        f"💪 Getting stronger!",
+        f"🏋️‍♂️ Powerlifting!",
+    ]
+
+    picked_status = random.choice(statuses)
+    await bot.change_presence(activity=discord.CustomActivity(name=picked_status))
+
+
 async def load_cogs() -> None:
     """
     The code in this function is executed whenever the bot will start.
@@ -193,20 +210,57 @@ async def load_cogs() -> None:
                 bot.unloaded.add(extension)
 
 
-@tasks.loop(minutes=1.0)
-async def change_status_loop() -> None:
+async def on_tree_error(interaction, error):
     """
-    Setup the game status task of the bot.
+    The code in this event is executed every time a command catches an error.
+
+    :param context: The context of the normal command that failed executing.
+    :param error: The error that has been faced.
     """
+    
+    # check if the error is a custom exception
+    if isinstance(error, exceptions.CustomCheckFailure):
+        embed = error.getEmbed(interaction.command)
+    
+    # user missing permissions
+    elif isinstance(error, discord.app_commands.MissingPermissions):
+        embed = embeds.OperationFailedEmbed(
+            "You are missing the permission(s) `"
+            + ", ".join(error.missing_permissions)
+            + "` to execute this command!",
+        )
 
-    statuses = [
-        f"🦾 Lifting heavy!",
-        f"💪 Getting stronger!",
-        f"🏋️‍♂️ Powerlifting!",
-    ]
+    # bot missing permissions
+    elif isinstance(error, discord.app_commands.BotMissingPermissions):
+        embed = embeds.OperationFailedEmbed(
+            "I am missing the permission(s) `"
+            + ", ".join(error.missing_permissions)
+            + "` to fully perform this command!",
+        )
 
-    picked_status = random.choice(statuses)
-    await bot.change_presence(activity=discord.CustomActivity(name=picked_status))
+    # daily application command limit reached
+    elif isinstance(error, discord.HTTPException):
+        embed = embeds.OperationFailedEmbed(
+            title="Something went wrong!",
+            description="most likely daily application command limits.",
+        )
+
+    # other errors
+    else:
+        embed = embeds.OperationFailedEmbed(
+            title="Error!",
+            description=str(error).capitalize(),
+        )
+
+    bot.logger.warning(error) 
+    
+    # send out response
+    if interaction.response.is_done():
+        return await interaction.followup.send(embed=embed)
+    await interaction.response.send_message(embed=embed)
+
+
+bot.tree.on_error = on_tree_error
 
 
 init_db()

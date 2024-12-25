@@ -1,13 +1,17 @@
-import discord
-import dateparser
-import math
 import asyncio
-
-from discord.ext import commands
-from databank import db_manager
-from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import getDiscordTimeStamp, setGraph, ordinal, EXERCISE_CHOICES, getImageFromExercise
+import math
 from concurrent.futures import ThreadPoolExecutor
+
+import dateparser
+import discord
+from discord.ext import commands
+
+from databank import db_manager
+from embeds import DefaultEmbed
+from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
+                        TimeoutCommand)
+from helpers import (EXERCISE_CHOICES, getDiscordTimeStamp,
+                     getImageFromExercise, ordinal, setGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -17,7 +21,7 @@ class PR(commands.Cog, name="pr"):
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
-    @command_pr_group.command(name = "add", description = "adds pr to the user's name")
+    @command_pr_group.command(name="add", description="adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
@@ -30,18 +34,14 @@ class PR(commands.Cog, name="pr"):
             date = 'vandaag'
 
         pr_cleaned = pr.replace(',', '.')
-        pr_command_ref = f"</pr:{self.bot.tree.get_command('pr').id}>"
 
         try:
             pr = float(pr_cleaned)
 
         except ValueError:
-            embed = OperationFailedEmbed(
-                description=
-                "You provided an invalid PR value. Please use the correct format.\n"
-                f"Please try again: {pr_command_ref}"
+            raise InvalidWeight(
+                "You provided an invalid PR value. Please use the correct format."
             )
-            return await interaction.followup.send(embed=embed)
         
         try:    
             date_obj = dateparser.parse(date, settings={
@@ -56,37 +56,23 @@ class PR(commands.Cog, name="pr"):
                 raise ValueError("Invalid date format")
 
         except ValueError:
-            embed = OperationFailedEmbed(
-                description=
-                "Invalid date. Use a format like '2024-11-25' or 'November 25, 2024'.\n"
-                f"Please try again: {pr_command_ref}"
-            )
-            return await interaction.followup.send(embed=embed)
-
-        except Exception as e:
-            embed = OperationFailedEmbed(
-                description=f"An error has occurred:{e}"
-            )
-            return await interaction.followup.send(embed=embed)
+            raise InvalidDate()
 
         resultaat = await db_manager.add_pr(user.id, exercise, pr, date_obj)
 
-        if resultaat[0]:
-            embed = DefaultEmbed(
-                title="PR added!",
-                description=f"PR of {pr}kg added"
-            )
-            embed.add_field(name="User", value=user.mention, inline=True)
-            embed.add_field(name="Excercise", value=exercise, inline=True)
-            embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
-            embed.set_thumbnail(url=getImageFromExercise(exercise))
+        if not resultaat[0]:
+            raise Exception(resultaat[1])
 
-            return await interaction.followup.send(embed=embed)
-        
-        embed = OperationFailedEmbed(
-            description= f"Something went wrong: {resultaat[1]}"
+        embed = DefaultEmbed(
+            title="PR added!",
+            description=f"PR of {pr}kg added"
         )
-        await interaction.followup.send(embed=embed)
+        embed.add_field(name="User", value=user.mention, inline=True)
+        embed.add_field(name="Excercise", value=exercise, inline=True)
+        embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
+
+        return await interaction.followup.send(embed=embed)
 
 
     @command_pr_group.command(name ="list", description ="Gives pr of the given user")
@@ -98,23 +84,14 @@ class PR(commands.Cog, name="pr"):
         if user is None:
             user = interaction.user
 
-        try:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
 
-            if len(prs) == 0:
-                embed = OperationFailedEmbed(
-                    description= "No PRs found for the specified exercise."
-                )
-                return await interaction.followup.send(embed=embed)
-            
-            elif prs[0] == -1:
-                raise Exception(prs[1])
+        if len(prs) == 0:
+            raise NoEntries("No PRs found for the specified exercise.")
         
-        except Exception as e:
-            embed = OperationFailedEmbed(
-                description=f"An error has occurred: {e}"
-            )
-            return await interaction.followup.send(embed=embed)
+        elif prs[0] == -1:
+            raise Exception(prs[1])
+        
         
         view = PRPaginator(prs, exercise, user)
         embed = view.generate_embed()
@@ -137,17 +114,16 @@ class PR(commands.Cog, name="pr"):
             user = interaction.user
 
         if user != interaction.user and not interaction.user.guild_permissions.administrator:
-            embed = OperationFailedEmbed(
-                description="You do not have permission to delete PRs for other users."
+            raise NoPermission(
+                "You do not have permission to delete PRs for other users."
             )
-            return await interaction.followup.send(embed=embed)
 
         try:
             prs = await db_manager.get_prs_from_user(str(user.id), exercise)
 
             if len(prs) == 0:
-                embed = OperationFailedEmbed(description="No PRs found for the specified exercise.")
-                return await interaction.followup.send(embed=embed)
+                raise NoEntries("No PRs found for the specified exercise.")
+            
             elif prs[0] == -1:
                 raise Exception(prs[1])
 
@@ -181,11 +157,7 @@ class PR(commands.Cog, name="pr"):
             await interaction.followup.send(embed=embed)
 
         except asyncio.TimeoutError:
-            embed = OperationFailedEmbed(description="You took too long to respond! Command cancelled.")
-            await interaction.followup.send(embed=embed)
-        except Exception as e:
-            embed = OperationFailedEmbed(description=f"An error occurred: {e}")
-            await interaction.followup.send(embed=embed)
+            raise TimeoutCommand()
 
 
 
@@ -216,35 +188,28 @@ class PR(commands.Cog, name="pr"):
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
-        try:
-            # Haal PR's op voor elke gebruiker
-            users_prs = []
-            for user in users:
-                prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-                if prs and prs[0] != -1:  # Controleer op fouten
-                    users_prs.append((user, prs))
+        # Haal PR's op voor elke gebruiker
+        users_prs = []
+        for user in users:
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+            if prs and prs[0] != -1:  # Controleer op fouten
+                users_prs.append((user, prs))
 
-            if not users_prs:
-                embed = OperationFailedEmbed(description="No PRs found for the specified users and exercise.")
-                return await interaction.followup.send(embed=embed)
-            
-            # Stuur de grafiek als bestand
-            embed = DefaultEmbed(
-                title=f"{exercise.capitalize()} PR Graph",
-                description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
-            )
-            message = await interaction.followup.send(embed=embed)
+        if not users_prs:
+            raise NoEntries("No PRs found for the specified users and exercise.")
+        
+        # Stuur de grafiek als bestand
+        embed = DefaultEmbed(
+            title=f"{exercise.capitalize()} PR Graph",
+            description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
+        )
+        message = await interaction.followup.send(embed=embed)
 
-            # Genereer de grafiek, in task zodat thread niet geblocked is
-            loop = asyncio.get_event_loop()
-            loop.create_task(
-                setGraph(POOL, loop, message, users_prs, embed)
-            )
-
-        except Exception as e:
-            self.bot.logger.warning(e)
-            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
-            return await interaction.followup.send(embed=embed)
+        # Genereer de grafiek, in task zodat thread niet geblocked is
+        loop = asyncio.get_event_loop()
+        loop.create_task(
+            setGraph(POOL, loop, message, users_prs, embed)
+        )
 
 
     @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")

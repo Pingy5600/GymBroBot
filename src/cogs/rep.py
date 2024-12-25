@@ -8,7 +8,10 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed, OperationFailedEmbed
-from helpers import (EXERCISE_CHOICES, create_1rm_table_embed, getDiscordTimeStamp, getImageFromExercise, set3DGraph)
+from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
+                        TimeoutCommand)
+from helpers import (EXERCISE_CHOICES, create_1rm_table_embed,
+                     getDiscordTimeStamp, getImageFromExercise, set3DGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -28,17 +31,12 @@ class Rep(commands.Cog, name="rep"):
             user = interaction.user
 
         # get 1RM for that exercise for user
-        try:
-            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
-            if not success: raise ValueError(resultsOrErr)
+        success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
+        if not success: raise ValueError(resultsOrErr)
 
-            embed = create_1rm_table_embed(*resultsOrErr)
-            embed.set_thumbnail(url=getImageFromExercise(exercise))
+        embed = create_1rm_table_embed(*resultsOrErr)
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
 
-        except Exception as err:
-            embed = OperationFailedEmbed(
-                description=f"An error has occurred: {err}"
-            )
 
         return await interaction.followup.send(embed=embed)
     
@@ -68,36 +66,23 @@ class Rep(commands.Cog, name="rep"):
         if date is None:
             date = "vandaag"
 
-        reps_cleaned = weight.replace(',', '.')
+        weight_cleaned = weight.replace(',', '.')
         reps_command_ref = f"</add_reps:{self.bot.tree.get_command('rep').id}>"
 
         try:
-            pr = float(reps_cleaned)
-
+            float(weight_cleaned)
         except ValueError:
-            embed = OperationFailedEmbed(
-                description=
-                "You provided an invalid PR value. Please use the correct format.\n"
-                f"Please try again: {reps_command_ref}"
-            )
-            return await interaction.followup.send(embed=embed)
+            raise InvalidWeight()
 
-        try:
-            # Controleer of reps een integer is
-            reps = int(reps)
-            if reps <= 0:
-                raise ValueError("The number of reps must be greater than 0.")
+        # Controleer of reps een integer is
+        if reps <= 0:
+            raise ValueError("The number of reps must be greater than 0.")
 
-            # Controleer of weight een float is
-            weight = float(weight)
-            if weight <= 0:
-                raise ValueError("The weight must be greater than 0.")
+        # Controleer of weight een float is
+        weight = float(weight)
+        if weight <= 0:
+            raise ValueError("The weight must be greater than 0.")
 
-        except ValueError as e:
-            embed = OperationFailedEmbed(
-                description=f"Invalid input: {e}\nPlease try again: {reps_command_ref}"
-            )
-            return await interaction.followup.send(embed=embed)
 
         try:
             # Datum verwerken
@@ -110,37 +95,26 @@ class Rep(commands.Cog, name="rep"):
             })
 
             if date_obj is None:
-                raise ValueError("Invalid date format")
+                raise InvalidDate()
 
         except ValueError:
-            embed = OperationFailedEmbed(
-                description=(
-                    "Invalid date. Use a format like '2024-11-25' or 'November 25, 2024'.\n"
-                    f"Please try again: {reps_command_ref}"
-                )
-            )
-            return await interaction.followup.send(embed=embed)
-
-        except Exception as e:
-            embed = OperationFailedEmbed(description=f"An error has occurred: {e}")
-            return await interaction.followup.send(embed=embed)
+            raise InvalidDate()
 
         # Voeg de reps toe aan de database
         resultaat = await db_manager.add_reps(user.id, exercise, weight, reps, date_obj)
 
-        if resultaat[0]:
-            embed = DefaultEmbed(
-                title="Reps Added!",
-                description=f"Added {reps} reps at {weight}kg for {exercise.capitalize()}."
-            )
-            embed.add_field(name="User", value=user.mention, inline=True)
-            embed.add_field(name="Exercise", value=exercise, inline=True)
-            embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
-            embed.set_thumbnail(url=getImageFromExercise(exercise))
-            return await interaction.followup.send(embed=embed)
-
-        embed = OperationFailedEmbed(description=f"Something went wrong: {resultaat[1]}")
-        await interaction.followup.send(embed=embed)
+        if not resultaat[0]:
+            raise Exception(resultaat[1])
+        
+        embed = DefaultEmbed(
+            title="Reps Added!",
+            description=f"Added {reps} reps at {weight}kg for {exercise.capitalize()}."
+        )
+        embed.add_field(name="User", value=user.mention, inline=True)
+        embed.add_field(name="Exercise", value=exercise, inline=True)
+        embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
+        embed.set_thumbnail(url=getImageFromExercise(exercise))
+        return await interaction.followup.send(embed=embed)
 
 
     @command_rep_group.command(name="list", description="Gives reps of the given user")
@@ -152,23 +126,14 @@ class Rep(commands.Cog, name="rep"):
         if user is None:
             user = interaction.user
 
-        try:
-            reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
+        reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
 
-            if len(reps) == 0:
-                embed = OperationFailedEmbed(
-                    description=f"No reps found for the specified exercise."
-                )
-                return await interaction.followup.send(embed=embed)
+        if len(reps) == 0:
+            raise NoEntries("No reps found for the specified exercise.")
 
-            elif reps[0] == -1:
-                raise Exception(reps[1])
+        elif reps[0] == -1:
+            raise Exception(reps[1])
 
-        except Exception as e:
-            embed = OperationFailedEmbed(
-                description=f"An error has occurred: {e}"
-            )
-            return await interaction.followup.send(embed=embed)
 
         view = RepPaginator(reps, exercise, user)
         embed = view.generate_embed()
@@ -191,54 +156,48 @@ class Rep(commands.Cog, name="rep"):
             user = interaction.user
 
         if user != interaction.user and not interaction.user.guild_permissions.administrator:
-            embed = OperationFailedEmbed(
-                description="You do not have permission to delete reps for other users."
-            )
-            return await interaction.followup.send(embed=embed)
+            raise NoPermission("You do not have permission to delete reps for other users.")
+
+        reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
+
+        if len(reps_data) == 0:
+            raise NoEntries("No reps found for the specified exercise.")
+
+        elif reps_data[0] == -1:
+            raise Exception(reps_data[1])
+
+        paginator = RepPaginator(reps_data, exercise, user)
+        embed = paginator.generate_embed()
+        content = "Reply with the **number** of the rep you want to delete."
+        message = await interaction.followup.send(content=content, embed=embed, view=paginator)
+
+        # Save the message_id
+        message_id = message.id
+
+        def check(m):
+            return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
 
         try:
-            reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
-
-            if len(reps_data) == 0:
-                embed = OperationFailedEmbed(description="No reps found for the specified exercise.")
-                return await interaction.followup.send(embed=embed)
-            elif reps_data[0] == -1:
-                raise Exception(reps_data[1])
-
-            paginator = RepPaginator(reps_data, exercise, user)
-            embed = paginator.generate_embed()
-            content = "Reply with the **number** of the rep you want to delete."
-            message = await interaction.followup.send(content=content, embed=embed, view=paginator)
-
-            # Save the message_id
-            message_id = message.id
-
-            def check(m):
-                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
-
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-            index = int(msg.content) - 1
-
-            if index < 0 or index >= len(reps_data):
-                raise ValueError("Invalid selection. Please try again.")
-
-            selected_rep = reps_data[index]
-            result, err = await db_manager.delete_reps(str(user.id), exercise, selected_rep['weight'], selected_rep['lifted_at'])
-            if not result:
-                raise Exception(err)
-
-            embed = DefaultEmbed(
-                title="Reps Deleted",
-                description=f"Successfully deleted **{selected_rep['reps']} reps** of **{int(selected_rep['weight'])} kg** on {getDiscordTimeStamp(selected_rep['lifted_at'])}."
-            )
-            await interaction.followup.send(embed=embed)
 
         except asyncio.TimeoutError:
-            embed = OperationFailedEmbed(description="You took too long to respond! Command cancelled.")
-            await interaction.followup.send(embed=embed)
-        except Exception as e:
-            embed = OperationFailedEmbed(description=f"An error occurred: {e}")
-            await interaction.followup.send(embed=embed)
+            raise TimeoutCommand()
+        
+        index = int(msg.content) - 1
+
+        if index < 0 or index >= len(reps_data):
+            raise ValueError("Invalid selection. Please try again.")
+
+        selected_rep = reps_data[index]
+        result, err = await db_manager.delete_reps(str(user.id), exercise, selected_rep['weight'], selected_rep['lifted_at'])
+        if not result:
+            raise Exception(err)
+
+        embed = DefaultEmbed(
+            title="Reps Deleted",
+            description=f"Successfully deleted **{selected_rep['reps']} reps** of **{int(selected_rep['weight'])} kg** on {getDiscordTimeStamp(selected_rep['lifted_at'])}."
+        )
+        await interaction.followup.send(embed=embed)
 
 
     @command_rep_group.command(name="graph", description="Genereer een 3D-plot van PRs.")
@@ -263,8 +222,6 @@ class Rep(commands.Cog, name="rep"):
     ):
         await interaction.response.defer(thinking=True)
 
-        rep_command_ref = f"</rep:{self.bot.tree.get_command('rep').id}>"
-
         # Gebruikers toevoegen aan de lijst
         users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
         if not users:
@@ -286,15 +243,12 @@ class Rep(commands.Cog, name="rep"):
                 description=result
             )
             await message.edit(embed=error_embed)
+
         elif result is None:  # Geen data beschikbaar
             no_data_embed = OperationFailedEmbed(
                 description="Not enough data was found for one of the specified users or exercise.\n"
-                f"Please try something else: {rep_command_ref}"
             )
             await message.edit(embed=no_data_embed)
-        else:
-            # Succes: embed is al geüpdatet in set3DGraph
-            pass
 
 
 class RepPaginator(discord.ui.View):
