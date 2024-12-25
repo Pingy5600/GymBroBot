@@ -17,7 +17,6 @@ class PR(commands.Cog, name="pr"):
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 
-
     @command_pr_group.command(name = "add", description = "adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
@@ -104,7 +103,7 @@ class PR(commands.Cog, name="pr"):
 
             if len(prs) == 0:
                 embed = OperationFailedEmbed(
-                    description= f"No PRs found for the specified exercise."
+                    description= "No PRs found for the specified exercise."
                 )
                 return await interaction.followup.send(embed=embed)
             

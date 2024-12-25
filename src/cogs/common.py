@@ -20,7 +20,6 @@ class Common(commands.Cog, name="common"):
 
     @discord.app_commands.command(name="info", description="Provides information about the bot")
     async def info(self, interaction: discord.Interaction):
-        # Verkrijg de gebruikerobjecten via hun gebruikers-ID
         developer = await self.bot.fetch_user(464400950702899211)
         contributer = await self.bot.fetch_user(462932133170774036)
         
@@ -33,10 +32,48 @@ class Common(commands.Cog, name="common"):
         embed.add_field(name="Contributers", value=contributer.mention, inline=True)
         await interaction.response.send_message(embed=embed)
 
+    @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
+    @discord.app_commands.describe(user="Which user")
+    async def profile(self, interaction: discord.Interaction, user: discord.User = None):
+        await interaction.response.defer(thinking=True)
+
+        if user is None:
+            user = interaction.user
+        
+        COLOR_MAP = {
+        "464400950702899211": "#4169e1",
+        "462932133170774036": "#ff0000",
+        "559715606014984195": "#084808",
+        "733845345225670686": "#2ecc71",
+        "334371900170043402": "#fe6900",
+        "222415043550117888": "#fff200",
+        "548544519793016861": "#30D5C8"
+        }
+
+        # Haal de kleur op uit COLOR_MAP
+        user_id = str(user.id)
+        user_color = COLOR_MAP.get(user_id, None)
+        
+        if user_color:
+            # Embed met de specifieke kleur van de gebruiker
+            embed = discord.Embed(
+                title=f"Profile of {user}",
+                description="Dit is je profiel! Hier is je eigen kleur",
+                color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
+            )
+            embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+        else:
+            # Standaard embed als de gebruiker geen kleur heeft
+            embed = discord.Embed(
+                title=f"Profile of {user}",
+                description="Je hebt geen aangepaste kleur ingesteld.",
+                color=discord.Color.default()
+            )
+
+        await interaction.followup.send(embed=embed)
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine", extras={'cog': 'general'})
-    @discord.app_commands.describe(wanneer="When should the bot send you a reminder")
-    @discord.app_commands.describe(waarover="What should the bot remind you for")
+    @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
     async def remindme(self, interaction, wanneer: str, waarover: discord.app_commands.Range[str, 1, 100]) -> None:
         await interaction.response.defer(thinking=True)  # Geeft meer tijd om de interactie te verwerken
 

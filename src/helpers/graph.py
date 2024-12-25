@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation, ImageMagickWriter
 from matplotlib.patches import Patch
+from embeds import OperationFailedEmbed
 
 from databank import db_manager
 
@@ -18,7 +19,7 @@ COLOR_MAP = {
     "733845345225670686": "#2ecc71",
     "334371900170043402": "#fe6900",
     "222415043550117888": "#fff200",
-    "548544519793016861": "#30D5C8",
+    "548544519793016861": "#30D5C8"
 }
 
 FALLBACK_COLORS = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
@@ -32,28 +33,46 @@ async def setGraph(POOL, loop, message, users_prs, embed):
 
 
 async def set3DGraph(POOL, loop, message, users, exercise, embed):
-
     data = []
+    insufficient_data_users = []
+
     for user in users:
         prs = await db_manager.get_prs_with_reps(str(user.id), exercise)
         if prs and prs[0] != False:  # Controleer op fouten
+            user_weights = [float(pr['weight']) for pr in prs]  # Haal gewichten op
+            if len(user_weights) < 3:  # Controleer of er minstens 3 gewichten zijn
+                insufficient_data_users.append(user.display_name)
+                continue  # Sla deze gebruiker over
+            
+            # Voeg gegevens toe aan de dataset
             for pr in prs:
-                # Converteer naar float voor compatibiliteit
                 data.append((
                     user,
-                    int(pr['reps']),                          # Aantal reps als integer
-                    float(pr['lifted_at'].timestamp()),       # Datum als float-timestamp
-                    float(pr['weight'])                      # Gewicht als float
+                    int(pr['reps']),
+                    float(pr['lifted_at'].timestamp()),
+                    float(pr['weight'])
                 ))
 
+    if not data:  # Controleer of er überhaupt data is
+        return None
+
+    if insufficient_data_users:
+        error_message = (
+            "De volgende gebruikers hebben minder dan 3 PR-waarden en worden overgeslagen:\n"
+            f"{', '.join(insufficient_data_users)}"
+        )
+        return error_message
+
+    # Genereer de 3D-grafiek
     file = await loop.run_in_executor(POOL, generate_3d_graph, data)
-    if type(file) == str:
-        print(file)
-        return
+    if isinstance(file, str):  # Error string van generate_3d_graph
+        return file
+
+    # Verzend de grafiek
     embed.set_image(url="attachment://3d_graph.gif")
     embed.set_footer(text=f"")
-
     await message.edit(embed=embed, attachments=[file])
+    return True
 
 
 def generate_graph(users_prs):
@@ -87,14 +106,14 @@ def generate_graph(users_prs):
     fig, ax = plt.subplots(figsize=(12, 8))
     fig.set_facecolor(BACKGROUND_COLOR)
     ax.set_facecolor(BACKGROUND_COLOR)
-    ax.set_xlabel("Date")
+    ax.set_xlabel("")
     ax.set_ylabel("Weight (kg)")
     ax.grid(True)
 
     def update(frame):
         ax.clear()
         ax.set_facecolor(BACKGROUND_COLOR)
-        ax.set_xlabel("Date")
+        ax.set_xlabel("")
         ax.set_ylabel("Weight (kg)")
         ax.grid(True)
 
@@ -199,7 +218,7 @@ def generate_3d_graph(data):
 
     # Assen labels instellen
     ax.set_xlabel("Reps")
-    ax.set_ylabel("Date")
+    ax.set_ylabel("")
     ax.set_zlabel("Weight (kg)")
 
     # Bereken begin-, midden- en einddatums
