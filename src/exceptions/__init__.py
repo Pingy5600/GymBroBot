@@ -16,10 +16,10 @@ from embeds import OperationFailedEmbed
 class CustomCheckFailure(app_commands.CheckFailure, ABC):
 
     @abstractmethod
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         pass
     
-    def getClickableCommand(self, command):
+    def getClickableCommand(self, command, command_id):
         """Gets clickable command reference
 
         Args:
@@ -34,8 +34,7 @@ class CustomCheckFailure(app_commands.CheckFailure, ABC):
         if not isinstance(command, app_commands.Command):
             return None
 
-        # TODO: maak dit clickable
-        return f"Please try again: ```/{command.qualified_name}```"
+        return f"Please try again: </{command.qualified_name}:{command_id}>"
         
 
 
@@ -48,10 +47,10 @@ class DeletionFailed(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="❌"
         )
 
@@ -65,10 +64,10 @@ class InvalidWeight(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="⚖️"
         )
 
@@ -82,10 +81,10 @@ class InvalidDate(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="📅"
         )
 
@@ -99,10 +98,10 @@ class InvalidTime(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="⏲️"
         )   
 
@@ -116,10 +115,10 @@ class NoEntries(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="📭"
         )
 
@@ -133,10 +132,10 @@ class NoPermission(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="🔒"
         )
 
@@ -150,9 +149,9 @@ class TimeoutCommand(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command):
+    def getEmbed(self, command, command_id):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command),
+            self.getClickableCommand(command, command_id),
             emoji="⏲️"
         )

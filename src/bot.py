@@ -220,7 +220,7 @@ async def on_tree_error(interaction, error):
     
     # check if the error is a custom exception
     if isinstance(error, exceptions.CustomCheckFailure):
-        embed = error.getEmbed(interaction.command)
+        embed = error.getEmbed(interaction.command, interaction.data.get("id"))
     
     # user missing permissions
     elif isinstance(error, discord.app_commands.MissingPermissions):
