@@ -7,12 +7,12 @@ Version: 5.5.0
 """
 
 import discord
-import embeds
-
 from discord import app_commands
 from discord.ext import commands
-from exceptions import CogLoadError
+
+import embeds
 from checks import is_admin
+from exceptions import CogLoadError
 
 
 class Admin(commands.Cog, name="admin"):

@@ -7,9 +7,13 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise, OperationFailedEmbed
-from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission, TimeoutCommand, BotNotUser)
-from helpers import (EXERCISE_CHOICES, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
+from embeds import DefaultEmbed, DefaultEmbedWithExercise
+from exceptions import InvalidDate, TimeoutCommand
+from helpers import (EXERCISE_CHOICES, calculate_1rm_table,
+                     getDiscordTimeStamp, set3DGraph)
+from validations import (validateAndCleanWeight, validateEntryList,
+                         validateNotBot, validatePermissions, validateReps,
+                         validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -28,8 +32,7 @@ class Rep(commands.Cog, name="rep"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
+        validateNotBot(user)
 
         # get 1RM for that exercise for user
         success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
@@ -80,28 +83,13 @@ class Rep(commands.Cog, name="rep"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
-        
+        validateNotBot(user)
+        weight = validateAndCleanWeight(weight)
+        validateReps(reps)
+
         if date is None:
             date = "vandaag"
-
-        weight_cleaned = weight.replace(',', '.')
-
-        try:
-            float(weight_cleaned)
-        except ValueError:
-            raise InvalidWeight()
-
-        # Controleer of reps een integer is
-        if reps <= 0:
-            raise ValueError("The number of reps must be greater than 0.")
-
-        # Controleer of weight een float is
-        weight = float(weight)
-        if weight <= 0:
-            raise ValueError("The weight must be greater than 0.")
-
+        
         try:
             # Datum verwerken
             date_obj = dateparser.parse(date, settings={
@@ -145,17 +133,10 @@ class Rep(commands.Cog, name="rep"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
-        
+        validateNotBot(user)
+
         reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
-
-        if len(reps) == 0:
-            raise NoEntries("No reps found for the specified exercise.")
-
-        elif reps[0] == -1:
-            raise Exception(reps[1])
-
+        validateEntryList(reps, "No reps found for the specified exercise.")
 
         view = RepPaginator(reps, exercise, user)
         embed = view.generate_embed()
@@ -176,19 +157,11 @@ class Rep(commands.Cog, name="rep"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
-
-        if user != interaction.user and not interaction.user.guild_permissions.administrator:
-            raise NoPermission("You do not have permission to delete reps for other users.")
-
+        validateNotBot(user)
+        validatePermissions(user, interaction)
+        
         reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
-
-        if len(reps_data) == 0:
-            raise NoEntries("No reps found for the specified exercise.")
-
-        elif reps_data[0] == -1:
-            raise Exception(reps_data[1])
+        validateEntryList(reps_data, "No reps found for the specified exercise.")
 
         paginator = RepPaginator(reps_data, exercise, user)
         embed = paginator.generate_embed()
@@ -203,12 +176,10 @@ class Rep(commands.Cog, name="rep"):
 
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-
+            index = int(msg.content) - 1
         except asyncio.TimeoutError:
             raise TimeoutCommand()
         
-        index = int(msg.content) - 1
-
         if index < 0 or index >= len(reps_data):
             raise ValueError("Invalid selection. Please try again.")
 
@@ -253,9 +224,13 @@ class Rep(commands.Cog, name="rep"):
             users.append(interaction.user)
 
         for user in users:
-            if user.bot:
-                raise BotNotUser()
+            validateNotBot(user)
             
+        if not users:
+            users.append(interaction.user)
+
+        validateUserList(users)
+
         embed = DefaultEmbed(
             title=f"{exercise.capitalize()} PR Graph",
             description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."

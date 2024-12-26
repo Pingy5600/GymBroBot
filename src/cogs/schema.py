@@ -39,6 +39,9 @@ class Schema(commands.Cog, name="schema"):
         sunday: str = None,
     ):
         await interaction.response.defer(thinking=True)
+
+        if not any([monday, tuesday, wednesday, thursday, friday, saturday, sunday]):
+            raise ValueError("Please provide at least one day to edit.")
         
         schema_command_ref = f"</schema:{self.bot.tree.get_command('schema').id}>"
 

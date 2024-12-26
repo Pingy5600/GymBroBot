@@ -189,3 +189,20 @@ class BotNotUser(CustomCheckFailure):
             self.getClickableCommand(command, command_id),
             emoji="🤖"
         )
+
+
+class DuplicateUsers(CustomCheckFailure):
+    """
+    Thrown when a user is attempting to input the same user multiple times.
+    """
+
+    def __init__(self, message="Duplicate users found in the list."):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_id):
+        return OperationFailedEmbed(
+            self.message,
+            self.getClickableCommand(command, command_id),
+            emoji="‼️"
+        )

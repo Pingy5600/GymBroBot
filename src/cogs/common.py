@@ -9,8 +9,9 @@ from discord.ext import commands
 
 import embeds
 from embeds import DefaultEmbed
-from exceptions import DeletionFailed, InvalidTime, TimeoutCommand, BotNotUser
+from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
+from validations import validateEntryList, validateNotBot
 
 
 class Common(commands.Cog, name="common"):
@@ -43,8 +44,7 @@ class Common(commands.Cog, name="common"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
+        validateNotBot(user)
 
         # Haal de kleur op uit COLOR_MAP
         user_id = str(user.id)
@@ -58,6 +58,7 @@ class Common(commands.Cog, name="common"):
                 color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
             )
             embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+
         else:
             # Standaard embed als de gebruiker geen kleur heeft
             embed = discord.Embed(
@@ -104,7 +105,7 @@ class Common(commands.Cog, name="common"):
         )
 
         if not succes:
-            raise Exception()
+            raise Exception("Could not set reminder...")
 
         desc = f"I will remind you at {getDiscordTimeStamp(t)} for {waarover}"
         embed = embeds.OperationSucceededEmbed(
@@ -118,12 +119,7 @@ class Common(commands.Cog, name="common"):
         await interaction.response.defer(thinking=True)
 
         reminders = await db_manager.get_reminders_by_user(str(interaction.user.id))
-
-        if len(reminders) == 0:
-            raise Exception("You have no reminders set.")
-
-        elif reminders[0] == -1:
-            raise Exception(reminders[1])
+        validateEntryList(reminders, "You have no reminders set.")
 
         paginator = ReminderPaginator(reminders, interaction.user)
         embed = paginator.generate_embed()

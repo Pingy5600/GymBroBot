@@ -8,8 +8,10 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise
-from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission, TimeoutCommand, BotNotUser)
-from helpers import (EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph)
+from exceptions import InvalidDate, NoEntries, TimeoutCommand
+from helpers import EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph
+from validations import (validateAndCleanWeight, validateEntryList,
+                         validateNotBot, validatePermissions, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -28,22 +30,12 @@ class PR(commands.Cog, name="pr"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
+        validateNotBot(user)
+        pr = validateAndCleanWeight(pr)
 
         if date is None:
             date = 'vandaag'
 
-        pr_cleaned = pr.replace(',', '.')
-
-        try:
-            pr = float(pr_cleaned)
-
-        except ValueError:
-            raise InvalidWeight(
-                "You provided an invalid PR value. Please use the correct format."
-            )
-        
         try:    
             date_obj = dateparser.parse(date, settings={
                 'DATE_ORDER': 'DMY',
@@ -85,16 +77,10 @@ class PR(commands.Cog, name="pr"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
-        
-        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateNotBot(user)
 
-        if len(prs) == 0:
-            raise NoEntries("No PRs found for the specified exercise.")
-        
-        elif prs[0] == -1:
-            raise Exception(prs[1])
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateEntryList(prs, "No PRs found for the specified exercise.")
         
         view = PRPaginator(prs, exercise, user)
         embed = view.generate_embed()
@@ -116,53 +102,44 @@ class PR(commands.Cog, name="pr"):
         if user is None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
+        validateNotBot(user)
+        validatePermissions(user, interaction)
+        
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateEntryList(prs, "No PRs found for the specified exercise.")
 
-        if user != interaction.user and not interaction.user.guild_permissions.administrator:
-            raise NoPermission(
-                "You do not have permission to delete PRs for other users."
-            )
+        paginator = PRPaginator(prs, exercise, user)
+        embed = paginator.generate_embed()
+        content = "Reply with the **number** of the PR you want to delete."
+        message = await interaction.followup.send(content=content, embed=embed, view=paginator)
+
+        # Save the message_id
+        message_id = message.id
+
+        def check(m):
+            return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
 
         try:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-
-            if len(prs) == 0:
-                raise NoEntries("No PRs found for the specified exercise.")
-            
-            elif prs[0] == -1:
-                raise Exception(prs[1])
-
-            paginator = PRPaginator(prs, exercise, user)
-            embed = paginator.generate_embed()
-            content = "Reply with the **number** of the PR you want to delete."
-            message = await interaction.followup.send(content=content, embed=embed, view=paginator)
-
-            # Save the message_id
-            message_id = message.id
-
-            def check(m):
-                return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
-
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
             index = int(msg.content) - 1
 
-            if index < 0 or index >= len(prs):
-                raise ValueError("Invalid selection. Please try again.")
-
-            selected_pr = prs[index]
-            result, err = await db_manager.delete_pr(str(user.id), exercise, selected_pr[2])
-            if not result:
-                raise Exception(err)
-
-            embed = DefaultEmbed(
-                title="PR Deleted",
-                description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
-            )
-            await interaction.followup.send(embed=embed)
-
         except asyncio.TimeoutError:
             raise TimeoutCommand()
+        
+        if index < 0 or index >= len(prs):
+            raise ValueError("Invalid selection. Please try again.")
+
+        selected_pr = prs[index]
+        result, err = await db_manager.delete_pr(str(user.id), exercise, selected_pr[2])
+        if not result:
+            raise Exception(err)
+
+        embed = DefaultEmbed(
+            title="PR Deleted",
+            description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
+        )
+        await interaction.followup.send(embed=embed)
+
 
 
     @command_pr_group.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
@@ -194,9 +171,13 @@ class PR(commands.Cog, name="pr"):
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
         for user in users:
-            if user.bot:
-                raise BotNotUser()
+            validateNotBot(user)
             
+        if not users:
+            users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
+        
+        validateUserList(users)
+
         # Haal PR's op voor elke gebruiker
         users_prs = []
         for user in users:
@@ -230,8 +211,7 @@ class PR(commands.Cog, name="pr"):
         if user == None:
             user = interaction.user
 
-        if user.bot:
-            raise BotNotUser()
+        validateNotBot(user)
 
         embed = DefaultEmbedWithExercise(
             f"{exercise.capitalize()} analysis for {user}",
