@@ -33,16 +33,11 @@ async def setGraph(POOL, loop, message, users_prs, embed):
 
 async def set3DGraph(POOL, loop, message, users, exercise, embed):
     data = []
-    insufficient_data_users = []
+    failed_users = []
 
     for user in users:
         prs = await db_manager.get_prs_with_reps(str(user.id), exercise)
         if prs and prs[0] != False:  # Controleer op fouten
-            user_weights = [float(pr['weight']) for pr in prs]  # Haal gewichten op
-            if len(user_weights) < 3:  # Controleer of er minstens 3 gewichten zijn
-                insufficient_data_users.append(user.display_name)
-                continue  # Sla deze gebruiker over
-            
             # Voeg gegevens toe aan de dataset
             for pr in prs:
                 data.append((
@@ -51,27 +46,28 @@ async def set3DGraph(POOL, loop, message, users, exercise, embed):
                     float(pr['lifted_at'].timestamp()),
                     float(pr['weight'])
                 ))
-
-    if not data:  # Controleer of er überhaupt data is
-        return None
-
-    if insufficient_data_users:
-        error_message = (
-            "De volgende gebruikers hebben minder dan 3 PR-waarden en worden overgeslagen:\n"
-            f"{', '.join(insufficient_data_users)}"
-        )
-        return error_message
+        else:
+            failed_users.append(user.mention)
 
     # Genereer de 3D-grafiek
-    file = await loop.run_in_executor(POOL, generate_3d_graph, data)
-    if isinstance(file, str):  # Error string van generate_3d_graph
-        return file
+    file, usersFailed = await loop.run_in_executor(POOL, generate_3d_graph, data)
 
-    # Verzend de grafiek
+    usersFailed.extend(failed_users)
+
     embed.set_image(url="attachment://3d_graph.gif")
     embed.set_footer(text=f"")
-    await message.edit(embed=embed, attachments=[file])
-    return True
+    
+    # var is list of failed users, add field to display them
+    if len(usersFailed) > 0:
+        embed.add_field(
+            name=f"Generation failed for {len(usersFailed)} {'users' if len(usersFailed) > 1 else 'user'}", 
+            value=', '.join(usersFailed)
+        )
+
+    if len(usersFailed) == len(users):
+        file = None
+
+    await message.edit(embed=embed, attachments=[file] if file else [])
 
 
 def generate_graph(users_prs):
@@ -179,14 +175,13 @@ def generate_graph(users_prs):
 
 
 def generate_3d_graph(data):
-    # Haal data van alle gebruikers op
-    if not data:
-        return "No data found for the specified users and exercise."
     
     # Data voorbereiden voor plotting
     fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111, projection='3d')
     ax.set_facecolor(BACKGROUND_COLOR)
+
+    failed_users = []
 
     legend_labels = []
     legend_handles = []
@@ -209,7 +204,11 @@ def generate_3d_graph(data):
             fallback_index += 1
 
         # Gebruik plot_trisurf om de punten te verbinden
-        ax.plot_trisurf(user_reps, user_dates, user_weights, color=color, alpha=0.8) # alpha is transparantie
+        try:
+            ax.plot_trisurf(user_reps, user_dates, user_weights, color=color, alpha=0.8) # alpha is transparantie
+        except Exception as e:
+            failed_users.append(user.mention)
+            continue
 
         # Voeg de gebruikersnaam toe aan de legenda
         legend_labels.append(user_data[0][4] if len(user_data[0]) > 4 else user.display_name)
@@ -249,4 +248,4 @@ def generate_3d_graph(data):
 
     plt.close()
 
-    return discord_file
+    return discord_file, failed_users
