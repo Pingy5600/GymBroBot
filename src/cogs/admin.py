@@ -12,6 +12,7 @@ import embeds
 from discord import app_commands
 from discord.ext import commands
 from exceptions import CogLoadError
+from checks import is_admin
 
 
 class Admin(commands.Cog, name="admin"):
@@ -20,8 +21,8 @@ class Admin(commands.Cog, name="admin"):
 
     command_cog_group = app_commands.Group(name="cog", description="Cog Group")
 
-    # TODO: add checks
 
+    @is_admin()
     @app_commands.command(
         name="sync",
         description="Synchronizes the slash commands (admin only)",
@@ -64,6 +65,7 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
+    @is_admin()
     @command_cog_group.command(
         name="load",
         description="Load a cog (admin only)",
@@ -89,6 +91,7 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
+    @is_admin()
     @command_cog_group.command(
         name="unload",
         description="Unloads a cog (admin only)",
@@ -113,6 +116,7 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
+    @is_admin()
     @command_cog_group.command(
         name="reload",
         description="Reloads a cog (admin only)",
@@ -136,6 +140,7 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
+    @is_admin()
     @command_cog_group.command(
         name="all",
         description="See loaded/unloaded cogs (admin only)",
