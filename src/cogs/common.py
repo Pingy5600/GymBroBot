@@ -9,7 +9,7 @@ from discord.ext import commands
 
 import embeds
 from embeds import DefaultEmbed
-from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
+from exceptions import DeletionFailed, InvalidTime, TimeoutCommand, BotNotUser
 from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
 
 
@@ -40,6 +40,9 @@ class Common(commands.Cog, name="common"):
     async def profile(self, interaction: discord.Interaction, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
+        if user.bot:
+            raise BotNotUser()
+
         if user is None:
             user = interaction.user
 
@@ -59,7 +62,7 @@ class Common(commands.Cog, name="common"):
             # Standaard embed als de gebruiker geen kleur heeft
             embed = discord.Embed(
                 title=f"Profile of {user}",
-                description="Je hebt geen aangepaste kleur ingesteld.",
+                description="You have not set a custom color.",
                 color=discord.Color.default()
             )
 

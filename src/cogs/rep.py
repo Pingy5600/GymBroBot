@@ -8,10 +8,8 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise, OperationFailedEmbed
-from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
-                        TimeoutCommand)
-from helpers import (EXERCISE_CHOICES, calculate_1rm_table,
-                     getDiscordTimeStamp, set3DGraph)
+from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission, TimeoutCommand, BotNotUser)
+from helpers import (EXERCISE_CHOICES, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -26,6 +24,9 @@ class Rep(commands.Cog, name="rep"):
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def rep_calc(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
+
+        if user.bot:
+            raise BotNotUser()
 
         if user is None:
             user = interaction.user
@@ -76,6 +77,9 @@ class Rep(commands.Cog, name="rep"):
     ):
         await interaction.response.defer(thinking=True)
 
+        if user.bot:
+            raise BotNotUser()
+
         if user is None:
             user = interaction.user
 
@@ -83,7 +87,6 @@ class Rep(commands.Cog, name="rep"):
             date = "vandaag"
 
         weight_cleaned = weight.replace(',', '.')
-        reps_command_ref = f"</add_reps:{self.bot.tree.get_command('rep').id}>"
 
         try:
             float(weight_cleaned)
@@ -98,7 +101,6 @@ class Rep(commands.Cog, name="rep"):
         weight = float(weight)
         if weight <= 0:
             raise ValueError("The weight must be greater than 0.")
-
 
         try:
             # Datum verwerken
@@ -140,6 +142,9 @@ class Rep(commands.Cog, name="rep"):
     async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
+        if user.bot:
+            raise BotNotUser()
+
         if user is None:
             user = interaction.user
 
@@ -167,6 +172,9 @@ class Rep(commands.Cog, name="rep"):
         user: discord.User = None
     ):
         await interaction.response.defer(thinking=True)
+
+        if user.bot:
+            raise BotNotUser()
 
         if user is None:
             user = interaction.user
@@ -240,6 +248,10 @@ class Rep(commands.Cog, name="rep"):
 
         # Gebruikers toevoegen aan de lijst
         users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
+        for user in users:
+            if user.bot:
+                raise BotNotUser()
+            
         if not users:
             users.append(interaction.user)
 

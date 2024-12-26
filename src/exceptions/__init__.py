@@ -155,3 +155,20 @@ class TimeoutCommand(CustomCheckFailure):
             self.getClickableCommand(command, command_id),
             emoji="⏲️"
         )
+    
+    
+class BotNotUser(CustomCheckFailure):
+    """
+    Thrown when a user is attempting to put the bot as an input for an user command.
+    """
+
+    def __init__(self, message="The bot can't be given as a user"):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_id):
+        return OperationFailedEmbed(
+            self.message,
+            self.getClickableCommand(command, command_id),
+            emoji="🤖"
+        )
