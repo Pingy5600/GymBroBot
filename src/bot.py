@@ -23,6 +23,7 @@ bot = AutoShardedBot(command_prefix='',
     intents=intents,
     help_command=None,)
 
+# Keep track of which cogs are loaded and unloaded
 bot.loaded = set()
 bot.unloaded = set()
 

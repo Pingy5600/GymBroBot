@@ -155,6 +155,23 @@ class TimeoutCommand(CustomCheckFailure):
             self.getClickableCommand(command, command_id),
             emoji="⏲️"
         )
+
+      
+class CogLoadError(CustomCheckFailure):
+    """
+    Thrown when a cog doesnt load correctly.
+    """
+
+    def __init__(self, cog, status):
+        if status == 0:
+            errortype = 'load'
+        elif status == 1:
+            errortype = 'unload'
+        else:
+            errortype = 'reload'
+
+        self.message = f"Could not {errortype} cog." if not cog else f"Could not {errortype} the ```{cog}``` cog."
+        super().__init__(self.message)
     
     
 class BotNotUser(CustomCheckFailure):

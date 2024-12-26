@@ -263,20 +263,9 @@ class Rep(commands.Cog, name="rep"):
         message = await interaction.followup.send(embed=embed)
 
         loop = asyncio.get_event_loop()
-        result = await set3DGraph(POOL, loop, message, users, exercise, embed)
-
-        # Controleer de respons van set3DGraph
-        if isinstance(result, str):  # Error string geretourneerd
-            error_embed = OperationFailedEmbed(
-                description=result
-            )
-            await message.edit(embed=error_embed)
-
-        elif result is None:  # Geen data beschikbaar
-            no_data_embed = OperationFailedEmbed(
-                description="Not enough data was found for one of the specified users or exercise.\n"
-            )
-            await message.edit(embed=no_data_embed)
+        loop.create_task(
+            set3DGraph(POOL, loop, message, users, exercise, embed)
+        )
 
 
 class RepPaginator(discord.ui.View):
