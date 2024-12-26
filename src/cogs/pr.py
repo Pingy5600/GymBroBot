@@ -8,10 +8,8 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise
-from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission,
-                        TimeoutCommand)
-from helpers import (EXERCISE_CHOICES, getDiscordTimeStamp,
-                     ordinal, setGraph)
+from exceptions import (InvalidDate, InvalidWeight, NoEntries, NoPermission, TimeoutCommand, BotNotUser)
+from helpers import (EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph)
 
 POOL = ThreadPoolExecutor()
 
@@ -26,6 +24,9 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
         await interaction.response.defer(thinking=True)
+
+        if user.bot:
+            raise BotNotUser()
 
         if user is None:
             user = interaction.user
@@ -81,6 +82,9 @@ class PR(commands.Cog, name="pr"):
     async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
+        if user.bot:
+            raise BotNotUser()
+
         if user is None:
             user = interaction.user
 
@@ -108,6 +112,9 @@ class PR(commands.Cog, name="pr"):
         user: discord.User = None
     ):
         await interaction.response.defer(thinking=True)
+
+        if user.bot:
+            raise BotNotUser()
 
         if user is None:
             user = interaction.user
@@ -158,7 +165,6 @@ class PR(commands.Cog, name="pr"):
             raise TimeoutCommand()
 
 
-
     @command_pr_group.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
     @discord.app_commands.describe(
         exercise="Which exercise",
@@ -183,6 +189,10 @@ class PR(commands.Cog, name="pr"):
 
         # Maak een lijst van gebruikers
         users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
+        for user in users:
+            if user.bot:
+                raise BotNotUser()
+
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
@@ -215,6 +225,9 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
+
+        if user.bot:
+            raise BotNotUser()
 
         if user == None:
             user = interaction.user

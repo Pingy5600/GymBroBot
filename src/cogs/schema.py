@@ -3,7 +3,7 @@ from discord.ext import commands
 
 from databank import db_manager
 from embeds import DefaultEmbed
-
+from checks import is_admin_or_has_permissions
 
 class Schema(commands.Cog, name="schema"):
     def __init__(self,bot):
@@ -26,8 +26,8 @@ class Schema(commands.Cog, name="schema"):
         await interaction.followup.send(embed=embed)
 
 
+    @is_admin_or_has_permissions()
     @discord.app_commands.command(name="schema-edit", description="Edit the schema")
-    @discord.app_commands.default_permissions(administrator=True)
     async def edit_schema(
         self, interaction: discord.Interaction,
         monday: str = None,
