@@ -40,11 +40,11 @@ class Common(commands.Cog, name="common"):
     async def profile(self, interaction: discord.Interaction, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         # Haal de kleur op uit COLOR_MAP
         user_id = str(user.id)

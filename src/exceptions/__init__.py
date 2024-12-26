@@ -179,7 +179,7 @@ class BotNotUser(CustomCheckFailure):
     Thrown when a user is attempting to put the bot as an input for an user command.
     """
 
-    def __init__(self, message="The bot can't be given as a user"):
+    def __init__(self, message="A bot can't be given as a user"):
         self.message = message
         super().__init__(self.message)
 

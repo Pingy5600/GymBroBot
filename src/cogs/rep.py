@@ -25,11 +25,11 @@ class Rep(commands.Cog, name="rep"):
     async def rep_calc(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         # get 1RM for that exercise for user
         success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
@@ -77,12 +77,12 @@ class Rep(commands.Cog, name="rep"):
     ):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
 
+        if user.bot:
+            raise BotNotUser()
+        
         if date is None:
             date = "vandaag"
 
@@ -142,12 +142,12 @@ class Rep(commands.Cog, name="rep"):
     async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
 
+        if user.bot:
+            raise BotNotUser()
+        
         reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
 
         if len(reps) == 0:
@@ -173,11 +173,11 @@ class Rep(commands.Cog, name="rep"):
     ):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         if user != interaction.user and not interaction.user.guild_permissions.administrator:
             raise NoPermission("You do not have permission to delete reps for other users.")
@@ -248,13 +248,14 @@ class Rep(commands.Cog, name="rep"):
 
         # Gebruikers toevoegen aan de lijst
         users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
-        for user in users:
-            if user.bot:
-                raise BotNotUser()
             
         if not users:
             users.append(interaction.user)
 
+        for user in users:
+            if user.bot:
+                raise BotNotUser()
+            
         embed = DefaultEmbed(
             title=f"{exercise.capitalize()} PR Graph",
             description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."

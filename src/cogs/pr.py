@@ -25,11 +25,11 @@ class PR(commands.Cog, name="pr"):
     async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         if date is None:
             date = 'vandaag'
@@ -82,12 +82,12 @@ class PR(commands.Cog, name="pr"):
     async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
 
+        if user.bot:
+            raise BotNotUser()
+        
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
 
         if len(prs) == 0:
@@ -113,11 +113,11 @@ class PR(commands.Cog, name="pr"):
     ):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user is None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         if user != interaction.user and not interaction.user.guild_permissions.administrator:
             raise NoPermission(
@@ -189,13 +189,14 @@ class PR(commands.Cog, name="pr"):
 
         # Maak een lijst van gebruikers
         users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
-        for user in users:
-            if user.bot:
-                raise BotNotUser()
 
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
 
+        for user in users:
+            if user.bot:
+                raise BotNotUser()
+            
         # Haal PR's op voor elke gebruiker
         users_prs = []
         for user in users:
@@ -226,11 +227,11 @@ class PR(commands.Cog, name="pr"):
     async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
-        if user.bot:
-            raise BotNotUser()
-
         if user == None:
             user = interaction.user
+
+        if user.bot:
+            raise BotNotUser()
 
         embed = DefaultEmbedWithExercise(
             f"{exercise.capitalize()} analysis for {user}",

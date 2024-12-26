@@ -64,7 +64,6 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
-
     @command_cog_group.command(
         name="load",
         description="Load a cog (admin only)",
@@ -90,7 +89,6 @@ class Admin(commands.Cog, name="admin"):
         ))
 
 
-
     @command_cog_group.command(
         name="unload",
         description="Unloads a cog (admin only)",
@@ -113,7 +111,6 @@ class Admin(commands.Cog, name="admin"):
         await interaction.response.send_message(embed=embeds.OperationSucceededEmbed(
             f"Successfully unloaded the `{cog}` cog."
         ))
-
 
 
     @command_cog_group.command(
