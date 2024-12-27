@@ -1,4 +1,4 @@
-from exceptions import BotNotUser, DuplicateUsers, InvalidWeight, NoEntries, NoPermission
+from exceptions import BotNotUser, DuplicateUsers, InvalidReps, InvalidWeight, NoEntries, NoPermission
 
 
 def validateAndCleanWeight(weight):
@@ -19,10 +19,8 @@ def validateAndCleanWeight(weight):
 
 
 def validateReps(reps):
-    # Controleer of reps een integer is
     if reps <= 0:
-        # TODO custom error van maken
-        raise ValueError("The number of reps must be greater than 0.")  
+        raise InvalidReps() 
 
 def validateNotBot(user):
     if user.bot:

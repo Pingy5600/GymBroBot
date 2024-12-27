@@ -70,6 +70,23 @@ class InvalidWeight(CustomCheckFailure):
             self.getClickableCommand(command, command_id),
             emoji="⚖️"
         )
+    
+
+class InvalidReps(CustomCheckFailure):
+    """
+    Thrown when a user inputs an invalid rep value
+    """
+
+    def __init__(self, message="The number of reps must be greater than 0."):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_id):
+        return OperationFailedEmbed(
+            self.message,
+            self.getClickableCommand(command, command_id),
+            emoji="🧮"
+        )
 
 
 class InvalidDate(CustomCheckFailure):
