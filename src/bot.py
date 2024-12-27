@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import embeds
 import exceptions
 from helpers import db_manager
+from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
 load_dotenv()
 
@@ -45,6 +46,73 @@ def save_ids_func(cmds):
             pass
 
 bot.save_ids = save_ids_func
+
+class Helpcommand:
+    def __init__(self, bot):
+        self.bot = bot
+
+    @discord.app_commands.command(name="help", description="List all commands the bot has loaded", extras={'cog': 'general'})
+    async def help(self, interaction: discord.Interaction):
+        """ Sends info about all available commands
+
+        Args:
+            interaction (Interaction): Users Interaction
+
+        Returns:
+            None: Nothing
+        """
+
+        menu = ViewMenu(interaction, menu_type=ViewMenu.TypeEmbed)
+        cog_to_title = {
+            "common": "🤖 Common",
+            "pr": "📊 pr",
+            "rep": "📸 rep",
+            "schema": "👨‍🔧 Schema",
+            "admin": "💥 Admin"
+        }
+
+        page_numbers = {}
+        
+        for i, c in enumerate(self.bot.cogs):
+
+            embed = embeds.DefaultEmbed(
+                f"**Help - {cog_to_title.get(c.lower())}**", 
+                f"Commands in {c} category:", 
+            )
+
+            cog = self.bot.get_cog(c.lower())
+            commands = cog.get_app_commands()
+
+            page_numbers[i+1] = cog_to_title.get(c.lower()).split(" ")[0]
+
+            data = []
+            for command in commands:
+                try:
+                    description = command.description.partition("\n")[0]
+                    data.append(f"</{command.name}:{command.id}> - {description}")
+                except:
+                    pass
+
+            if c == "admin":
+                data.append("Rechtermuisklik -> Apps -> Add Context - Add message")
+                data.append("Rechtermuisklik -> Apps -> Remove Context - Remove message")
+            
+
+            help_text = "\n".join(data)
+            if len(help_text) > 0:
+                embed.add_field(
+                    name="✅ Available commands", value=help_text, inline=False
+                )
+
+            menu.add_page(embed)
+
+        menu.add_go_to_select(ViewSelect.GoTo(
+            title="Ga naar onderverdeling...", 
+            page_numbers=page_numbers
+        ))
+        menu.add_button(ViewButton.back())
+        menu.add_button(ViewButton.next())
+        return await menu.start()
 
 
 class LoggingFormatter(logging.Formatter):
@@ -121,6 +189,7 @@ async def on_ready() -> None:
     bot.logger.info(f"Python version: {platform.python_version()}")
     bot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
     bot.logger.info("-------------------")
+    bot.tree.add_command(help_command.help)
 
     try:
         check_remindme.start()
@@ -260,7 +329,7 @@ async def on_tree_error(interaction, error):
         return await interaction.followup.send(embed=embed)
     await interaction.response.send_message(embed=embed)
 
-
+help_command = Helpcommand(bot)
 bot.tree.on_error = on_tree_error
 
 

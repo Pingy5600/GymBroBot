@@ -36,38 +36,38 @@ class Common(commands.Cog, name="common"):
         await interaction.response.send_message(embed=embed)
 
 
-    @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
-    @discord.app_commands.describe(user="Which user")
-    async def profile(self, interaction: discord.Interaction, user: discord.User = None):
-        await interaction.response.defer(thinking=True)
+    # @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
+    # @discord.app_commands.describe(user="Which user")
+    # async def profile(self, interaction: discord.Interaction, user: discord.User = None):
+    #     await interaction.response.defer(thinking=True)
 
-        if user is None:
-            user = interaction.user
+    #     if user is None:
+    #         user = interaction.user
 
-        validateNotBot(user)
+    #     validateNotBot(user)
 
-        # Haal de kleur op uit COLOR_MAP
-        user_id = str(user.id)
-        user_color = COLOR_MAP.get(user_id, None)
+    #     # Haal de kleur op uit COLOR_MAP
+    #     user_id = str(user.id)
+    #     user_color = COLOR_MAP.get(user_id, None)
         
-        if user_color:
-            # Embed met de specifieke kleur van de gebruiker
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="Dit is je profiel! Hier is je eigen kleur",
-                color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
-            )
-            embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+    #     if user_color:
+    #         # Embed met de specifieke kleur van de gebruiker
+    #         embed = discord.Embed(
+    #             title=f"Profile of {user}",
+    #             description="Dit is je profiel! Hier is je eigen kleur",
+    #             color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
+    #         )
+    #         embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
 
-        else:
-            # Standaard embed als de gebruiker geen kleur heeft
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="You have not set a custom color.",
-                color=discord.Color.default()
-            )
+    #     else:
+    #         # Standaard embed als de gebruiker geen kleur heeft
+    #         embed = discord.Embed(
+    #             title=f"Profile of {user}",
+    #             description="You have not set a custom color.",
+    #             color=discord.Color.default()
+    #         )
 
-        await interaction.followup.send(embed=embed)
+    #     await interaction.followup.send(embed=embed)
 
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine", extras={'cog': 'general'})
