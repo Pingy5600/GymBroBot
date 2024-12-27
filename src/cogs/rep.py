@@ -7,13 +7,10 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise
+from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, RepFieldGenerator
 from exceptions import InvalidDate, TimeoutCommand
-from helpers import (EXERCISE_CHOICES, calculate_1rm_table,
-                     getDiscordTimeStamp, set3DGraph)
-from validations import (validateAndCleanWeight, validateEntryList,
-                         validateNotBot, validatePermissions, validateReps,
-                         validateUserList)
+from helpers import (EXERCISE_CHOICES, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
+from validations import (validateAndCleanWeight, validateEntryList,validateNotBot, validatePermissions, validateReps, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -22,6 +19,7 @@ class Rep(commands.Cog, name="rep"):
         self.bot = bot
 
     command_rep_group = discord.app_commands.Group(name="rep", description="rep Group")
+
 
     @command_rep_group.command(name="calculator", description="Calculate the amount of reps you should do for your 1RM")
     @discord.app_commands.describe(exercise="which exercise", user="Which user")
@@ -60,6 +58,7 @@ class Rep(commands.Cog, name="rep"):
 
         return await interaction.followup.send(embed=embed)
     
+
     @command_rep_group.command(name="add", description="Adds reps for a specific exercise and weight")
     @discord.app_commands.describe(
         date="The date of the reps",
@@ -135,12 +134,19 @@ class Rep(commands.Cog, name="rep"):
 
         validateNotBot(user)
 
+        # Haal de reps op voor de gebruiker en oefening
         reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
         validateEntryList(reps, "No reps found for the specified exercise.")
 
-        view = RepPaginator(reps, exercise, user)
-        embed = view.generate_embed()
-        await interaction.followup.send(embed=embed, view=view)
+        paginator = Paginator(
+            items=reps,
+            user=user,
+            title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
+            generate_field_callback=RepFieldGenerator.generate_field
+        )
+
+        embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
+        await interaction.followup.send(embed=embed, view=paginator)
 
 
     @command_rep_group.command(name="delete", description="Delete specific reps")
@@ -163,7 +169,13 @@ class Rep(commands.Cog, name="rep"):
         reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
         validateEntryList(reps_data, "No reps found for the specified exercise.")
 
-        paginator = RepPaginator(reps_data, exercise, user)
+        paginator = Paginator(
+            items=reps_data,
+            user=user,
+            title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
+            generate_field_callback=RepFieldGenerator.generate_field
+        )
+
         embed = paginator.generate_embed()
         content = "Reply with the **number** of the rep you want to delete."
         message = await interaction.followup.send(content=content, embed=embed, view=paginator)
@@ -242,75 +254,6 @@ class Rep(commands.Cog, name="rep"):
         loop.create_task(
             set3DGraph(POOL, loop, message, users, exercise, embed)
         )
-
-
-class RepPaginator(discord.ui.View):
-    def __init__(self, reps, exercise, user):
-        super().__init__()
-        self.reps = reps
-        self.exercise = exercise
-        self.user = user
-        self.current_page = 0
-        self.items_per_page = 10
-        self.max_pages = math.ceil(len(reps) / self.items_per_page)
-
-        if self.max_pages <= 1:
-            self.clear_items()  # If only 1 page, remove buttons entirely
-
-    def generate_embed(self):
-        embed = DefaultEmbedWithExercise(
-            title=f"{self.exercise.capitalize()} Reps of {self.user.display_name}",
-            exercise=self.exercise,
-        )
-
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        page_reps = self.reps[start:end]
-
-        for idx, rep in enumerate(page_reps, start=start + 1):  # Voeg nummers toe aan de reps
-            weight = rep['weight']
-            reps = rep['reps']
-            timestamp = getDiscordTimeStamp(rep['lifted_at'])
-
-            # Format weight to two decimal places if it is a decimal number
-            if weight % 1 != 0:  # If it is a decimal
-                weight = f"{weight:.2f}"
-            else:
-                weight = f"{int(weight)}"  # Remove decimals if it's an integer
-
-            embed.add_field(
-                name=f"{idx}. {timestamp}",  # Nummer voor de datum
-                value=f"**Weight:** {weight} kg | **Reps:** {reps}",
-                inline=False
-            )
-
-        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
-        return embed
-
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page > 0:
-            self.current_page -= 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page < self.max_pages - 1:
-            self.current_page += 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    def update_buttons(self):
-        # Disable buttons based on the current page
-        self.previous_button.disabled = self.current_page == 0
-        self.next_button.disabled = self.current_page >= self.max_pages - 1
-
-        # If there's only one page, remove the buttons completely
-        if self.max_pages <= 1:
-            self.clear_items()  # Remove the buttons if there's only 1 page
 
 
 async def setup(bot):

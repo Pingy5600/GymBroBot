@@ -47,9 +47,16 @@ EXERCISE_IMAGES = {
 def getImageFromExercise(exercise):
     return EXERCISE_IMAGES[exercise]
 
-def getDiscordTimeStamp(old_timestamp):
+def getDiscordTimeStamp(old_timestamp, full_time=False):
     timestamp = int(old_timestamp.timestamp())
-    return f"<t:{timestamp}:D>"
+    if full_time:
+        # Return full date and time (day, hour, minute)
+        return f"<t:{timestamp}:F>"  # Full date and time (e.g., January 1, 2024 12:00 AM)
+    else:
+        # Return only the date
+        return f"<t:{timestamp}:D>"  # Just the day (e.g., January 1, 2024)
+
+
 
 # https://stackoverflow.com/questions/9647202/ordinal-numbers-replacement
 def ordinal(n: int):

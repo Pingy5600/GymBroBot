@@ -7,11 +7,10 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise
+from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator
 from exceptions import InvalidDate, NoEntries, TimeoutCommand
 from helpers import EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph
-from validations import (validateAndCleanWeight, validateEntryList,
-                         validateNotBot, validatePermissions, validateUserList)
+from validations import (validateAndCleanWeight, validateEntryList, validateNotBot, validatePermissions, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -20,6 +19,7 @@ class PR(commands.Cog, name="pr"):
         self.bot = bot
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
+
 
     @command_pr_group.command(name="add", description="adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
@@ -68,10 +68,10 @@ class PR(commands.Cog, name="pr"):
         return await interaction.followup.send(embed=embed)
 
 
-    @command_pr_group.command(name ="list", description ="Gives pr of the given user")
-    @discord.app_commands.describe(user="Which user", exercise="which exercise")
+    @command_pr_group.command(name="list", description="Gives PR of the given user")
+    @discord.app_commands.describe(user="Which user", exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -79,13 +79,20 @@ class PR(commands.Cog, name="pr"):
 
         validateNotBot(user)
 
+        # Haal de PR's op van de gebruiker voor het opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
         validateEntryList(prs, "No PRs found for the specified exercise.")
-        
-        view = PRPaginator(prs, exercise, user)
-        embed = view.generate_embed()
 
-        await interaction.followup.send(embed=embed, view=view)
+        paginator = Paginator(
+            items=prs,
+            user=user,
+            title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
+            generate_field_callback=PRFieldGenerator.generate_field
+        )
+
+        # Genereer en stuur de embed
+        embed = paginator.generate_embed()
+        await interaction.followup.send(embed=embed, view=paginator)
 
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
@@ -108,8 +115,13 @@ class PR(commands.Cog, name="pr"):
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
         validateEntryList(prs, "No PRs found for the specified exercise.")
 
-        paginator = PRPaginator(prs, exercise, user)
-        embed = paginator.generate_embed()
+        paginator = Paginator(
+            items=prs,
+            user=user,
+            title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
+            generate_field_callback=PRFieldGenerator.generate_field
+        )
+        embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
         content = "Reply with the **number** of the PR you want to delete."
         message = await interaction.followup.send(content=content, embed=embed, view=paginator)
 
@@ -139,7 +151,6 @@ class PR(commands.Cog, name="pr"):
             description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
         )
         await interaction.followup.send(embed=embed)
-
 
 
     @command_pr_group.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
@@ -307,74 +318,6 @@ class PR(commands.Cog, name="pr"):
         except:
             self.bot.logger.warning(f"Error in /statistic graph: {err}")
             pass
-
-
-class PRPaginator(discord.ui.View):
-    def __init__(self, prs, exercise, user):
-        super().__init__()
-        self.prs = prs
-        self.exercise = exercise
-        self.user = user
-        self.current_page = 0
-        self.items_per_page = 10
-        self.max_pages = math.ceil(len(prs) / self.items_per_page)
-
-        if self.max_pages <= 1:
-            self.clear_items()  # If only 1 page, remove buttons entirely
-
-    def generate_embed(self):
-        embed = DefaultEmbedWithExercise(
-            title=f"{self.exercise.capitalize()} PRs of {self.user.display_name}",
-            exercise=self.exercise
-        )
-
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        page_prs = self.prs[start:end]
-
-        for idx, pr in enumerate(page_prs, start=start + 1):  # Voeg nummers toe aan de PR's
-            weight = pr[1]
-            # Format weight to two decimal places if it is a decimal number
-            if weight % 1 != 0:  # If it is a decimal
-                weight = f"{weight:.2f}"
-            else:
-                weight = f"{int(weight)}"  # Remove decimals if it's an integer
-
-            timestamp = getDiscordTimeStamp(pr[2])
-            embed.add_field(
-                name=f"{idx}. {timestamp}",  # Nummer voor de datum
-                value=f"**Weight:** {weight} kg",
-                inline=False
-            )
-
-        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
-        return embed
-
-
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page > 0:
-            self.current_page -= 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page < self.max_pages - 1:
-            self.current_page += 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    def update_buttons(self):
-        # Disable buttons based on the current page
-        self.previous_button.disabled = self.current_page == 0
-        self.next_button.disabled = self.current_page >= self.max_pages - 1
-
-        # If there's only one page, remove the buttons completely
-        if self.max_pages <= 1:
-            self.clear_items()  # Remove the buttons if there's only 1 page
 
 
 async def setup(bot):

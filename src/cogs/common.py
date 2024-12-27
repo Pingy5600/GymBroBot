@@ -8,7 +8,7 @@ import pytz
 from discord.ext import commands
 
 import embeds
-from embeds import DefaultEmbed
+from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
 from validations import validateEntryList, validateNotBot
@@ -107,35 +107,49 @@ class Common(commands.Cog, name="common"):
         if not succes:
             raise Exception("Could not set reminder...")
 
-        desc = f"I will remind you at {getDiscordTimeStamp(t)} for {waarover}"
+        desc = f"I will remind you at {getDiscordTimeStamp(t, full_time=True)} for {waarover}"
         embed = embeds.OperationSucceededEmbed(
             "Reminder set!", desc, emoji="⏳"
         )
-        await interaction.followup.send(embed=embed)  # Gebruik followup na een defer
-
+        await interaction.followup.send(embed=embed)
+        
         
     @command_remind_group.command(name="delete", description="Delete a specific reminder")
     async def delete_reminder(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True)
 
+        # Haal de reminders op voor de gebruiker
         reminders = await db_manager.get_reminders_by_user(str(interaction.user.id))
         validateEntryList(reminders, "You have no reminders set.")
 
-        paginator = ReminderPaginator(reminders, interaction.user)
+        paginator = Paginator(
+            items=reminders,
+            user=interaction.user,
+            title=f"Reminders for {interaction.user.display_name}",
+            generate_field_callback=ReminderFieldGenerator.generate_field
+        )
         embed = paginator.generate_embed()
-        message = await interaction.followup.send(embed=embed, view=paginator)
-
+        content = "Reply with the **number** of the reminder you want to delete."
+        # Stuur de embed en koppel de paginator
+        message = await interaction.followup.send(content=content, embed=embed, view=paginator)
         message_id = message.id
 
+        # Functie om de invoer te valideren
         def check(m):
-            return m.author == interaction.user and m.channel == interaction.channel and m.content.isdigit() and m.reference is not None and m.reference.message_id == message_id
+            return (
+                m.author == interaction.user
+                and m.channel == interaction.channel
+                and m.content.isdigit()
+                and m.reference is not None
+                and m.reference.message_id == message_id
+            )
 
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
 
         except asyncio.TimeoutError:
             raise TimeoutCommand()
-        
+
         index = int(msg.content) - 1
 
         if index < 0 or index >= len(reminders):
@@ -147,67 +161,12 @@ class Common(commands.Cog, name="common"):
         if not success:
             raise DeletionFailed("Failed to delete the reminder.")
 
+        # Stuur een succesbericht
         embed = embeds.OperationSucceededEmbed(
             title="Reminder Deleted",
-            description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'])}."
+            description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'], full_time=True)}."
         )
         await interaction.followup.send(embed=embed)
-        
-
-class ReminderPaginator(discord.ui.View):
-    def __init__(self, reminders, user):
-        super().__init__()
-        self.reminders = reminders
-        self.user = user
-        self.current_page = 0
-        self.items_per_page = 10
-        self.max_pages = math.ceil(len(reminders) / self.items_per_page)
-
-        if self.max_pages <= 1:
-            self.clear_items()  # Remove buttons if only 1 page
-
-    def generate_embed(self):
-        embed = DefaultEmbed(
-            title=f"Reminders for {self.user.display_name}",
-            description="Reply with the **number** of the reminder you want to delete."
-        )
-
-        start = self.current_page * self.items_per_page
-        end = start + self.items_per_page
-        page_reminders = self.reminders[start:end]
-
-        for idx, reminder in enumerate(page_reminders, start=start + 1):
-            embed.add_field(
-                name=f"{idx}. Reminder for {getDiscordTimeStamp(reminder['time'])}",
-                value=f"**Subject:** {reminder['subject']}",
-                inline=False
-            )
-
-        embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
-        return embed
-
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary, disabled=True)
-    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page > 0:
-            self.current_page -= 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.current_page < self.max_pages - 1:
-            self.current_page += 1
-            embed = self.generate_embed()
-            self.update_buttons()
-            await interaction.response.edit_message(embed=embed, view=self)
-
-    def update_buttons(self):
-        self.previous_button.disabled = self.current_page == 0
-        self.next_button.disabled = self.current_page >= self.max_pages - 1
-
-        if self.max_pages <= 1:
-            self.clear_items()
 
 
 async def setup(bot):
