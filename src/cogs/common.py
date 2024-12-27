@@ -12,6 +12,7 @@ from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
 from validations import validateEntryList, validateNotBot
+from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
 
 class Common(commands.Cog, name="common"):
@@ -36,38 +37,103 @@ class Common(commands.Cog, name="common"):
         await interaction.response.send_message(embed=embed)
 
 
-    # @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
-    # @discord.app_commands.describe(user="Which user")
-    # async def profile(self, interaction: discord.Interaction, user: discord.User = None):
-    #     await interaction.response.defer(thinking=True)
+    @discord.app_commands.command(name="help", description="List all commands the bot has loaded", extras={'cog': 'general'})
+    async def help(self, interaction) -> None:
+        """ Sends info about all available commands
 
-    #     if user is None:
-    #         user = interaction.user
+        Args:
+            interaction (Interaction): Users Interaction
 
-    #     validateNotBot(user)
+        Returns:
+            None: Nothing
+        """
 
-    #     # Haal de kleur op uit COLOR_MAP
-    #     user_id = str(user.id)
-    #     user_color = COLOR_MAP.get(user_id, None)
+        menu = ViewMenu(interaction, menu_type=ViewMenu.TypeEmbed)
+        cog_to_title = {
+            "common": "🤖 Common",
+            "pr": "📊 pr",
+            "rep": "📸 rep",
+            "schema": "👨‍🔧 Schema",
+            "admin": "💥 Admin"
+        }
+
+        page_numbers = {}
         
-    #     if user_color:
-    #         # Embed met de specifieke kleur van de gebruiker
-    #         embed = discord.Embed(
-    #             title=f"Profile of {user}",
-    #             description="Dit is je profiel! Hier is je eigen kleur",
-    #             color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
-    #         )
-    #         embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+        for i, c in enumerate(self.bot.cogs):
 
-    #     else:
-    #         # Standaard embed als de gebruiker geen kleur heeft
-    #         embed = discord.Embed(
-    #             title=f"Profile of {user}",
-    #             description="You have not set a custom color.",
-    #             color=discord.Color.default()
-    #         )
+            embed = embeds.DefaultEmbed(
+                f"**Help - {cog_to_title.get(c.lower())}**", 
+                f"test", 
+            )
 
-    #     await interaction.followup.send(embed=embed)
+            cog = self.bot.get_cog(c.lower())
+            commands = cog.get_app_commands()
+
+            page_numbers[i+1] = cog_to_title.get(c.lower()).split(" ")[0]
+
+            data = []
+            for command in commands:
+                try:
+                    description = command.description.partition("\n")[0]
+                    data.append(f"</{command.name}:{command.id}> - {description}")
+                except:
+                    pass
+
+            if c == "admin":
+                data.append("Rechtermuisklik -> Apps -> Add Context - Add message")
+                data.append("Rechtermuisklik -> Apps -> Remove Context - Remove message")
+            
+
+            help_text = "\n".join(data)
+            if len(help_text) > 0:
+                embed.add_field(
+                    name="✅ Available commands", value=help_text, inline=False
+                )
+
+            menu.add_page(embed)
+
+        menu.add_go_to_select(ViewSelect.GoTo(
+            title="Ga naar onderverdeling...", 
+            page_numbers=page_numbers
+        ))
+        menu.add_button(ViewButton.back())
+        menu.add_button(ViewButton.next())
+        return await menu.start()
+
+
+    @discord.app_commands.guilds(discord.Object(id=1242057060552675379))
+    @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
+    @discord.app_commands.describe(user="Which user")
+    async def profile(self, interaction: discord.Interaction, user: discord.User = None):
+        await interaction.response.defer(thinking=True)
+
+        if user is None:
+            user = interaction.user
+
+        validateNotBot(user)
+
+        # Haal de kleur op uit COLOR_MAP
+        user_id = str(user.id)
+        user_color = COLOR_MAP.get(user_id, None)
+        
+        if user_color:
+            # Embed met de specifieke kleur van de gebruiker
+            embed = discord.Embed(
+                title=f"Profile of {user}",
+                description="Dit is je profiel! Hier is je eigen kleur",
+                color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
+            )
+            embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+
+        else:
+            # Standaard embed als de gebruiker geen kleur heeft
+            embed = discord.Embed(
+                title=f"Profile of {user}",
+                description="You have not set a custom color.",
+                color=discord.Color.default()
+            )
+
+        await interaction.followup.send(embed=embed)
 
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine", extras={'cog': 'general'})
