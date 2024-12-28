@@ -37,7 +37,6 @@ class CustomCheckFailure(app_commands.CheckFailure, ABC):
         return f"Please try again: </{command.qualified_name}:{command_id}>"
         
 
-
 class DeletionFailed(CustomCheckFailure):
     """
     Thrown when a user wanted to delete something, but the operation failed

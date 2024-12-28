@@ -46,73 +46,63 @@ class Common(commands.Cog, name="common"):
         await interaction.response.send_message(embed=embed)
 
 
-    @discord.app_commands.command(name="info", description="Provides information about the bot")
-    async def info(self, interaction: discord.Interaction):
-        developer = await self.bot.fetch_user(464400950702899211)
-        contributer = await self.bot.fetch_user(462932133170774036)
-        
-        embed = DefaultEmbed(
-            title="Bot Info",
-            description="This bot was created to track PRs and help with fitness goals! 🏋️‍♂️"
-        )
-        embed.add_field(name="Version", value="1.0.0", inline=True)
-        embed.add_field(name="Developer", value=developer.mention, inline=True)
-        embed.add_field(name="Contributers", value=contributer.mention, inline=True)
-        await interaction.response.send_message(embed=embed)
-
-
     @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
-    async def help(self, interaction) -> None:
-        """ Sends info about all available commands
-
-        Args:
-            interaction (Interaction): Users Interaction
-
-        Returns:
-            None: Nothing
-        """
+    async def help(self, interaction: discord.Interaction) -> None:
+        """Sends info about all available commands."""
 
         menu = ViewMenu(interaction, menu_type=ViewMenu.TypeEmbed)
         cog_to_title = {
             "common": "🤖 Common",
-            "pr": "📊 pr",
-            "rep": "📸 rep",
-            "schema": "👨‍🔧 Schema",
-            "admin": "💥 Admin"
+            "pr": "💪 PR",
+            "rep": "🥵 Rep",
+            "schema": "🕗 Schema",
+            "admin": "🚧 Admin"
         }
 
         page_numbers = {}
-        
-        for i, c in enumerate(self.bot.cogs):
+
+        def getClickableCommand(command):
+            """Generate clickable command string if command ID exists."""
+            try:
+                return f"</{command.qualified_name}:{command.id}>"
+            except AttributeError:
+                return f"{command.qualified_name} (ID not found)"
+
+        for i, cog_name in enumerate(self.bot.cogs):
+            cog = self.bot.get_cog(cog_name)
+            if cog is None:
+                continue
 
             embed = embeds.DefaultEmbed(
-                f"**Help - {cog_to_title.get(c.lower())}**", 
+                f"**Help - {cog_to_title.get(cog_name.lower(), cog_name)}**"
             )
             embed.set_thumbnail(url=self.bot.user.avatar.url)
 
-            cog = self.bot.get_cog(c.lower())
             commands = cog.get_app_commands()
-
-            page_numbers[i+1] = cog_to_title.get(c.lower()).split(" ")[0]
+            page_numbers[i + 1] = cog_to_title.get(cog_name.lower(), cog_name).split(" ")[0]
 
             data = []
             for command in commands:
                 try:
+                    # Gebruik `getClickableCommand` voor clickable links
+                    clickable_command = getClickableCommand(command)
                     description = command.description.partition("\n")[0]
-                    data.append(f"</{command.name}:{command.id}> - {description}")
-                except:
-                    pass
+                    data.append(f"{clickable_command} - {description}")
+                except Exception as e:
+                    data.append(f"{command.name} - Failed to generate clickable link")
 
             help_text = "\n".join(data)
-            if len(help_text) > 0:
+            if help_text:
                 embed.add_field(
-                    name="✅ Available commands", value=help_text, inline=False
+                    name="✅ Available commands",
+                    value=help_text,
+                    inline=False
                 )
 
             menu.add_page(embed)
 
         menu.add_go_to_select(ViewSelect.GoTo(
-            title="Ga naar onderverdeling...", 
+            title="Go to category...",
             page_numbers=page_numbers
         ))
         menu.add_button(ViewButton.back())
