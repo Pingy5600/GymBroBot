@@ -144,18 +144,16 @@ class Rep(commands.Cog, name="rep"):
 
 
     @command_rep_group.command(name="delete", description="Delete specific reps")
-    @discord.app_commands.describe(exercise="Exercise", user="User whose reps to delete")
+    @discord.app_commands.describe(exercise="Exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def delete(
         self, 
         interaction: discord.Interaction, 
-        exercise: str, 
-        user: discord.User = None
+        exercise: str
     ):
         await interaction.response.defer(thinking=True)
 
-        if user is None:
-            user = interaction.user
+        user = interaction.user
 
         validateNotBot(user)
         validatePermissions(user, interaction)

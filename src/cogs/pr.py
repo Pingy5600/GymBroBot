@@ -97,18 +97,16 @@ class PR(commands.Cog, name="pr"):
 
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
-    @discord.app_commands.describe(exercise="Exercise for the PR", user="User whose PR to delete")
+    @discord.app_commands.describe(exercise="Exercise for the PR")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def delete_pr(
         self, 
         interaction: discord.Interaction, 
-        exercise: str, 
-        user: discord.User = None
+        exercise: str
     ):
         await interaction.response.defer(thinking=True)
 
-        if user is None:
-            user = interaction.user
+        user = interaction.user
 
         validateNotBot(user)
         validatePermissions(user, interaction)
