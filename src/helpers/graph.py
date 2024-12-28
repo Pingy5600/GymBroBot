@@ -12,7 +12,7 @@ from databank import db_manager
 
 # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
 COLOR_MAP = {
-    "464400950702899211": "#4169e1",
+    "464400950702899211": "#2613e3",
     "462932133170774036": "#ff0000",
     "559715606014984195": "#084808",
     "733845345225670686": "#2ecc71",
