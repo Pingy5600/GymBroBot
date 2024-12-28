@@ -136,7 +136,8 @@ class Rep(commands.Cog, name="rep"):
             items=reps,
             user=user,
             title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
-            generate_field_callback=RepFieldGenerator.generate_field
+            generate_field_callback=RepFieldGenerator.generate_field,
+            exercise=exercise
         )
 
         embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
@@ -167,7 +168,8 @@ class Rep(commands.Cog, name="rep"):
             items=reps_data,
             user=user,
             title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
-            generate_field_callback=RepFieldGenerator.generate_field
+            generate_field_callback=RepFieldGenerator.generate_field,
+            exercise=exercise
         )
 
         embed = paginator.generate_embed()

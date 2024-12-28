@@ -88,7 +88,8 @@ class PR(commands.Cog, name="pr"):
             items=prs,
             user=user,
             title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
-            generate_field_callback=PRFieldGenerator.generate_field
+            generate_field_callback=PRFieldGenerator.generate_field,
+            exercise=exercise
         )
 
         # Genereer en stuur de embed
@@ -120,7 +121,8 @@ class PR(commands.Cog, name="pr"):
             items=prs,
             user=user,
             title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
-            generate_field_callback=PRFieldGenerator.generate_field
+            generate_field_callback=PRFieldGenerator.generate_field,
+            exercise=exercise
         )
         embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
         content = "Reply with the **number** of the PR you want to delete."

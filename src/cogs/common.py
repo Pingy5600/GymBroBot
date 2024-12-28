@@ -209,7 +209,8 @@ class Common(commands.Cog, name="common"):
             items=reminders,
             user=interaction.user,
             title=f"Reminders for {interaction.user.display_name}",
-            generate_field_callback=ReminderFieldGenerator.generate_field
+            generate_field_callback=ReminderFieldGenerator.generate_field,
+            exercise=None
         )
         embed = paginator.generate_embed()
         content = "Reply with the **number** of the reminder you want to delete."

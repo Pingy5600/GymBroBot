@@ -46,7 +46,7 @@ class OperationSucceededEmbed(discord.Embed):
 
 
 class Paginator(discord.ui.View):
-    def __init__(self, items, user, title, generate_field_callback, exercise, items_per_page=10):
+    def __init__(self, items, user, title, generate_field_callback, exercise=None, items_per_page=10):
         super().__init__()
         self.items = items
         self.user = user
@@ -62,10 +62,15 @@ class Paginator(discord.ui.View):
 
     def generate_embed(self):
         # Gebruik DefaultEmbedWithExercise
-        embed = DefaultEmbedWithExercise(
-            title=self.title,
-            exercise=self.exercise  # Gebruik de opgeslagen oefening
-        )
+        if self.exercise:
+            embed = DefaultEmbedWithExercise(
+                title=self.title,
+                exercise=self.exercise  # Gebruik de opgeslagen oefening
+            )
+        else:
+            embed = DefaultEmbed(
+                title=self.title
+            )
 
         # Items van de huidige pagina
         start = self.current_page * self.items_per_page
