@@ -135,7 +135,7 @@ class Rep(commands.Cog, name="rep"):
         paginator = Paginator(
             items=reps,
             user=user,
-            title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
+            title=f"{exercise.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
             exercise=exercise
         )
@@ -167,7 +167,7 @@ class Rep(commands.Cog, name="rep"):
         paginator = Paginator(
             items=reps_data,
             user=user,
-            title=f"{exercise.capitalize()} Reps of {interaction.user.display_name}",
+            title=f"{exercise.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
             exercise=exercise
         )
@@ -233,9 +233,6 @@ class Rep(commands.Cog, name="rep"):
 
         for user in users:
             validateNotBot(user)
-            
-        if not users:
-            users.append(interaction.user)
 
         validateUserList(users)
 

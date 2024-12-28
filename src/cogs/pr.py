@@ -87,7 +87,7 @@ class PR(commands.Cog, name="pr"):
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
+            title=f"{exercise.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
             exercise=exercise
         )
@@ -120,7 +120,7 @@ class PR(commands.Cog, name="pr"):
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.capitalize()} PRs of {interaction.user.display_name}",
+            title=f"{exercise.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
             exercise=exercise
         )
