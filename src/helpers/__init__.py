@@ -66,27 +66,3 @@ def ordinal(n: int):
     else:
         suffix = ['th', 'st', 'nd', 'rd', 'th'][min(n % 10, 4)]
     return str(n) + suffix
-
-
-def getClickableCommand(command, command_ids):
-        """Gets clickable command reference
-
-        Args:
-            command (Optional[Union[app_commands.Command, app_commands.ContextMenu]]): command
-
-        Returns:
-            str: formatted clickable command reference
-        """
-        if command is None:
-            return None
-        
-        if not isinstance(command, app_commands.Command):
-            return None
-
-        try:
-            # we split to get the topmost command, or just the command name if not part of group
-            command_id = command_ids.get(command.qualified_name.split(' ')[0])
-            return f"</{command.qualified_name}:{command_id}>"
-        
-        except AttributeError:
-                return f"/{command.qualified_name}"
