@@ -153,7 +153,7 @@ async def check_remindme():
         id, user_id, subject, time = tuple(reminder)
 
         # Controleer of de reminder-tijd is bereikt of overschreden
-        if time <= datetime.now() + timedelta(hours=1):  # Compensatie voor UTC+1
+        if time <= datetime.now():
             try:
                 # Stuur een bericht naar de gebruiker
                 user = await bot.fetch_user(int(user_id))
