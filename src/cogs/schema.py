@@ -44,13 +44,11 @@ class Schema(commands.Cog, name="schema"):
         if not any([monday, tuesday, wednesday, thursday, friday, saturday, sunday]):
             raise ValueError("Please provide at least one day to edit.")
         
-        schema_command_ref = f"</schema:{self.bot.tree.get_command('schema').id}>"
-
         worked, err = await db_manager.update_schema(monday, tuesday, wednesday, thursday, friday, saturday, sunday)
         if not worked:
             raise ValueError(err)
         
-        embed=DefaultEmbed('Schema updated!', f'Use {schema_command_ref} to see the schema.')
+        embed=DefaultEmbed('Schema updated!')
 
         return await interaction.followup.send(embed=embed)
 
