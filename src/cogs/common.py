@@ -10,7 +10,7 @@ from discord.ext import commands
 import embeds
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import COLOR_MAP, EXERCISE_IMAGES, db_manager, getDiscordTimeStamp
+from helpers import COLOR_MAP, EXERCISE_IMAGES, db_manager, getDiscordTimeStamp, getClickableCommand
 from validations import validateEntryList, validateNotBot
 from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
@@ -18,6 +18,7 @@ from reactionmenu import ViewMenu, ViewSelect, ViewButton
 class Common(commands.Cog, name="common"):
     def __init__(self,bot):
         self.bot = bot
+        self.title = "🤖 Common"
 
     command_remind_group = discord.app_commands.Group(name="remind", description="remind Group")
     pushup_group = discord.app_commands.Group(name="pushup", description="pushup Group")
@@ -50,93 +51,56 @@ class Common(commands.Cog, name="common"):
         """Sends info about all available commands."""
 
         menu = ViewMenu(interaction, menu_type=ViewMenu.TypeEmbed)
-        cog_to_title = {
-            "common": "🤖 Common",
-            "pr": "💪 PR",
-            "rep": "🥵 Rep",
-            "schema": "🕗 Schema",
-            "admin": "🚧 Admin"
-        }
 
         page_numbers = {}
-
-        # Sync the commands and store their IDs
-        commands = await self.bot.tree.sync(guild=interaction.guild)
-        
-        # Cache the command IDs
-        for cmd in commands:
-            if cmd.guild_id is None:  # Global command
-                self.bot.tree._global_commands[cmd.name].id = cmd.id
-            else:  # Guild-specific command
-                self.bot.tree._guild_commands[cmd.guild_id][cmd.name].id = cmd.id
-
-        def getClickableCommand(command):
-            """Generate clickable command string using cached IDs."""
-            try:
-                # Fetch the command ID from the cache
-                if command.guild_id is None:  # Global command
-                    command_id = self.bot.tree._global_commands[command.name].id
-                else:  # Guild-specific command
-                    command_id = self.bot.tree._guild_commands[command.guild_id][command.name].id
-
-                return f"</{command.name}:{command_id}>"
-            except AttributeError:
-                return f"{command.name} (ID not found)"
 
         # Process each cog
         for i, cog_name in enumerate(self.bot.cogs):
             cog = self.bot.get_cog(cog_name)
             if cog is None:
                 continue
-
+            
+            # initialize embed
             embed = embeds.DefaultEmbed(
-                f"**Help - {cog_to_title.get(cog_name.lower(), cog_name)}**"
+                f"**Help - {cog.title}**"
             )
             embed.set_thumbnail(url=self.bot.user.avatar.url)
 
-            # Haal de commando's en groepen op (groepscommando's en subcommando's met walk_commands())
+            # get commands for that cog
             commands = cog.get_app_commands()
+            
+            # get app commands can contain groups, we should detect these and append the subcommands
+            while any(isinstance(command, discord.app_commands.Group) for command in commands):
+                for command in commands:
+                    # a group can be a subcommand of another group
+                    if isinstance(command, discord.app_commands.Group):
+                        commands.extend(command.walk_commands())
+                        commands.remove(command)
 
-            page_numbers[i + 1] = cog_to_title.get(cog_name.lower(), cog_name).split(" ")[0]
-
-            if not commands:
-                embed.add_field(
-                    name="⚠️ No commands available",
-                    value="No commands were found in this category.",
-                    inline=False
-                )
-                menu.add_page(embed)
-                continue
-
+            # generate strings per command
             data = []
             for command in commands:
-                if isinstance(command, discord.app_commands.Group):
-                    # Voor groepen gebruiken we walk_commands() om door de subcommando's te lopen
-                    for subcommand in command.walk_commands():
-                        try:
-                            clickable_command = getClickableCommand(subcommand)
-                            description = subcommand.description.partition("\n")[0]
-                            data.append(f"{clickable_command} - {description}")
-                        except Exception as e:
-                            data.append(f"{subcommand.name} - Failed to generate clickable link: {e}")
-                else:
-                    try:
-                        clickable_command = getClickableCommand(command)
-                        description = command.description.partition("\n")[0]
-                        data.append(f"{clickable_command} - {description}")
-                    except Exception as e:
-                        data.append(f"{command.name} - Failed to generate clickable link: {e}")
+                clickable_command = getClickableCommand(command, self.bot.command_ids)
+                description = command.description.partition("\n")[0]
+                data.append(f"{clickable_command} - {description}")
+
+            # no commands loaded in cog
+            if not data: continue
+
+            # add commands to embed
+            cog_emoji = cog.title.split(" ")[0]
+            page_numbers[i + 1] = cog_emoji
 
             help_text = "\n".join(data)
-            if help_text:
-                embed.add_field(
-                    name="✅ Available commands",
-                    value=help_text,
-                    inline=False
-                )
+            embed.add_field(
+                name="✅ Available commands",
+                value=help_text,
+                inline=False
+            )
 
             menu.add_page(embed)
 
+        # add gui to menu
         menu.add_go_to_select(ViewSelect.GoTo(
             title="Go to category...",
             page_numbers=page_numbers

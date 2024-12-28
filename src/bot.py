@@ -27,22 +27,18 @@ bot = AutoShardedBot(command_prefix='',
 bot.loaded = set()
 bot.unloaded = set()
 
+bot.command_ids = {}
+
 def save_ids_func(cmds):
-    """Saves the ids of commands
+    """Saves the mentions of commands
 
     Args:
         cmds (Command)
     """
     for cmd in cmds:
-        try:
-            if cmd.guild_id is None:  # it's a global slash command
-                bot.logger.info(f"Synced globally")
-                bot.tree._global_commands[cmd.name].id = cmd.id
-            else:  # it's a guild specific command
-                bot.logger.info(f"Synced guild")
-                bot.tree._guild_commands[cmd.guild_id][cmd.name].id = cmd.id
-        except:
-            pass
+        bot.command_ids[cmd.name] = cmd.id
+        bot.logger.info(f"Saved id for {cmd.name} - {cmd.id}")
+
 
 bot.save_ids = save_ids_func
 
@@ -221,7 +217,7 @@ async def on_tree_error(interaction, error):
     
     # check if the error is a custom exception
     if isinstance(error, exceptions.CustomCheckFailure):
-        embed = error.getEmbed(interaction.command, interaction.data.get("id"))
+        embed = error.getEmbed(interaction.command, bot.command_ids)
     
     # user missing permissions
     elif isinstance(error, discord.app_commands.MissingPermissions):

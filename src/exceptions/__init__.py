@@ -11,30 +11,16 @@ from abc import ABC, abstractmethod
 from discord import app_commands
 
 from embeds import OperationFailedEmbed
-
+from helpers import getClickableCommand
 
 class CustomCheckFailure(app_commands.CheckFailure, ABC):
 
     @abstractmethod
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         pass
-    
-    def getClickableCommand(self, command, command_id):
-        """Gets clickable command reference
 
-        Args:
-            command (Optional[Union[app_commands.Command, app_commands.ContextMenu]]): command
-
-        Returns:
-            str: formatted clickable command reference
-        """
-        if command is None:
-            return None
-        
-        if not isinstance(command, app_commands.Command):
-            return None
-
-        return f"Please try again: </{command.qualified_name}:{command_id}>"
+    def getClickableCommandString(self, command, command_ids):
+        return f"Please try again: {getClickableCommand(command, command_ids)}"
         
 
 class DeletionFailed(CustomCheckFailure):
@@ -46,10 +32,10 @@ class DeletionFailed(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="❌"
         )
 
@@ -63,10 +49,10 @@ class InvalidWeight(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="⚖️"
         )
     
@@ -80,10 +66,10 @@ class InvalidReps(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="🧮"
         )
 
@@ -97,10 +83,10 @@ class InvalidDate(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="📅"
         )
 
@@ -114,10 +100,10 @@ class InvalidTime(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="⏲️"
         )   
 
@@ -131,10 +117,10 @@ class NoEntries(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="📭"
         )
 
@@ -148,10 +134,10 @@ class NoPermission(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="🔒"
         )
 
@@ -165,10 +151,10 @@ class TimeoutCommand(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="⏲️"
         )
 
@@ -199,10 +185,10 @@ class BotNotUser(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="🤖"
         )
 
@@ -216,9 +202,9 @@ class DuplicateUsers(CustomCheckFailure):
         self.message = message
         super().__init__(self.message)
 
-    def getEmbed(self, command, command_id):
+    def getEmbed(self, command, command_ids):
         return OperationFailedEmbed(
             self.message,
-            self.getClickableCommand(command, command_id),
+            self.getClickableCommandString(command, command_ids),
             emoji="‼️"
         )

@@ -8,6 +8,7 @@ from checks import is_admin_or_has_permissions
 class Schema(commands.Cog, name="schema"):
     def __init__(self,bot):
         self.bot = bot
+        self.title = "🕗 Schema"
 
 
     @discord.app_commands.command(name="schema", description = "Get the gym schema")

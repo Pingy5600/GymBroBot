@@ -17,6 +17,7 @@ POOL = ThreadPoolExecutor()
 class PR(commands.Cog, name="pr"):
     def __init__(self,bot):
         self.bot = bot
+        self.title = "💪 PR"
 
     command_pr_group = discord.app_commands.Group(name="pr", description="pr Group")
 

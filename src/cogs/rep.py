@@ -17,6 +17,7 @@ POOL = ThreadPoolExecutor()
 class Rep(commands.Cog, name="rep"):
     def __init__(self,bot):
         self.bot = bot
+        self.title = "🥵 Rep"
 
     command_rep_group = discord.app_commands.Group(name="rep", description="rep Group")
 
