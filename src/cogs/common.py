@@ -46,16 +46,19 @@ class Common(commands.Cog, name="common"):
         embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
         await interaction.response.send_message(embed=embed)
 
-    @discord.app_commands.command(name="help", description="List all commands the bot has loaded") 
+
+    @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
     async def help(self, interaction: discord.Interaction) -> None:
         """Sends info about all available commands."""
-
+        
         menu = ViewMenu(interaction, menu_type=ViewMenu.TypeEmbed)
-
         page_numbers = {}
 
-        # Process each cog
-        for i, cog_name in enumerate(self.bot.cogs):
+        # Specifieke volgorde voor de cogs
+        cog_order = ["common", "schema", "pr", "rep", "admin"]
+        
+        # Process each cog in de opgegeven volgorde
+        for i, cog_name in enumerate(cog_order):
             cog = self.bot.get_cog(cog_name)
             if cog is None:
                 continue
@@ -69,10 +72,9 @@ class Common(commands.Cog, name="common"):
             # get commands for that cog
             commands = cog.get_app_commands()
             
-            # get app commands can contain groups, we should detect these and append the subcommands
+            # Verwerken van subcommando's
             while any(isinstance(command, discord.app_commands.Group) for command in commands):
                 for command in commands:
-                    # a group can be a subcommand of another group
                     if isinstance(command, discord.app_commands.Group):
                         commands.extend(command.walk_commands())
                         commands.remove(command)
@@ -84,33 +86,37 @@ class Common(commands.Cog, name="common"):
                 description = command.description.partition("\n")[0]
                 data.append(f"{clickable_command} - {description}")
 
-            # no commands loaded in cog
-            if not data: continue
+            # als er geen commando's zijn, sla de cog over
+            if not data:
+                continue
 
-            # add commands to embed
+            # voeg de commando's toe aan de embed
             cog_emoji = cog.title.split(" ")[0]
             page_numbers[i + 1] = cog_emoji
 
             help_text = "\n".join(data)
             embed.add_field(
-                name="✅ Available commands",
+                name="",
                 value=help_text,
                 inline=False
             )
 
             menu.add_page(embed)
 
-        # add gui to menu
+        # wijzig de volgorde van de pagina's
         menu.add_go_to_select(ViewSelect.GoTo(
             title="Go to category...",
             page_numbers=page_numbers
         ))
+        
+        # Voeg navigatieknoppen toe
         menu.add_button(ViewButton.back())
         menu.add_button(ViewButton.next())
+        
+        # Start het menu
         return await menu.start()
 
 
-    @discord.app_commands.guilds(discord.Object(id=1242057060552675379))
     @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
     @discord.app_commands.describe(user="Which user")
     async def profile(self, interaction: discord.Interaction, user: discord.User = None):
@@ -129,7 +135,7 @@ class Common(commands.Cog, name="common"):
             # Embed met de specifieke kleur van de gebruiker
             embed = discord.Embed(
                 title=f"Profile of {user}",
-                description="Dit is je profiel! Hier is je eigen kleur",
+                description="This is your profile! Here is your own color",
                 color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
             )
             embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
@@ -141,6 +147,8 @@ class Common(commands.Cog, name="common"):
                 description="You have not set a custom color.",
                 color=discord.Color.default()
             )
+
+        embed.set_thumbnail(url=user.display_avatar.url)
 
         await interaction.followup.send(embed=embed)
 

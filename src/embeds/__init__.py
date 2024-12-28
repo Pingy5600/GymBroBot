@@ -46,33 +46,38 @@ class OperationSucceededEmbed(discord.Embed):
 
 
 class Paginator(discord.ui.View):
-    def __init__(self, items, user, title, generate_field_callback, items_per_page=10):
+    def __init__(self, items, user, title, generate_field_callback, exercise, items_per_page=10):
         super().__init__()
         self.items = items
         self.user = user
         self.title = title
         self.generate_field_callback = generate_field_callback  # Function to format each item
+        self.exercise = exercise  # Sla de oefening op
         self.items_per_page = items_per_page
         self.current_page = 0
         self.max_pages = math.ceil(len(items) / items_per_page)
 
         if self.max_pages <= 1:
-            self.clear_items()  # Remove buttons if only 1 page
+            self.clear_items()  # Verwijder knoppen als er maar één pagina is
 
     def generate_embed(self):
-        embed = discord.Embed(
+        # Gebruik DefaultEmbedWithExercise
+        embed = DefaultEmbedWithExercise(
             title=self.title,
-            color=discord.Color.blurple()
+            exercise=self.exercise  # Gebruik de opgeslagen oefening
         )
 
+        # Items van de huidige pagina
         start = self.current_page * self.items_per_page
         end = start + self.items_per_page
         page_items = self.items[start:end]
 
+        # Velden toevoegen aan de embed
         for idx, item in enumerate(page_items, start=start + 1):
             field_name, field_value = self.generate_field_callback(idx, item)
             embed.add_field(name=field_name, value=field_value, inline=False)
 
+        # Footer instellen met paginanummer
         embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
         return embed
 
