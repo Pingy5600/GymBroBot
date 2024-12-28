@@ -45,8 +45,7 @@ class Common(commands.Cog, name="common"):
         embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
         await interaction.response.send_message(embed=embed)
 
-
-    @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
+    @discord.app_commands.command(name="help", description="List all commands the bot has loaded") 
     async def help(self, interaction: discord.Interaction) -> None:
         """Sends info about all available commands."""
 
@@ -61,13 +60,30 @@ class Common(commands.Cog, name="common"):
 
         page_numbers = {}
 
-        def getClickableCommand(command):
-            """Generate clickable command string if command ID exists."""
-            try:
-                return f"</{command.qualified_name}:{command.id}>"
-            except AttributeError:
-                return f"{command.qualified_name} (ID not found)"
+        # Sync the commands and store their IDs
+        commands = await self.bot.tree.sync(guild=interaction.guild)
+        
+        # Cache the command IDs
+        for cmd in commands:
+            if cmd.guild_id is None:  # Global command
+                self.bot.tree._global_commands[cmd.name].id = cmd.id
+            else:  # Guild-specific command
+                self.bot.tree._guild_commands[cmd.guild_id][cmd.name].id = cmd.id
 
+        def getClickableCommand(command):
+            """Generate clickable command string using cached IDs."""
+            try:
+                # Fetch the command ID from the cache
+                if command.guild_id is None:  # Global command
+                    command_id = self.bot.tree._global_commands[command.name].id
+                else:  # Guild-specific command
+                    command_id = self.bot.tree._guild_commands[command.guild_id][command.name].id
+
+                return f"</{command.name}:{command_id}>"
+            except AttributeError:
+                return f"{command.name} (ID not found)"
+
+        # Process each cog
         for i, cog_name in enumerate(self.bot.cogs):
             cog = self.bot.get_cog(cog_name)
             if cog is None:
@@ -78,18 +94,38 @@ class Common(commands.Cog, name="common"):
             )
             embed.set_thumbnail(url=self.bot.user.avatar.url)
 
+            # Haal de commando's en groepen op (groepscommando's en subcommando's met walk_commands())
             commands = cog.get_app_commands()
+
             page_numbers[i + 1] = cog_to_title.get(cog_name.lower(), cog_name).split(" ")[0]
+
+            if not commands:
+                embed.add_field(
+                    name="⚠️ No commands available",
+                    value="No commands were found in this category.",
+                    inline=False
+                )
+                menu.add_page(embed)
+                continue
 
             data = []
             for command in commands:
-                try:
-                    # Gebruik `getClickableCommand` voor clickable links
-                    clickable_command = getClickableCommand(command)
-                    description = command.description.partition("\n")[0]
-                    data.append(f"{clickable_command} - {description}")
-                except Exception as e:
-                    data.append(f"{command.name} - Failed to generate clickable link")
+                if isinstance(command, discord.app_commands.Group):
+                    # Voor groepen gebruiken we walk_commands() om door de subcommando's te lopen
+                    for subcommand in command.walk_commands():
+                        try:
+                            clickable_command = getClickableCommand(subcommand)
+                            description = subcommand.description.partition("\n")[0]
+                            data.append(f"{clickable_command} - {description}")
+                        except Exception as e:
+                            data.append(f"{subcommand.name} - Failed to generate clickable link: {e}")
+                else:
+                    try:
+                        clickable_command = getClickableCommand(command)
+                        description = command.description.partition("\n")[0]
+                        data.append(f"{clickable_command} - {description}")
+                    except Exception as e:
+                        data.append(f"{command.name} - Failed to generate clickable link: {e}")
 
             help_text = "\n".join(data)
             if help_text:
