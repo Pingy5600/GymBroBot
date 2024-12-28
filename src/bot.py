@@ -189,6 +189,44 @@ async def change_status_loop() -> None:
     await bot.change_presence(activity=discord.CustomActivity(name=picked_status))
 
 
+@bot.event
+async def on_app_command_completion(interaction, command) -> None:
+    """
+    The code in this event is executed every time a command has been *successfully* executed.
+    """
+
+    if interaction.guild is not None:
+        bot.logger.info(
+            f"{interaction.user} (ID: {interaction.user.id}) executed /{command.qualified_name} command in {interaction.guild.name} (ID: {interaction.guild_id})"
+        )
+    else:
+        bot.logger.info(
+            f"{interaction.user} (ID: {interaction.user.id}) executed /{command.qualified_name} command in DMs"
+        )
+
+
+@bot.event
+async def on_message(message: discord.Message) -> None:
+    """
+    The code in this event is executed every time someone sends a message
+
+    :param message: The message that was sent.
+    """
+    if message.author == bot.user or message.author.bot:
+        return
+    
+    # stuur dm naar owners on prive command
+    if message.guild is None:
+        owners = [464400950702899211, 462932133170774036]
+        for owner in owners:
+            user = await bot.fetch_user(owner)
+    
+            await user.send(content=f"{message.author.display_name} sent: {message.content}")
+
+            for att in message.attachments:
+                await user.send(content=att.url)
+
+
 async def load_cogs() -> None:
     """
     The code in this function is executed whenever the bot will start.
