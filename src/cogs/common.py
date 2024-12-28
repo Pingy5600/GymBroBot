@@ -65,6 +65,7 @@ class Common(commands.Cog, name="common"):
                 f"**Help - {cog_to_title.get(c.lower())}**", 
                 f"test", 
             )
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
 
             cog = self.bot.get_cog(c.lower())
             commands = cog.get_app_commands()
