@@ -240,7 +240,7 @@ class Rep(commands.Cog, name="rep"):
         validateUserList(users)
 
         embed = DefaultEmbed(
-            title=f"{exercise.capitalize()} PR Graph",
+            title=f"{exercise.capitalize()} Rep Graph",
             description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."
         )
         embed.set_footer(text="This may take a while...")
