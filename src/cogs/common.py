@@ -10,7 +10,7 @@ from discord.ext import commands
 import embeds
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import COLOR_MAP, db_manager, getDiscordTimeStamp
+from helpers import COLOR_MAP, EXERCISE_IMAGES, db_manager, getDiscordTimeStamp
 from validations import validateEntryList, validateNotBot
 from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
@@ -20,6 +20,30 @@ class Common(commands.Cog, name="common"):
         self.bot = bot
 
     command_remind_group = discord.app_commands.Group(name="remind", description="remind Group")
+    pushup_group = discord.app_commands.Group(name="pushup", description="pushup Group")
+
+
+    @pushup_group.command(name="weight", description="How much weight are you pushing?")
+    @discord.app_commands.describe(
+        weight="How much do you weigh?",
+        variant="Which variant are you performing?"
+    )
+    @discord.app_commands.choices(variant=[ # value is percentage of weigt lifted
+        discord.app_commands.Choice(name="Regular", value=64),
+        discord.app_commands.Choice(name="Feet 30cm elevated", value=70),
+        discord.app_commands.Choice(name="Feet 60cm elevated", value=74),  
+        discord.app_commands.Choice(name="Hands 30cm elevated", value=55),
+        discord.app_commands.Choice(name="Hands 60cm elevated", value=41),
+        discord.app_commands.Choice(name="On knees", value=49),
+    ])
+    async def weight(self, interaction: discord.Interaction, weight: int, variant: discord.app_commands.Choice[int]):
+
+        embed = DefaultEmbed(
+            title="⚖️ Weight when performing pushups",
+            description=f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\nSince you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."
+        )
+        embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
+        await interaction.response.send_message(embed=embed)
 
 
     @discord.app_commands.command(name="info", description="Provides information about the bot")
@@ -37,7 +61,7 @@ class Common(commands.Cog, name="common"):
         await interaction.response.send_message(embed=embed)
 
 
-    @discord.app_commands.command(name="help", description="List all commands the bot has loaded", extras={'cog': 'general'})
+    @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
     async def help(self, interaction) -> None:
         """ Sends info about all available commands
 
@@ -63,7 +87,6 @@ class Common(commands.Cog, name="common"):
 
             embed = embeds.DefaultEmbed(
                 f"**Help - {cog_to_title.get(c.lower())}**", 
-                f"test", 
             )
             embed.set_thumbnail(url=self.bot.user.avatar.url)
 
@@ -79,11 +102,6 @@ class Common(commands.Cog, name="common"):
                     data.append(f"</{command.name}:{command.id}> - {description}")
                 except:
                     pass
-
-            if c == "admin":
-                data.append("Rechtermuisklik -> Apps -> Add Context - Add message")
-                data.append("Rechtermuisklik -> Apps -> Remove Context - Remove message")
-            
 
             help_text = "\n".join(data)
             if len(help_text) > 0:
@@ -137,7 +155,7 @@ class Common(commands.Cog, name="common"):
         await interaction.followup.send(embed=embed)
 
 
-    @command_remind_group.command(name="me", description="Remind me when to take my creatine", extras={'cog': 'general'})
+    @command_remind_group.command(name="me", description="Remind me when to take my creatine")
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
     async def remindme(self, interaction, wanneer: str, waarover: discord.app_commands.Range[str, 1, 100]) -> None:
         await interaction.response.defer(thinking=True)  # Geeft meer tijd om de interactie te verwerken
