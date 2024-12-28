@@ -77,9 +77,9 @@ def generate_graph(users_prs):
     fallback_index = 0
 
     for idx, (user, prs) in enumerate(users_prs):
-        prs.sort(key=lambda x: x[2])  # Sorteer PR's op datum
-        dates = [pr[2] for pr in prs]
-        weights = [pr[1] for pr in prs]
+        prs.sort(key=lambda x: x[3])  # Sorteer PR's op datum
+        dates = [pr[3] for pr in prs]
+        weights = [pr[2] for pr in prs]
 
         # Gebruik een specifieke kleur als die beschikbaar is, anders een fallback
         color = COLOR_MAP.get(str(user.id), FALLBACK_COLORS[fallback_index % len(FALLBACK_COLORS)])

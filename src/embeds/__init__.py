@@ -122,13 +122,13 @@ class ReminderFieldGenerator:
 class PRFieldGenerator:
     @staticmethod
     def generate_field(idx, pr):
-        weight = pr[1]
+        weight = pr[2]
         if weight % 1 != 0:
             weight = f"{weight:.2f}"
         else:
             weight = f"{int(weight)}"
 
-        timestamp = getDiscordTimeStamp(pr[2])
+        timestamp = getDiscordTimeStamp(pr[3])
         return (
             f"{idx}. {timestamp}",
             f"**Weight:** {weight} kg"

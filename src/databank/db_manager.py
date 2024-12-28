@@ -39,7 +39,7 @@ async def get_prs_from_user(user_id: str, exercise: str) -> list:
     ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
-                    "SELECT exercise, weight, lifted_at FROM pr WHERE user_id=%s AND exercise=%s ORDER BY lifted_at DESC", (user_id, exercise,)
+                    "SELECT id, exercise, weight, lifted_at FROM pr WHERE user_id=%s AND exercise=%s ORDER BY lifted_at DESC", (user_id, exercise,)
                 )
                 return cursor.fetchall()
 
@@ -47,7 +47,7 @@ async def get_prs_from_user(user_id: str, exercise: str) -> list:
         return [-1, err]
     
 
-async def delete_pr(user_id: str, exercise: str, lifted_at: datetime) -> tuple:
+async def delete_pr(id) -> tuple:
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
@@ -55,8 +55,8 @@ async def delete_pr(user_id: str, exercise: str, lifted_at: datetime) -> tuple:
         try:
             with con.cursor() as cursor:
                 cursor.execute(
-                    "DELETE FROM pr WHERE user_id=%s AND exercise=%s AND lifted_at=%s",
-                    (user_id, exercise, lifted_at)
+                    "DELETE FROM pr WHERE id=%s",
+                    (id, )
                 )
                 con.commit()
                 return (True, None)

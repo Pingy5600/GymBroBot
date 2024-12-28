@@ -144,14 +144,14 @@ class PR(commands.Cog, name="pr"):
         if index < 0 or index >= len(prs):
             raise ValueError("Invalid selection. Please try again.")
 
-        selected_pr = prs[index]
-        result, err = await db_manager.delete_pr(str(user.id), exercise, selected_pr[2])
+        selected_pr_index, selected_pr_exercise, selected_pr_weight, selected_pr_time = prs[index]
+        result, err = await db_manager.delete_pr(selected_pr_index)
         if not result:
             raise Exception(err)
 
         embed = DefaultEmbed(
             title="PR Deleted",
-            description=f"Successfully deleted the PR: {selected_pr[1]} kg on {getDiscordTimeStamp(selected_pr[2])}."
+            description=f"Successfully deleted the PR: {selected_pr_weight} kg on {getDiscordTimeStamp(selected_pr_time)}."
         )
         await interaction.followup.send(embed=embed)
 
