@@ -47,15 +47,8 @@ class Rep(commands.Cog, name="rep"):
             description=f"Based on a 1RM of **{one_rep_max} kg** achieved on {getDiscordTimeStamp(date)}",
         )
         
-        # Format the table
-        table = "```"
-        table += f"{'Percentage':<15}{'Lift Weight':<15}{'Reps':<10}\n"
-        table += "-" * 40 + "\n"
         for row in table_data:
-            table += f"{row['percentage']:<15}{row['weight']:<15}{row['reps']:<10}\n"
-        table += "```"
-
-        embed.add_field(name="Workout Plan", value=table, inline=False)
+            embed.add_field(name=f"{row['reps']} reps at {row['percentage']}", value=row['weight'], inline=False)
 
         return await interaction.followup.send(embed=embed)
     
