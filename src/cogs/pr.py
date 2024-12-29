@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator
+from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator, TopPRFieldGenerator
 from exceptions import InvalidDate, NoEntries, TimeoutCommand
 from helpers import EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph
 from validations import (validateAndCleanWeight, validateEntryList, validateNotBot, validatePermissions, validateUserList)
@@ -81,7 +81,7 @@ class PR(commands.Cog, name="pr"):
 
         # Haal de PR's op van de gebruiker voor het opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-        validateEntryList(prs, "No PRs found for the specified exercise.")
+        validateEntryList(prs, f"No PRs found for the exercise {exercise}.")
 
         paginator = Paginator(
             items=prs,
@@ -92,7 +92,7 @@ class PR(commands.Cog, name="pr"):
         )
 
         # Genereer en stuur de embed
-        embed = paginator.generate_embed()
+        embed = await paginator.generate_embed()
         await interaction.followup.send(embed=embed, view=paginator)
 
 
@@ -111,8 +111,9 @@ class PR(commands.Cog, name="pr"):
         validateNotBot(user)
         validatePermissions(user, interaction)
         
+        # Haal de PR's op van de gebruiker voor de opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-        validateEntryList(prs, "No PRs found for the specified exercise.")
+        validateEntryList(prs, f"No PRs found for the exercise {exercise}.")
 
         paginator = Paginator(
             items=prs,
@@ -121,11 +122,13 @@ class PR(commands.Cog, name="pr"):
             generate_field_callback=PRFieldGenerator.generate_field,
             exercise=exercise
         )
-        embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
+        
+        # Genereer de embed asynchroon door await te gebruiken
+        embed = await paginator.generate_embed()  # Dit is nu een coroutine
         content = "Reply with the **number** of the PR you want to delete."
         message = await interaction.followup.send(content=content, embed=embed, view=paginator)
 
-        # Save the message_id
+        # Bewaar de message_id om de gebruiker te controleren
         message_id = message.id
 
         def check(m):
@@ -133,19 +136,21 @@ class PR(commands.Cog, name="pr"):
 
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
-            index = int(msg.content) - 1
+            index = int(msg.content) - 1  # Haal de index van de PR uit het bericht
 
         except asyncio.TimeoutError:
             raise TimeoutCommand()
-        
+
         if index < 0 or index >= len(prs):
             raise ValueError("Invalid selection. Please try again.")
 
+        # Verkrijg de geselecteerde PR en probeer deze te verwijderen
         selected_pr_index, selected_pr_exercise, selected_pr_weight, selected_pr_time = prs[index]
         result, err = await db_manager.delete_pr(selected_pr_index)
         if not result:
             raise Exception(err)
 
+        # Maak een embed om te bevestigen dat de PR is verwijderd
         embed = DefaultEmbed(
             title="PR Deleted",
             description=f"Successfully deleted the PR: {selected_pr_weight} kg on {getDiscordTimeStamp(selected_pr_time)}."
@@ -211,6 +216,27 @@ class PR(commands.Cog, name="pr"):
         loop.create_task(
             setGraph(POOL, loop, message, users_prs, embed)
         )
+
+
+    @discord.app_commands.command(name="top", description="Gives a list of everyone's top PRs")
+    @discord.app_commands.describe(exercise="Which exercise")
+    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    async def top(self, interaction: discord.Interaction, exercise: str):
+        await interaction.response.defer(thinking=True)
+
+        prs = await db_manager.get_top_prs(exercise)
+        validateEntryList(prs, f"No PRs found for the exercise '{exercise}'.")
+
+        paginator = Paginator(
+            items=prs,
+            user=interaction.user,
+            title=f"Top {exercise.capitalize()} PRs",
+            generate_field_callback=TopPRFieldGenerator.generate_field,
+            exercise=exercise
+        )
+
+        embed = await paginator.generate_embed(interaction.client)  
+        await interaction.followup.send(embed=embed, view=paginator)
 
 
     @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")

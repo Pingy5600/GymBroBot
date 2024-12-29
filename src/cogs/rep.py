@@ -129,7 +129,7 @@ class Rep(commands.Cog, name="rep"):
 
         # Haal de reps op voor de gebruiker en oefening
         reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
-        validateEntryList(reps, "No reps found for the specified exercise.")
+        validateEntryList(reps, f"No reps found for the exercise {exercise}.")
 
         paginator = Paginator(
             items=reps,
@@ -139,7 +139,7 @@ class Rep(commands.Cog, name="rep"):
             exercise=exercise
         )
 
-        embed = paginator.generate_embed()  # Genereer de embed voor de paginatie
+        embed = await paginator.generate_embed()  # Genereer de embed voor de paginatie
         await interaction.followup.send(embed=embed, view=paginator)
 
 
@@ -159,7 +159,7 @@ class Rep(commands.Cog, name="rep"):
         validatePermissions(user, interaction)
         
         reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
-        validateEntryList(reps_data, "No reps found for the specified exercise.")
+        validateEntryList(reps_data, f"No reps found for the exercise {exercise}.")
 
         paginator = Paginator(
             items=reps_data,
@@ -169,7 +169,7 @@ class Rep(commands.Cog, name="rep"):
             exercise=exercise
         )
 
-        embed = paginator.generate_embed()
+        embed = await paginator.generate_embed()
         content = "Reply with the **number** of the rep you want to delete."
         message = await interaction.followup.send(content=content, embed=embed, view=paginator)
 

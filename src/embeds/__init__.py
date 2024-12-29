@@ -52,37 +52,41 @@ class Paginator(discord.ui.View):
         self.user = user
         self.title = title
         self.generate_field_callback = generate_field_callback  # Function to format each item
-        self.exercise = exercise  # Sla de oefening op
+        self.exercise = exercise  # Store the exercise
         self.items_per_page = items_per_page
         self.current_page = 0
         self.max_pages = math.ceil(len(items) / items_per_page)
 
         if self.max_pages <= 1:
-            self.clear_items()  # Verwijder knoppen als er maar één pagina is
+            self.clear_items()  # Remove buttons if only one page
 
-    def generate_embed(self):
-        # Gebruik DefaultEmbedWithExercise
+    async def generate_embed(self, client=None):
+        # Use DefaultEmbedWithExercise if exercise is provided
         if self.exercise:
             embed = DefaultEmbedWithExercise(
                 title=self.title,
-                exercise=self.exercise  # Gebruik de opgeslagen oefening
+                exercise=self.exercise  # Use the stored exercise
             )
         else:
             embed = DefaultEmbed(
                 title=self.title
             )
 
-        # Items van de huidige pagina
+        # Items of the current page
         start = self.current_page * self.items_per_page
         end = start + self.items_per_page
         page_items = self.items[start:end]
 
-        # Velden toevoegen aan de embed
+        # Add fields asynchronously to the embed
         for idx, item in enumerate(page_items, start=start + 1):
-            field_name, field_value = self.generate_field_callback(idx, item)
+            # Handle the callback based on whether client is passed (for top command)
+            if client:
+                field_name, field_value = await self.generate_field_callback(idx, item, client)
+            else:
+                field_name, field_value = self.generate_field_callback(idx, item)
             embed.add_field(name=field_name, value=field_value, inline=False)
 
-        # Footer instellen met paginanummer
+        # Set footer with page number
         embed.set_footer(text=f"Page {self.current_page + 1} of {self.max_pages}")
         return embed
 
@@ -90,7 +94,7 @@ class Paginator(discord.ui.View):
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page > 0:
             self.current_page -= 1
-            embed = self.generate_embed()
+            embed = await self.generate_embed()
             self.update_buttons()
             await interaction.response.edit_message(embed=embed, view=self)
 
@@ -98,7 +102,7 @@ class Paginator(discord.ui.View):
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if self.current_page < self.max_pages - 1:
             self.current_page += 1
-            embed = self.generate_embed()
+            embed = await self.generate_embed()
             self.update_buttons()
             await interaction.response.edit_message(embed=embed, view=self)
 
@@ -150,4 +154,39 @@ class RepFieldGenerator:
         return (
             f"{idx}. {timestamp}",
             f"**Weight:** {weight} kg | **Reps:** {reps}"
+        )
+
+
+class TopPRFieldGenerator:
+    @staticmethod
+    async def generate_field(idx, pr, client):
+        user_id = pr[0]
+        weight = pr[1]
+        timestamp = pr[2]
+
+        if weight % 1 != 0:
+            weight = f"{weight:.2f}"
+        else:
+            weight = f"{int(weight)}"
+
+        try:
+            user = await client.fetch_user(user_id)
+            user_display = user.name
+        except Exception:
+            user_display = f"User ID {user_id}"
+
+        timestamp_str = getDiscordTimeStamp(timestamp)
+
+        if idx == 1:
+            medal = "🥇"
+        elif idx == 2:
+            medal = "🥈"
+        elif idx == 3:
+            medal = "🥉"
+        else:
+            medal = ""
+
+        return (
+            f"{medal} {idx}. {user_display}",
+            f"**Weight:** {weight} kg\n**Lifted At:** {timestamp_str}"
         )

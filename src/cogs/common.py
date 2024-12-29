@@ -212,7 +212,7 @@ class Common(commands.Cog, name="common"):
             generate_field_callback=ReminderFieldGenerator.generate_field,
             exercise=None
         )
-        embed = paginator.generate_embed()
+        embed = await paginator.generate_embed()
         content = "Reply with the **number** of the reminder you want to delete."
         # Stuur de embed en koppel de paginator
         message = await interaction.followup.send(content=content, embed=embed, view=paginator)

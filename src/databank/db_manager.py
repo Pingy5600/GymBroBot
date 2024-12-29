@@ -80,6 +80,28 @@ async def getMaxOfUserWithExercise(user_id: str, exercise: str):
         return [False, err]
     
 
+async def get_top_prs(exercise: str) -> list:
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                # Query om top PR's per gebruiker op te halen inclusief timestamp van de PR
+                cursor.execute(
+                    """
+                    SELECT user_id, MAX(weight) AS max_weight, MAX(lifted_at) AS last_lifted
+                    FROM pr 
+                    WHERE exercise = %s 
+                    GROUP BY user_id 
+                    ORDER BY max_weight DESC
+                    """,
+                    (exercise,)
+                )
+                return cursor.fetchall()
+    except Exception as err:
+        raise RuntimeError(f"Database error: {err}")
+    
+
 async def getPositionOfUserWithExercise(user_id: str, exercise: str):
     try:
         with psycopg2.connect(
