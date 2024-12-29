@@ -71,7 +71,7 @@ class PR(commands.Cog, name="pr"):
     @command_pr_group.command(name="list", description="Gives PR of the given user")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
+    async def list(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -102,7 +102,7 @@ class PR(commands.Cog, name="pr"):
     async def delete_pr(
         self, 
         interaction: discord.Interaction, 
-        exercise: str,
+        exercise: discord.app_commands.Choice[str],
         user: discord.Member = None
     ):
         await interaction.response.defer(thinking=True)
@@ -223,7 +223,7 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.command(name="top", description="Gives a list of everyone's top PRs")
     @discord.app_commands.describe(exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def top(self, interaction: discord.Interaction, exercise: str):
+    async def top(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str]):
         await interaction.response.defer(thinking=True)
 
         prs = await db_manager.get_top_prs(exercise)

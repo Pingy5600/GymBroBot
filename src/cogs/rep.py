@@ -119,7 +119,7 @@ class Rep(commands.Cog, name="rep"):
     @command_rep_group.command(name="list", description="Gives reps of the given user")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
+    async def list(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -149,7 +149,7 @@ class Rep(commands.Cog, name="rep"):
     async def delete(
         self, 
         interaction: discord.Interaction, 
-        exercise: str,
+        exercise: discord.app_commands.Choice[str],
         user: discord.Member = None
     ):
         await interaction.response.defer(thinking=True)
