@@ -187,6 +187,6 @@ class TopPRFieldGenerator:
             medal = ""
 
         return (
-            f"{medal} {idx}. {user_display}",
+            f"{medal} {f'{idx}. ' if idx>3 else ''}{user_display}",
             f"**Weight:** {weight} kg\n**Lifted At:** {timestamp_str}"
         )
