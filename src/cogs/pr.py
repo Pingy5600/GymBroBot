@@ -102,11 +102,13 @@ class PR(commands.Cog, name="pr"):
     async def delete_pr(
         self, 
         interaction: discord.Interaction, 
-        exercise: str
+        exercise: str,
+        user: discord.Member = None
     ):
         await interaction.response.defer(thinking=True)
 
-        user = interaction.user
+        if user is None:
+            user = interaction.user
 
         validateNotBot(user)
         validatePermissions(user, interaction)
