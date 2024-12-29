@@ -200,7 +200,7 @@ class Rep(commands.Cog, name="rep"):
         await interaction.followup.send(embed=embed)
 
 
-    @command_rep_group.command(name="graph", description="Genereer een 3D-plot van PRs.")
+    @command_rep_group.command(name="graph", description="Generate a 3D-plot of reps.")
     @discord.app_commands.describe(
         exercise="Which exercise",
         user_a="First user",
