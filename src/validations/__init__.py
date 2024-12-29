@@ -15,6 +15,9 @@ def validateAndCleanWeight(weight):
     if weight <= 0:
         raise InvalidWeight("The weight must be greater than 0.")
     
+    if weight > 10000:
+        raise InvalidWeight("I don't think you can lift that much...")
+    
     return weight
 
 
