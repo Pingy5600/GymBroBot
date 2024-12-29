@@ -38,7 +38,7 @@ def validateEntryList(entries, message="No entries found for the specified exerc
 def validatePermissions(user, interaction):
     user_is_self = user.id == interaction.user.id
     user_is_server_admin = interaction.user.guild_permissions.administrator
-    user_is_owner = user.id in [464400950702899211, 462932133170774036]
+    user_is_owner = interaction.user.id in [464400950702899211, 462932133170774036]
 
     if not (user_is_self or user_is_server_admin or user_is_owner):
         raise NoPermission()
