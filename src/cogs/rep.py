@@ -129,7 +129,7 @@ class Rep(commands.Cog, name="rep"):
 
         # Haal de reps op voor de gebruiker en oefening
         reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
-        validateEntryList(reps, f"No reps found for the exercise {exercise}.")
+        validateEntryList(reps, f"No reps found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=reps,
@@ -161,7 +161,7 @@ class Rep(commands.Cog, name="rep"):
         validatePermissions(user, interaction)
         
         reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
-        validateEntryList(reps_data, f"No reps found for the exercise {exercise}.")
+        validateEntryList(reps_data, f"No reps found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=reps_data,

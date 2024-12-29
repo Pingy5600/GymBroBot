@@ -81,7 +81,7 @@ class PR(commands.Cog, name="pr"):
 
         # Haal de PR's op van de gebruiker voor het opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-        validateEntryList(prs, f"No PRs found for the exercise {exercise}.")
+        validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=prs,
@@ -115,7 +115,7 @@ class PR(commands.Cog, name="pr"):
         
         # Haal de PR's op van de gebruiker voor de opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-        validateEntryList(prs, f"No PRs found for the exercise {exercise}.")
+        validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=prs,
@@ -227,7 +227,7 @@ class PR(commands.Cog, name="pr"):
         await interaction.response.defer(thinking=True)
 
         prs = await db_manager.get_top_prs(exercise)
-        validateEntryList(prs, f"No PRs found for the exercise '{exercise}'.")
+        validateEntryList(prs, f"No PRs found for the exercise '{exercise.name}'.")
 
         paginator = Paginator(
             items=prs,
