@@ -128,15 +128,15 @@ class Rep(commands.Cog, name="rep"):
         validateNotBot(user)
 
         # Haal de reps op voor de gebruiker en oefening
-        reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
+        reps = await db_manager.get_prs_with_reps(str(user.id), exercise.value)
         validateEntryList(reps, f"No reps found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=reps,
             user=user,
-            title=f"{exercise.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise.value.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
-            exercise=exercise
+            exercise=exercise.value
         )
 
         embed = await paginator.generate_embed()  # Genereer de embed voor de paginatie
@@ -160,15 +160,15 @@ class Rep(commands.Cog, name="rep"):
         validateNotBot(user)
         validatePermissions(user, interaction)
         
-        reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
+        reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise.value)
         validateEntryList(reps_data, f"No reps found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=reps_data,
             user=user,
-            title=f"{exercise.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise.value.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
-            exercise=exercise
+            exercise=exercise.value
         )
 
         embed = await paginator.generate_embed()

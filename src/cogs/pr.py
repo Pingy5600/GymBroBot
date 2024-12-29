@@ -80,15 +80,15 @@ class PR(commands.Cog, name="pr"):
         validateNotBot(user)
 
         # Haal de PR's op van de gebruiker voor het opgegeven oefening
-        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
         validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise.value.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
-            exercise=exercise
+            exercise=exercise.value
         )
 
         # Genereer en stuur de embed
@@ -114,15 +114,15 @@ class PR(commands.Cog, name="pr"):
         validatePermissions(user, interaction)
         
         # Haal de PR's op van de gebruiker voor de opgegeven oefening
-        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
         validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
 
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise.value.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
-            exercise=exercise
+            exercise=exercise.value
         )
         
         # Genereer de embed asynchroon door await te gebruiken
@@ -226,15 +226,15 @@ class PR(commands.Cog, name="pr"):
     async def top(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str]):
         await interaction.response.defer(thinking=True)
 
-        prs = await db_manager.get_top_prs(exercise)
+        prs = await db_manager.get_top_prs(exercise.value)
         validateEntryList(prs, f"No PRs found for the exercise '{exercise.name}'.")
 
         paginator = Paginator(
             items=prs,
             user=interaction.user,
-            title=f"Top {exercise.capitalize()} PRs",
+            title=f"Top {exercise.value.capitalize()} PRs",
             generate_field_callback=TopPRFieldGenerator.generate_field,
-            exercise=exercise
+            exercise=exercise.value
         )
 
         embed = await paginator.generate_embed(interaction.client)  
