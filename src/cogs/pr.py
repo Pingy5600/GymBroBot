@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 import dateparser
 import discord
 from discord.ext import commands
+from datetime import datetime, timedelta
 
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator, TopPRFieldGenerator
@@ -163,27 +164,39 @@ class PR(commands.Cog, name="pr"):
     @command_pr_group.command(name="graph", description="Generate a graph of PRs for the given users and exercise")
     @discord.app_commands.describe(
         exercise="Which exercise",
+        time="How long should the graph show",
         user_a="First user",
         user_b="Second user",
         user_c="Third user",
         user_d="Fourth user",
-        user_e="Fifth user"
+        user_e="Fifth user",
+        user_f="Sixth user",
+        user_g="Seventh user",
+        user_h="Eight user"
     )
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.choices(time=[
+        discord.app_commands.Choice(name="Last 6 Months", value=0),
+        discord.app_commands.Choice(name="All Time", value=1)
+    ])
     async def graph(
         self,
         interaction: discord.Interaction,
         exercise: str,
+        time: discord.app_commands.Choice[int] = None,
         user_a: discord.User = None,
         user_b: discord.User = None,
         user_c: discord.User = None,
         user_d: discord.User = None,
-        user_e: discord.User = None
+        user_e: discord.User = None,
+        user_f: discord.User = None,
+        user_g: discord.User = None,
+        user_h: discord.User = None
     ):
         await interaction.response.defer(thinking=True)
 
         # Maak een lijst van gebruikers
-        users = [user for user in [user_a, user_b, user_c, user_d, user_e] if user]
+        users = [user for user in [user_a, user_b, user_c, user_d, user_e, user_f, user_g, user_h] if user]
 
         if not users:
             users.append(interaction.user)  # Voeg de aanvrager toe als geen gebruikers zijn gespecificeerd
@@ -196,21 +209,35 @@ class PR(commands.Cog, name="pr"):
         
         validateUserList(users)
 
+        if time is None or time.value == 0:
+            time_name = "Last 6 Months" if time is None else time.name
+            time_limit = timedelta(weeks=26)
+
+        elif time.value == 1:
+            time_name = time.name
+            time_limit = timedelta(weeks=20000)
+
+        threshold_datetime = datetime.now() - time_limit
+
         # Haal PR's op voor elke gebruiker
         users_prs = []
         for user in users:
             prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-            if prs and prs[0] != -1:  # Controleer op fouten
-                users_prs.append((user, prs))
+            if prs and prs[0] != -1:
+                # filter based on selected time
+                filtered_prs = [record for record in prs if record[3] >= threshold_datetime]
+                if len(filtered_prs) > 0:
+                    users_prs.append((user, filtered_prs))                    
 
         if not users_prs:
-            raise NoEntries("No PRs found for the specified users and exercise.")
+            raise NoEntries("No PRs found for the specified users and exercise in this timeperiod.")
         
         # Stuur de grafiek als bestand
         embed = DefaultEmbed(
             title=f"{exercise.capitalize()} PR Graph",
             description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
         )
+        embed.set_footer(text=f"The PRs are limited to: {time_name}")
         message = await interaction.followup.send(embed=embed)
 
         # Genereer de grafiek, in task zodat thread niet geblocked is
