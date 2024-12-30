@@ -210,8 +210,8 @@ class PR(commands.Cog, name="pr"):
         validateUserList(users)
 
         if time is None or time.value == 0:
-            time_name = "Last 6 Months" if time is None else time.name
-            time_limit = timedelta(weeks=26)
+            time_name = "The past year" if time is None else time.name
+            time_limit = timedelta(weeks=52)
 
         elif time.value == 1:
             time_name = time.name

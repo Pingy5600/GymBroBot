@@ -184,6 +184,7 @@ class Rep(commands.Cog, name="rep"):
         try:
             msg = await self.bot.wait_for("message", check=check, timeout=60.0)
             index = int(msg.content) - 1
+
         except asyncio.TimeoutError:
             raise TimeoutCommand()
         
@@ -191,7 +192,7 @@ class Rep(commands.Cog, name="rep"):
             raise ValueError("Invalid selection. Please try again.")
 
         selected_rep = reps_data[index]
-        result, err = await db_manager.delete_reps(str(user.id), exercise, selected_rep['weight'], selected_rep['lifted_at'])
+        result, err = await db_manager.delete_reps(str(user.id), exercise.value, selected_rep['weight'], selected_rep['lifted_at'])
         if not result:
             raise Exception(err)
 
