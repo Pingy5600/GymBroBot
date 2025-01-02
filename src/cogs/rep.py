@@ -24,7 +24,7 @@ class Rep(commands.Cog, name="rep"):
     @command_rep_group.command(name="calculator", description="Calculate the amount of reps you should do for your 1RM")
     @discord.app_commands.describe(exercise="which exercise", user="Which user")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def rep_calc(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+    async def rep_calc(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -33,7 +33,7 @@ class Rep(commands.Cog, name="rep"):
         validateNotBot(user)
 
         # get 1RM for that exercise for user
-        success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
+        success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise.value)
         if not success: raise ValueError(resultsOrErr)
         
         one_rep_max, date = resultsOrErr
@@ -42,8 +42,8 @@ class Rep(commands.Cog, name="rep"):
 
         embed = DefaultEmbedWithExercise(
             title="📊 1RM Percentage Table",
-            exercise=exercise,
-            description=f"Based on a 1RM of **{one_rep_max} kg** achieved on {getDiscordTimeStamp(date)}",
+            exercise=exercise.value,
+            description=f"Based on a 1RM of **{one_rep_max} kg** for {exercise.name} achieved on {getDiscordTimeStamp(date)}",
         )
         
         for row in table_data:
@@ -66,7 +66,7 @@ class Rep(commands.Cog, name="rep"):
         interaction: discord.Interaction,
         reps: int,
         weight: str,
-        exercise: str,
+        exercise: discord.app_commands.Choice[str],
         date: str = None,
         user: discord.User = None
     ):
@@ -99,18 +99,18 @@ class Rep(commands.Cog, name="rep"):
             raise InvalidDate()
 
         # Voeg de reps toe aan de database
-        resultaat = await db_manager.add_reps(user.id, exercise, weight, reps, date_obj)
+        resultaat = await db_manager.add_reps(user.id, exercise.value, weight, reps, date_obj)
 
         if not resultaat[0]:
             raise Exception(resultaat[1])
         
         embed = DefaultEmbedWithExercise(
             title="Reps Added!",
-            exercise=exercise,
-            description=f"Added {reps} reps at {weight}kg for {exercise.capitalize()}."
+            exercise=exercise.value,
+            description=f"Added {reps} reps at {weight}kg for {exercise.name.capitalize()}."
         )
         embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Exercise", value=exercise, inline=True)
+        embed.add_field(name="Exercise", value=exercise.name, inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
 
         return await interaction.followup.send(embed=embed)
@@ -134,7 +134,7 @@ class Rep(commands.Cog, name="rep"):
         paginator = Paginator(
             items=reps,
             user=user,
-            title=f"{exercise.value.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise.name.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
             exercise=exercise.value
         )
@@ -166,7 +166,7 @@ class Rep(commands.Cog, name="rep"):
         paginator = Paginator(
             items=reps_data,
             user=user,
-            title=f"{exercise.value.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise.name.capitalize()} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
             exercise=exercise.value
         )
@@ -216,7 +216,7 @@ class Rep(commands.Cog, name="rep"):
     async def three_d_plot(
         self,
         interaction: discord.Interaction,
-        exercise: str,
+        exercise: discord.app_commands.Choice[str],
         user_a: discord.User = None,
         user_b: discord.User = None,
         user_c: discord.User = None,
@@ -237,7 +237,7 @@ class Rep(commands.Cog, name="rep"):
         validateUserList(users)
 
         embed = DefaultEmbed(
-            title=f"{exercise.capitalize()} Rep Graph",
+            title=f"{exercise.name.capitalize()} Rep Graph",
             description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."
         )
         embed.set_footer(text="This may take a while...")
@@ -245,7 +245,7 @@ class Rep(commands.Cog, name="rep"):
 
         loop = asyncio.get_event_loop()
         loop.create_task(
-            set3DGraph(POOL, loop, message, users, exercise, embed)
+            set3DGraph(POOL, loop, message, users, exercise.value, embed)
         )
 
 

@@ -39,13 +39,18 @@ class Common(commands.Cog, name="common"):
     ])
     async def weight(self, interaction: discord.Interaction, weight: int, variant: discord.app_commands.Choice[int]):
 
+        if weight % 1 != 0:
+            weight = f"{weight:.2f}"
+        else:
+            weight = f"{int(weight)}"
+
         embed = DefaultEmbed(
             title="⚖️ Weight when performing pushups",
             description=f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\nSince you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."
         )
         embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
         await interaction.response.send_message(embed=embed)
-
+ 
 
     @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
     async def help(self, interaction: discord.Interaction) -> None:

@@ -25,7 +25,7 @@ class PR(commands.Cog, name="pr"):
     @command_pr_group.command(name="add", description="adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
+    async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: discord.app_commands.Choice[str], date: str = None, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -52,18 +52,18 @@ class PR(commands.Cog, name="pr"):
         except ValueError:
             raise InvalidDate()
 
-        resultaat = await db_manager.add_pr(user.id, exercise, pr, date_obj)
+        resultaat = await db_manager.add_pr(user.id, exercise.value, pr, date_obj)
 
         if not resultaat[0]:
             raise Exception(resultaat[1])
 
         embed = DefaultEmbedWithExercise(
             title="PR added!",
-            exercise=exercise,
+            exercise=exercise.value,
             description=f"PR of {pr}kg added"
         )
         embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Excercise", value=exercise, inline=True)
+        embed.add_field(name="Excercise", value=exercise.name, inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
 
         return await interaction.followup.send(embed=embed)
@@ -87,7 +87,7 @@ class PR(commands.Cog, name="pr"):
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.value.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise.name.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
             exercise=exercise.value
         )
@@ -121,7 +121,7 @@ class PR(commands.Cog, name="pr"):
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.value.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise.name.capitalize()} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
             exercise=exercise.value
         )
@@ -182,7 +182,7 @@ class PR(commands.Cog, name="pr"):
     async def graph(
         self,
         interaction: discord.Interaction,
-        exercise: str,
+        exercise: discord.app_commands.Choice[str],
         time: discord.app_commands.Choice[int] = None,
         user_a: discord.User = None,
         user_b: discord.User = None,
@@ -222,7 +222,7 @@ class PR(commands.Cog, name="pr"):
         # Haal PR's op voor elke gebruiker
         users_prs = []
         for user in users:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
             if prs and prs[0] != -1:
                 # filter based on selected time
                 filtered_prs = [record for record in prs if record[3] >= threshold_datetime]
@@ -230,11 +230,11 @@ class PR(commands.Cog, name="pr"):
                     users_prs.append((user, filtered_prs))                    
 
         if not users_prs:
-            raise NoEntries("No PRs found for the specified users and exercise in this timeperiod.")
+            raise NoEntries(f"No PRs found for the specified users and the exercise {exercise.name} in this timeperiod.")
         
         # Stuur de grafiek als bestand
         embed = DefaultEmbed(
-            title=f"{exercise.capitalize()} PR Graph",
+            title=f"{exercise.name.capitalize()} PR Graph",
             description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
         )
         embed.set_footer(text=f"The PRs are limited to: {time_name}")
@@ -259,7 +259,7 @@ class PR(commands.Cog, name="pr"):
         paginator = Paginator(
             items=prs,
             user=interaction.user,
-            title=f"Top {exercise.value.capitalize()} PRs",
+            title=f"Top {exercise.name.capitalize()} PRs",
             generate_field_callback=TopPRFieldGenerator.generate_field,
             exercise=exercise.value
         )
@@ -271,7 +271,7 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
+    async def statistic(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
         if user == None:
@@ -280,13 +280,13 @@ class PR(commands.Cog, name="pr"):
         validateNotBot(user)
 
         embed = DefaultEmbedWithExercise(
-            f"{exercise.capitalize()} analysis for {user}",
-            exercise=exercise
+            f"{exercise.name.capitalize()} analysis for {user}",
+            exercise=exercise.value
         )
 
         # max of exercise
         try:
-            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
+            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise.value)
             if not success: raise ValueError(resultsOrErr)
 
             weight, timestamp = resultsOrErr
@@ -305,7 +305,7 @@ class PR(commands.Cog, name="pr"):
 
         # position in relation to every user in db
         try:
-            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
+            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise.value)
             if not success: raise ValueError(resultsOrErr)
 
             emoji_map = ["🥇", "🥈", "🥉"]
@@ -322,7 +322,7 @@ class PR(commands.Cog, name="pr"):
             pass
         
         try:
-            success, closestOrErr = await db_manager.getClosestUsersWithExercise(str(user.id), exercise)
+            success, closestOrErr = await db_manager.getClosestUsersWithExercise(str(user.id), exercise.value)
             if not success:
                 raise ValueError(closestOrErr)
 
@@ -347,7 +347,7 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic closest: {err}")
 
         try:
-            success, rateOrErr = await db_manager.getExerciseProgressionRate(str(user.id), exercise)
+            success, rateOrErr = await db_manager.getExerciseProgressionRate(str(user.id), exercise.value)
             if not success: raise ValueError(rateOrErr)
 
             embed.add_field(
@@ -363,7 +363,7 @@ class PR(commands.Cog, name="pr"):
         message = await interaction.followup.send(embed=embed)
 
         try:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
             if prs and prs[0] != -1:  # Controleer op fouten
                 loop = asyncio.get_event_loop()
                 loop.create_task(
