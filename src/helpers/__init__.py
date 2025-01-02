@@ -22,6 +22,7 @@ EXERCISE_CHOICES = [
     discord.app_commands.Choice(name="Leg Extension", value="leg-extension"),
     discord.app_commands.Choice(name="Leg Curl", value="leg-curl"),
     discord.app_commands.Choice(name="Leg Press", value="leg-press"),
+    discord.app_commands.Choice(name="Incline Press", value="incline press"),
 ]
 
 EXERCISE_IMAGES = {
