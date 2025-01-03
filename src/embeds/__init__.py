@@ -1,8 +1,9 @@
-import discord
-from datetime import datetime
 import math
+from datetime import datetime
 
-from helpers import getImageFromExercise, getDiscordTimeStamp
+import discord
+
+from helpers import getDiscordTimeStamp
 
 DEFAULT_COLOR = 0x4169E1
 ERROR_COLOR = 0xE02B2B
@@ -20,9 +21,9 @@ class DefaultEmbed(discord.Embed):
 
 
 class DefaultEmbedWithExercise(DefaultEmbed):
-    def __init__(self, title, exercise, description=None):
+    def __init__(self, title, image_url, description=None):
         super().__init__(title, description)
-        self.set_thumbnail(url=getImageFromExercise(exercise))
+        self.set_thumbnail(url=image_url)
 
 
 class OperationFailedEmbed(discord.Embed):
@@ -46,13 +47,13 @@ class OperationSucceededEmbed(discord.Embed):
 
 
 class Paginator(discord.ui.View):
-    def __init__(self, items, user, title, generate_field_callback, exercise=None, items_per_page=10):
+    def __init__(self, items, user, title, generate_field_callback, exercise_url=None, items_per_page=10):
         super().__init__()
         self.items = items
         self.user = user
         self.title = title
         self.generate_field_callback = generate_field_callback  # Function to format each item
-        self.exercise = exercise  # Store the exercise
+        self.exercise_url = exercise_url  # Store the exercise
         self.items_per_page = items_per_page
         self.current_page = 0
         self.max_pages = math.ceil(len(items) / items_per_page)
@@ -62,10 +63,10 @@ class Paginator(discord.ui.View):
 
     async def generate_embed(self, client=None):
         # Use DefaultEmbedWithExercise if exercise is provided
-        if self.exercise:
+        if self.exercise_url:
             embed = DefaultEmbedWithExercise(
                 title=self.title,
-                exercise=self.exercise  # Use the stored exercise
+                image_url=self.exercise_url  # Use the stored exercise
             )
         else:
             embed = DefaultEmbed(

@@ -1,4 +1,5 @@
-from exceptions import BotNotUser, DuplicateUsers, InvalidReps, InvalidWeight, NoEntries, NoPermission
+from exceptions import (BotNotUser, DuplicateUsers, InvalidReps, InvalidWeight,
+                        NoEntries, NoPermission)
 
 
 def validateAndCleanWeight(weight):

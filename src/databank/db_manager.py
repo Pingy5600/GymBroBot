@@ -1,7 +1,8 @@
 import os
-import psycopg2
-from typing import Optional
 from datetime import datetime, timedelta
+from typing import Optional
+
+import psycopg2
 from psycopg2.extras import RealDictCursor
 
 """"

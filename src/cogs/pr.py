@@ -1,16 +1,19 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 import dateparser
 import discord
 from discord.ext import commands
-from datetime import datetime, timedelta
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator, TopPRFieldGenerator
+from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
+                    PRFieldGenerator, TopPRFieldGenerator)
 from exceptions import InvalidDate, NoEntries, TimeoutCommand
-from helpers import EXERCISE_CHOICES, date_set, getDiscordTimeStamp, ordinal, setGraph
-from validations import (validateAndCleanWeight, validateEntryList, validateNotBot, validatePermissions, validateUserList)
+from helpers import (date_set, exercise_autocomplete, getDiscordTimeStamp,
+                     getMetaFromExercise, ordinal, setGraph)
+from validations import (validateAndCleanWeight, validateEntryList,
+                         validateNotBot, validatePermissions, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -24,8 +27,8 @@ class PR(commands.Cog, name="pr"):
 
     @command_pr_group.command(name="add", description="adds pr to the user's name")
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: discord.app_commands.Choice[str], date: str = None, user: discord.User = None):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: str, date: str = None, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -46,18 +49,20 @@ class PR(commands.Cog, name="pr"):
         except ValueError:
             raise InvalidDate()
 
-        resultaat = await db_manager.add_pr(user.id, exercise.value, pr, date_obj)
+        resultaat = await db_manager.add_pr(user.id, exercise, pr, date_obj)
 
         if not resultaat[0]:
             raise Exception(resultaat[1])
+        
+        exercise_meta = getMetaFromExercise(exercise)
 
         embed = DefaultEmbedWithExercise(
             title="PR added!",
-            exercise=exercise.value,
+            image_url=exercise_meta.get('image'),
             description=f"PR of {pr}kg added"
         )
         embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Excercise", value=exercise.name, inline=True)
+        embed.add_field(name="Excercise", value=exercise_meta.get('pretty-name'), inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
 
         return await interaction.followup.send(embed=embed)
@@ -65,8 +70,8 @@ class PR(commands.Cog, name="pr"):
 
     @command_pr_group.command(name="list", description="Gives PR of the given user")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def list(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User = None):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -74,16 +79,18 @@ class PR(commands.Cog, name="pr"):
 
         validateNotBot(user)
 
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
+
         # Haal de PR's op van de gebruiker voor het opgegeven oefening
-        prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
-        validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateEntryList(prs, f"No PRs found for the exercise {exercise_meta.get('pretty-name')}.")
 
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.name.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise_meta.get('pretty-name')} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
-            exercise=exercise.value
+            exercise_url=exercise_meta.get('image')
         )
 
         # Genereer en stuur de embed
@@ -93,11 +100,11 @@ class PR(commands.Cog, name="pr"):
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
     @discord.app_commands.describe(exercise="Exercise for the PR")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     async def delete_pr(
         self, 
         interaction: discord.Interaction, 
-        exercise: discord.app_commands.Choice[str],
+        exercise: str,
         user: discord.Member = None
     ):
         await interaction.response.defer(thinking=True)
@@ -107,17 +114,19 @@ class PR(commands.Cog, name="pr"):
 
         validateNotBot(user)
         validatePermissions(user, interaction)
+
+        exercise_meta = getMetaFromExercise(exercise)
         
         # Haal de PR's op van de gebruiker voor de opgegeven oefening
-        prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
-        validateEntryList(prs, f"No PRs found for the exercise {exercise.name}.")
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateEntryList(prs, f"No PRs found for the exercise {exercise_meta.get('pretty-name')}.")
 
         paginator = Paginator(
             items=prs,
             user=user,
-            title=f"{exercise.name.capitalize()} PRs of {user.display_name}",
+            title=f"{exercise_meta.get('pretty-name')} PRs of {user.display_name}",
             generate_field_callback=PRFieldGenerator.generate_field,
-            exercise=exercise.value
+            exercise_url=exercise_meta.get('image')
         )
         
         # Genereer de embed asynchroon door await te gebruiken
@@ -168,7 +177,7 @@ class PR(commands.Cog, name="pr"):
         user_g="Seventh user",
         user_h="Eight user"
     )
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     @discord.app_commands.choices(time=[
         discord.app_commands.Choice(name="Past Year", value=0),
         discord.app_commands.Choice(name="All Time", value=1)
@@ -176,7 +185,7 @@ class PR(commands.Cog, name="pr"):
     async def graph(
         self,
         interaction: discord.Interaction,
-        exercise: discord.app_commands.Choice[str],
+        exercise: str,
         time: discord.app_commands.Choice[int] = None,
         user_a: discord.User = None,
         user_b: discord.User = None,
@@ -203,6 +212,8 @@ class PR(commands.Cog, name="pr"):
         
         validateUserList(users)
 
+        exercise_meta = getMetaFromExercise(exercise)
+
         if time is None or time.value == 0:
             time_name = "The past year" if time is None else time.name
             time_limit = timedelta(weeks=52)
@@ -216,7 +227,7 @@ class PR(commands.Cog, name="pr"):
         # Haal PR's op voor elke gebruiker
         users_prs = []
         for user in users:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
             if prs and prs[0] != -1:
                 # filter based on selected time
                 filtered_prs = [record for record in prs if record[3] >= threshold_datetime]
@@ -224,11 +235,11 @@ class PR(commands.Cog, name="pr"):
                     users_prs.append((user, filtered_prs))                    
 
         if not users_prs:
-            raise NoEntries(f"No PRs found for the specified users and the exercise {exercise.name} in this timeperiod.")
+            raise NoEntries(f"No PRs found for the specified users and the exercise {exercise_meta.get('pretty-name')} in this timeperiod.")
         
         # Stuur de grafiek als bestand
         embed = DefaultEmbed(
-            title=f"{exercise.name.capitalize()} PR Graph",
+            title=f"{exercise_meta.get('pretty-name')} PR Graph",
             description=f"Here's the progress for {', '.join(user.display_name for user, _ in users_prs)}."
         )
         embed.set_footer(text=f"The PRs are limited to: {time_name}")
@@ -243,19 +254,21 @@ class PR(commands.Cog, name="pr"):
 
     @discord.app_commands.command(name="top", description="Gives a list of everyone's top PRs")
     @discord.app_commands.describe(exercise="Which exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def top(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str]):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def top(self, interaction: discord.Interaction, exercise: str):
         await interaction.response.defer(thinking=True)
 
-        prs = await db_manager.get_top_prs(exercise.value)
-        validateEntryList(prs, f"No PRs found for the exercise '{exercise.name}'.")
+        exercise_meta = getMetaFromExercise(exercise)
+
+        prs = await db_manager.get_top_prs(exercise)
+        validateEntryList(prs, f"No PRs found for the exercise '{exercise_meta.get('pretty-name')}'.")
 
         paginator = Paginator(
             items=prs,
             user=interaction.user,
-            title=f"Top {exercise.name.capitalize()} PRs",
+            title=f"Top {exercise_meta.get('pretty-name')} PRs",
             generate_field_callback=TopPRFieldGenerator.generate_field,
-            exercise=exercise.value
+            exercise_url=exercise_meta.get('image')
         )
 
         embed = await paginator.generate_embed(interaction.client)  
@@ -264,8 +277,8 @@ class PR(commands.Cog, name="pr"):
 
     @discord.app_commands.command(name="statistics", description="Get a detailed analysis about an exercise")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def statistic(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User=None):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def statistic(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
         if user == None:
@@ -273,14 +286,16 @@ class PR(commands.Cog, name="pr"):
 
         validateNotBot(user)
 
+        exercise_meta = getMetaFromExercise(exercise)
+
         embed = DefaultEmbedWithExercise(
-            f"{exercise.name.capitalize()} analysis for {user}",
-            exercise=exercise.value
+            f"{exercise_meta.get('pretty-name')} analysis for {user}",
+            exercise=exercise_meta.get('image')
         )
 
         # max of exercise
         try:
-            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise.value)
+            success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
             if not success: raise ValueError(resultsOrErr)
 
             weight, timestamp = resultsOrErr
@@ -299,7 +314,7 @@ class PR(commands.Cog, name="pr"):
 
         # position in relation to every user in db
         try:
-            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise.value)
+            success, positionOrErr = await db_manager.getPositionOfUserWithExercise(str(user.id), exercise)
             if not success: raise ValueError(resultsOrErr)
 
             emoji_map = ["🥇", "🥈", "🥉"]
@@ -316,7 +331,7 @@ class PR(commands.Cog, name="pr"):
             pass
         
         try:
-            success, closestOrErr = await db_manager.getClosestUsersWithExercise(str(user.id), exercise.value)
+            success, closestOrErr = await db_manager.getClosestUsersWithExercise(str(user.id), exercise)
             if not success:
                 raise ValueError(closestOrErr)
 
@@ -341,7 +356,7 @@ class PR(commands.Cog, name="pr"):
             self.bot.logger.warning(f"Error in /statistic closest: {err}")
 
         try:
-            success, rateOrErr = await db_manager.getExerciseProgressionRate(str(user.id), exercise.value)
+            success, rateOrErr = await db_manager.getExerciseProgressionRate(str(user.id), exercise)
             if not success: raise ValueError(rateOrErr)
 
             embed.add_field(
@@ -357,7 +372,7 @@ class PR(commands.Cog, name="pr"):
         message = await interaction.followup.send(embed=embed)
 
         try:
-            prs = await db_manager.get_prs_from_user(str(user.id), exercise.value)
+            prs = await db_manager.get_prs_from_user(str(user.id), exercise)
             if prs and prs[0] != -1:  # Controleer op fouten
                 loop = asyncio.get_event_loop()
                 loop.create_task(
