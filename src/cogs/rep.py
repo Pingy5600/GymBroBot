@@ -8,7 +8,7 @@ from discord.ext import commands
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, RepFieldGenerator
 from exceptions import InvalidDate, TimeoutCommand
-from helpers import (EXERCISE_CHOICES, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
+from helpers import (EXERCISE_CHOICES, date_set, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
 from validations import (validateAndCleanWeight, validateEntryList,validateNotBot, validatePermissions, validateReps, validateUserList)
 
 POOL = ThreadPoolExecutor()
@@ -83,14 +83,7 @@ class Rep(commands.Cog, name="rep"):
             date = "vandaag"
         
         try:
-            # Datum verwerken
-            date_obj = dateparser.parse(date, settings={
-                'DATE_ORDER': 'DMY',
-                'TIMEZONE': 'CET',
-                'PREFER_DAY_OF_MONTH': 'first',
-                'PREFER_DATES_FROM': 'past',
-                'DEFAULT_LANGUAGES': ["en", "nl"]
-            })
+            date_obj = dateparser.parse(date, settings=date_set)
 
             if date_obj is None:
                 raise InvalidDate()

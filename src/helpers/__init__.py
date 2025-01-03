@@ -1,6 +1,8 @@
 from .graph import *
 from .reps_calc import *
 from discord import app_commands
+import dateparser
+
 
 # choices can only have 25 elements
 EXERCISE_CHOICES = [
@@ -45,6 +47,14 @@ EXERCISE_IMAGES = {
     "leg-curl": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Seated-Leg-Curl.gif",
     "leg-press": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Lever-Horizontal-Leg-Press.gif",
     "incline-chest-press-machine": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Chest-Press-Machine.gif"
+}
+
+date_set = {
+    'DATE_ORDER': 'DMY',
+    'TIMEZONE': 'CET',
+    'PREFER_DAY_OF_MONTH': 'first',
+    'PREFER_DATES_FROM': 'past',
+    'DEFAULT_LANGUAGES': ["en", "nl"]
 }
 
 def getImageFromExercise(exercise):

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from databank import db_manager
 from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, PRFieldGenerator, TopPRFieldGenerator
 from exceptions import InvalidDate, NoEntries, TimeoutCommand
-from helpers import EXERCISE_CHOICES, getDiscordTimeStamp, ordinal, setGraph
+from helpers import EXERCISE_CHOICES, date_set, getDiscordTimeStamp, ordinal, setGraph
 from validations import (validateAndCleanWeight, validateEntryList, validateNotBot, validatePermissions, validateUserList)
 
 POOL = ThreadPoolExecutor()
@@ -38,14 +38,8 @@ class PR(commands.Cog, name="pr"):
             date = 'vandaag'
 
         try:    
-            date_obj = dateparser.parse(date, settings={
-                'DATE_ORDER': 'DMY',
-                'TIMEZONE': 'CET',
-                'PREFER_DAY_OF_MONTH': 'first',
-                'PREFER_DATES_FROM': 'past',
-                'DEFAULT_LANGUAGES': ["en", "nl"]
-            })
-
+            date_obj = dateparser.parse(date, settings=date_set)
+            
             if date_obj is None:
                 raise ValueError("Invalid date format")
 

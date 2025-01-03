@@ -10,7 +10,7 @@ from discord.ext import commands
 import embeds
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import COLOR_MAP, EXERCISE_IMAGES, db_manager, getDiscordTimeStamp, getClickableCommand
+from helpers import COLOR_MAP, EXERCISE_IMAGES, date_set, db_manager, getDiscordTimeStamp, getClickableCommand
 from validations import validateEntryList, validateNotBot
 from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
@@ -160,13 +160,7 @@ class Common(commands.Cog, name="common"):
         # Stel de tijdzone in op CET (Central European Time)
         tz = pytz.timezone('CET')
 
-        t = dateparser.parse(wanneer, settings={
-            'DATE_ORDER': 'DMY',
-            'TIMEZONE': 'CET',
-            'PREFER_DAY_OF_MONTH': 'first',
-            'PREFER_DATES_FROM': 'future',
-            'DEFAULT_LANGUAGES': ["en", "nl"]
-        })
+        t = dateparser.parse(wanneer, settings=date_set)
 
         if t is None:
             raise InvalidTime("Geen geldig tijdstip")
