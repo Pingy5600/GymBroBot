@@ -37,13 +37,7 @@ class Common(commands.Cog, name="common"):
         discord.app_commands.Choice(name="Hands 60cm elevated", value=41),
         discord.app_commands.Choice(name="On knees", value=49),
     ])
-    async def weight(self, interaction: discord.Interaction, weight: int, variant: discord.app_commands.Choice[int]):
-
-        if weight % 1 != 0:
-            weight = f"{weight:.2f}"
-        else:
-            weight = f"{int(weight)}"
-
+    async def weight(self, interaction: discord.Interaction, weight: str, variant: discord.app_commands.Choice[int]):
         embed = DefaultEmbed(
             title="⚖️ Weight when performing pushups",
             description=f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\nSince you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."

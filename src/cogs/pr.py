@@ -176,7 +176,7 @@ class PR(commands.Cog, name="pr"):
     )
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     @discord.app_commands.choices(time=[
-        discord.app_commands.Choice(name="Last 6 Months", value=0),
+        discord.app_commands.Choice(name="Past Year", value=0),
         discord.app_commands.Choice(name="All Time", value=1)
     ])
     async def graph(
@@ -351,7 +351,7 @@ class PR(commands.Cog, name="pr"):
             if not success: raise ValueError(rateOrErr)
 
             embed.add_field(
-                name=f"📈 Progression rate (past 6 months)",
+                name=f"📈 Progression rate (past year)",
                 value=f"Average weekly rate: **{rateOrErr} kg**",
                 inline=True
             )
