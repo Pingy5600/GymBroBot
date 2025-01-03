@@ -246,5 +246,10 @@ class Common(commands.Cog, name="common"):
         await interaction.followup.send(embed=embed)
 
 
+    @discord.app_commands.command(name="goat", description="Need help? ask the goat!")
+    async def goat(self, interaction: discord.Interaction):
+        await interaction.response.send_message("<@462932133170774036>")
+
+
 async def setup(bot):
     await bot.add_cog(Common(bot))
