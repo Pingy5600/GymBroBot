@@ -26,7 +26,7 @@ class PR(commands.Cog, name="pr"):
     @discord.app_commands.describe(date="The date of the pr", pr="The personal record value", exercise="Which exercise", user="Which user")
     @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
     async def add_pr(self, interaction: discord.Interaction, pr: str, exercise: discord.app_commands.Choice[str], date: str = None, user: discord.User = None):
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(thinking=True) 
 
         if user is None:
             user = interaction.user

@@ -29,7 +29,7 @@ class Common(commands.Cog, name="common"):
         weight="How much do you weigh?",
         variant="Which variant are you performing?"
     )
-    @discord.app_commands.choices(variant=[ # value is percentage of weigt lifted
+    @discord.app_commands.choices(variant=[  # value is percentage of weight lifted
         discord.app_commands.Choice(name="Regular", value=64),
         discord.app_commands.Choice(name="Feet 30cm elevated", value=70),
         discord.app_commands.Choice(name="Feet 60cm elevated", value=74),  
@@ -38,14 +38,31 @@ class Common(commands.Cog, name="common"):
         discord.app_commands.Choice(name="On knees", value=49),
     ])
     async def weight(self, interaction: discord.Interaction, weight: str, variant: discord.app_commands.Choice[int]):
+        try:
+            # Converteer de string naar een float
+            weight_float = float(weight)
+        except ValueError:
+            # Als de conversie mislukt, geef een foutmelding terug
+            await interaction.response.send_message(
+                content="❌ Invalid weight input. Please provide a valid number (e.g., 65.5).",
+                ephemeral=True
+            )
+            return
+
+        # Bereken het gewicht dat wordt opgetild
+        lifted_weight = math.ceil(weight_float * variant.value / 100)
+
         embed = DefaultEmbed(
             title="⚖️ Weight when performing pushups",
-            description=f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\nSince you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."
+            description=(
+                f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\n"
+                f"Since you weigh **{weight_float}kg**, you are lifting **{lifted_weight}kg** per pushup."
+            )
         )
         embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
         await interaction.response.send_message(embed=embed)
- 
 
+ 
     @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
     async def help(self, interaction: discord.Interaction) -> None:
         """Sends info about all available commands."""
