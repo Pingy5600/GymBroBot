@@ -40,7 +40,7 @@ class Rep(commands.Cog, name="rep"):
 
         # Haal de PR's op van de gebruiker voor het opgegeven oefening
         prs = await db_manager.get_prs_from_user(str(user.id), exercise)
-        validateEntryList(prs, f"No PRs found for the exercise {exercise_meta.get("pretty-name")}.")
+        validateEntryList(prs, f"No PRs found for the exercise {exercise_meta.get('pretty-name')}.")
 
 
         # get 1RM for that exercise for user

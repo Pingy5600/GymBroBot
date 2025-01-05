@@ -9,6 +9,18 @@ URLS = [
     "https://fitnessprogramer.com/exercise-primary-muscle/neck/",
     "https://fitnessprogramer.com/exercise-primary-muscle/trapezius/",
     "https://fitnessprogramer.com/exercise-primary-muscle/shoulders/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/chest/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/back/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/erector-spinae/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/biceps/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/triceps/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/forearm/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/abs/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/leg/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/calf/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/hip/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/cardio/",
+    "https://fitnessprogramer.com/exercise-primary-muscle/full-body/",
 ]
 
 def scrape_exercises(base_url):
@@ -63,32 +75,31 @@ def generate_lower_name(title):
     normalized = re.sub(r'\s+', '-', normalized.strip())  # Replace spaces with hyphens
     return normalized.lower()
 
+# Step 1: Scrape all exercises
 all_exercises = []
 for url in URLS:
     all_exercises.extend(scrape_exercises(url))
 
+# Step 2: Remove duplicates from the global list
+unique_exercises = {generate_lower_name(ex['title']): ex for ex in all_exercises}.values()
 
-# generate the EXERCISE_CHOICES list
-with open('EXERCISE_CHOISES.txt', 'w') as file:
+# Step 3: Generate the EXERCISE_CHOICES list
+with open('EXERCISE_CHOICES.txt', 'w') as file:
     file.write("EXERCISE_CHOICES = [\n")
-    for exercise in all_exercises:
-        entry = f'\tapp_commands.Choice(name="{exercise['title']}", value="{generate_lower_name(exercise['title'])}"),\n'
+    for exercise in unique_exercises:
+        entry = f'\tapp_commands.Choice(name="{exercise["title"]}", value="{generate_lower_name(exercise["title"])}"),\n'
         file.write(entry)
-
     file.write("]")
 
-# generate the EXERCISE_META dict
+# Step 4: Generate the EXERCISE_META dict
 with open('EXERCISE_META.txt', 'w') as file:
     file.write("EXERCISE_META = {\n")
-    for exercise in all_exercises:
+    for exercise in unique_exercises:
         file.write(f'\t\"{generate_lower_name(exercise["title"])}\"')
         file.write(": {\n")
-
         file.write(f"\t\t\"image\": \"{exercise['gif_link']}\",\n")
         file.write(f"\t\t\"pretty-name\": \"{exercise['title']}\",\n")
-
         file.write("\t},\n")
-
     file.write("}")
 
-print(f"generated {len(all_exercises)} exercises")
+print(f"generated {len(unique_exercises)} unique exercises")
