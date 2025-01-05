@@ -11,7 +11,7 @@ import embeds
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import COLOR_MAP, EXERCISE_IMAGES, date_set, db_manager, getDiscordTimeStamp, getClickableCommand
-from validations import validateEntryList, validateNotBot
+from validations import validateEntryList, validateNotBot, validateAndCleanWeight
 from reactionmenu import ViewMenu, ViewSelect, ViewButton
 
 
@@ -38,25 +38,13 @@ class Common(commands.Cog, name="common"):
         discord.app_commands.Choice(name="On knees", value=49),
     ])
     async def weight(self, interaction: discord.Interaction, weight: str, variant: discord.app_commands.Choice[int]):
-        try:
-            # Converteer de string naar een float
-            weight_float = float(weight)
-        except ValueError:
-            # Als de conversie mislukt, geef een foutmelding terug
-            await interaction.response.send_message(
-                content="❌ Invalid weight input. Please provide a valid number (e.g., 65.5).",
-                ephemeral=True
-            )
-            return
-
-        # Bereken het gewicht dat wordt opgetild
-        lifted_weight = math.ceil(weight_float * variant.value / 100)
-
+        weight = validateAndCleanWeight(weight)
+        
         embed = DefaultEmbed(
             title="⚖️ Weight when performing pushups",
             description=(
                 f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\n"
-                f"Since you weigh **{weight_float}kg**, you are lifting **{lifted_weight}kg** per pushup."
+                f"Since you weigh **{weight}kg**, you are lifting **{weight}kg** per pushup."
             )
         )
         embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])

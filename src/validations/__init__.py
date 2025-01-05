@@ -9,7 +9,7 @@ def validateAndCleanWeight(weight):
     
     except ValueError:
         raise InvalidWeight(
-            "You provided an invalid PR value. Please use the correct format."
+            "You provided an invalid weight value. Please use the correct format."
         )
     
     if weight <= 0:
