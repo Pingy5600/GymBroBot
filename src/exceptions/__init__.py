@@ -58,6 +58,23 @@ class InvalidWeight(CustomCheckFailure):
         )
     
 
+class InvalidExercise(CustomCheckFailure):
+    """
+    Thrown when a user inputs an invalid exercise
+    """
+
+    def __init__(self, message="Invalid Exercise!"):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_ids):
+        return OperationFailedEmbed(
+            self.message,
+            self.getClickableCommandString(command, command_ids),
+            emoji="🤔"
+        )
+    
+
 class InvalidReps(CustomCheckFailure):
     """
     Thrown when a user inputs an invalid rep value

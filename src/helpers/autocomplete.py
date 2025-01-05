@@ -1,6 +1,7 @@
 from typing import List
 
 from discord import Interaction, app_commands
+from exceptions import InvalidExercise
 
 
 async def exercise_autocomplete(
@@ -5789,7 +5790,6 @@ EXERCISE_META = {
 
 def getMetaFromExercise(exercise: str):
     if exercise not in EXERCISE_META:
-        # TODO custom error
-        raise ValueError(f"Exercise {exercise} not found")
+        raise InvalidExercise(f"Exercise {exercise} not found!")
     
     return EXERCISE_META[exercise]

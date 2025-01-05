@@ -4,7 +4,6 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
-# TODO add all URLs of the wanted muscle group exercises list
 URLS = [
     "https://fitnessprogramer.com/exercise-primary-muscle/neck/",
     "https://fitnessprogramer.com/exercise-primary-muscle/trapezius/",

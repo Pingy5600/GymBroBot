@@ -112,7 +112,7 @@ class Rep(commands.Cog, name="rep"):
         
         embed = DefaultEmbedWithExercise(
             title="Reps Added!",
-            exercise=exercise_meta["image"],
+            image_url=exercise_meta["image"],
             description=f"Added {reps} reps at {weight}kg for {exercise_meta.get('pretty-name')}."
         )
         embed.add_field(name="User", value=user.mention, inline=True)
