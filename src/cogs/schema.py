@@ -1,9 +1,10 @@
 import discord
 from discord.ext import commands
 
+from checks import is_admin_or_has_permissions
 from databank import db_manager
 from embeds import DefaultEmbed
-from checks import is_admin_or_has_permissions
+
 
 class Schema(commands.Cog, name="schema"):
     def __init__(self,bot):

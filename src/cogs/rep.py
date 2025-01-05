@@ -6,10 +6,14 @@ import discord
 from discord.ext import commands
 
 from databank import db_manager
-from embeds import DefaultEmbed, DefaultEmbedWithExercise, Paginator, RepFieldGenerator
+from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
+                    RepFieldGenerator)
 from exceptions import InvalidDate, TimeoutCommand
-from helpers import (EXERCISE_CHOICES, date_set, calculate_1rm_table, getDiscordTimeStamp, set3DGraph)
-from validations import (validateAndCleanWeight, validateEntryList,validateNotBot, validatePermissions, validateReps, validateUserList)
+from helpers import (calculate_1rm_table, date_set, exercise_autocomplete,
+                     getDiscordTimeStamp, getMetaFromExercise, set3DGraph)
+from validations import (validateAndCleanWeight, validateEntryList,
+                         validateNotBot, validatePermissions, validateReps,
+                         validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -23,8 +27,8 @@ class Rep(commands.Cog, name="rep"):
 
     @command_rep_group.command(name="calculator", description="Calculate the amount of reps you should do for your 1RM")
     @discord.app_commands.describe(exercise="which exercise", user="Which user")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def rep_calc(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User=None):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def rep_calc(self, interaction: discord.Interaction, exercise: str, user: discord.User=None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -32,8 +36,15 @@ class Rep(commands.Cog, name="rep"):
 
         validateNotBot(user)
 
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
+
+        # Haal de PR's op van de gebruiker voor het opgegeven oefening
+        prs = await db_manager.get_prs_from_user(str(user.id), exercise)
+        validateEntryList(prs, f"No PRs found for the exercise {exercise_meta.get('pretty-name')}.")
+
+
         # get 1RM for that exercise for user
-        success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise.value)
+        success, resultsOrErr = await db_manager.getMaxOfUserWithExercise(str(user.id), exercise)
         if not success: raise ValueError(resultsOrErr)
         
         one_rep_max, date = resultsOrErr
@@ -42,8 +53,8 @@ class Rep(commands.Cog, name="rep"):
 
         embed = DefaultEmbedWithExercise(
             title="📊 1RM Percentage Table",
-            exercise=exercise.value,
-            description=f"Based on a 1RM of **{one_rep_max} kg** for {exercise.name} achieved on {getDiscordTimeStamp(date)}",
+            exercise=exercise_meta.get("image"),
+            description=f"Based on a 1RM of **{one_rep_max} kg** for {exercise_meta.get('pretty-name')} achieved on {getDiscordTimeStamp(date)}",
         )
         
         for row in table_data:
@@ -60,13 +71,13 @@ class Rep(commands.Cog, name="rep"):
         exercise="Which exercise",
         user="Which user"
     )
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     async def add_reps(
         self,
         interaction: discord.Interaction,
         reps: int,
         weight: str,
-        exercise: discord.app_commands.Choice[str],
+        exercise: str,
         date: str = None,
         user: discord.User = None
     ):
@@ -90,20 +101,22 @@ class Rep(commands.Cog, name="rep"):
 
         except ValueError:
             raise InvalidDate()
+        
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
 
         # Voeg de reps toe aan de database
-        resultaat = await db_manager.add_reps(user.id, exercise.value, weight, reps, date_obj)
+        resultaat = await db_manager.add_reps(user.id, exercise, weight, reps, date_obj)
 
         if not resultaat[0]:
             raise Exception(resultaat[1])
         
         embed = DefaultEmbedWithExercise(
             title="Reps Added!",
-            exercise=exercise.value,
-            description=f"Added {reps} reps at {weight}kg for {exercise.name.capitalize()}."
+            exercise=exercise_meta["image"],
+            description=f"Added {reps} reps at {weight}kg for {exercise_meta.get('pretty-name')}."
         )
         embed.add_field(name="User", value=user.mention, inline=True)
-        embed.add_field(name="Exercise", value=exercise.name, inline=True)
+        embed.add_field(name="Exercise", value=exercise_meta.get('pretty-name'), inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
 
         return await interaction.followup.send(embed=embed)
@@ -111,8 +124,8 @@ class Rep(commands.Cog, name="rep"):
 
     @command_rep_group.command(name="list", description="Gives reps of the given user")
     @discord.app_commands.describe(user="Which user", exercise="Which exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
-    async def list(self, interaction: discord.Interaction, exercise: discord.app_commands.Choice[str], user: discord.User = None):
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
+    async def list(self, interaction: discord.Interaction, exercise: str, user: discord.User = None):
         await interaction.response.defer(thinking=True)
 
         if user is None:
@@ -120,16 +133,18 @@ class Rep(commands.Cog, name="rep"):
 
         validateNotBot(user)
 
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
+
         # Haal de reps op voor de gebruiker en oefening
-        reps = await db_manager.get_prs_with_reps(str(user.id), exercise.value)
-        validateEntryList(reps, f"No reps found for the exercise {exercise.name}.")
+        reps = await db_manager.get_prs_with_reps(str(user.id), exercise)
+        validateEntryList(reps, f"No reps found for the exercise {exercise_meta.get('pretty-name')}.")
 
         paginator = Paginator(
             items=reps,
             user=user,
-            title=f"{exercise.name.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise_meta.get('pretty-name')} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
-            exercise=exercise.value
+            exercise_url=exercise_meta["image"]
         )
 
         embed = await paginator.generate_embed()  # Genereer de embed voor de paginatie
@@ -138,11 +153,11 @@ class Rep(commands.Cog, name="rep"):
 
     @command_rep_group.command(name="delete", description="Delete specific reps")
     @discord.app_commands.describe(exercise="Exercise")
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     async def delete(
         self, 
         interaction: discord.Interaction, 
-        exercise: discord.app_commands.Choice[str],
+        exercise: str,
         user: discord.Member = None
     ):
         await interaction.response.defer(thinking=True)
@@ -152,16 +167,18 @@ class Rep(commands.Cog, name="rep"):
 
         validateNotBot(user)
         validatePermissions(user, interaction)
+
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
         
-        reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise.value)
-        validateEntryList(reps_data, f"No reps found for the exercise {exercise.name}.")
+        reps_data = await db_manager.get_prs_with_reps(str(user.id), exercise)
+        validateEntryList(reps_data, f"No reps found for the exercise {exercise_meta.get('pretty-name')}.")
 
         paginator = Paginator(
             items=reps_data,
             user=user,
-            title=f"{exercise.name.capitalize()} Reps of {user.display_name}",
+            title=f"{exercise_meta.get('pretty-name')} Reps of {user.display_name}",
             generate_field_callback=RepFieldGenerator.generate_field,
-            exercise=exercise.value
+            exercise_url=exercise_meta["image"]
         )
 
         embed = await paginator.generate_embed()
@@ -185,7 +202,7 @@ class Rep(commands.Cog, name="rep"):
             raise ValueError("Invalid selection. Please try again.")
 
         selected_rep = reps_data[index]
-        result, err = await db_manager.delete_reps(str(user.id), exercise.value, selected_rep['weight'], selected_rep['lifted_at'])
+        result, err = await db_manager.delete_reps(str(user.id), exercise, selected_rep['weight'], selected_rep['lifted_at'])
         if not result:
             raise Exception(err)
 
@@ -205,11 +222,11 @@ class Rep(commands.Cog, name="rep"):
         user_d="Fourth user",
         user_e="Fifth user"
     )
-    @discord.app_commands.choices(exercise=EXERCISE_CHOICES)
+    @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     async def three_d_plot(
         self,
         interaction: discord.Interaction,
-        exercise: discord.app_commands.Choice[str],
+        exercise: str,
         user_a: discord.User = None,
         user_b: discord.User = None,
         user_c: discord.User = None,
@@ -229,8 +246,10 @@ class Rep(commands.Cog, name="rep"):
 
         validateUserList(users)
 
+        exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
+
         embed = DefaultEmbed(
-            title=f"{exercise.name.capitalize()} Rep Graph",
+            title=f"{exercise_meta.get('pretty-name')} Rep Graph",
             description=f"Here's the 3D graph for {', '.join(user.display_name for user in users)}."
         )
         embed.set_footer(text="This may take a while...")
@@ -238,7 +257,7 @@ class Rep(commands.Cog, name="rep"):
 
         loop = asyncio.get_event_loop()
         loop.create_task(
-            set3DGraph(POOL, loop, message, users, exercise.value, embed)
+            set3DGraph(POOL, loop, message, users, exercise, embed)
         )
 
 

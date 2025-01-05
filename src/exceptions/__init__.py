@@ -13,6 +13,7 @@ from discord import app_commands
 from embeds import OperationFailedEmbed
 from helpers import getClickableCommand
 
+
 class CustomCheckFailure(app_commands.CheckFailure, ABC):
 
     @abstractmethod

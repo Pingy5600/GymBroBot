@@ -6,13 +6,14 @@ import dateparser
 import discord
 import pytz
 from discord.ext import commands
+from reactionmenu import ViewButton, ViewMenu, ViewSelect
 
 import embeds
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import COLOR_MAP, EXERCISE_IMAGES, date_set, db_manager, getDiscordTimeStamp, getClickableCommand
-from validations import validateEntryList, validateNotBot, validateAndCleanWeight
-from reactionmenu import ViewMenu, ViewSelect, ViewButton
+from helpers import (COLOR_MAP, date_set, db_manager, getClickableCommand,
+                     getDiscordTimeStamp, getMetaFromExercise)
+from validations import validateEntryList, validateNotBot
 
 
 class Common(commands.Cog, name="common"):
@@ -47,7 +48,7 @@ class Common(commands.Cog, name="common"):
                 f"Since you weigh **{weight}kg**, you are lifting **{weight}kg** per pushup."
             )
         )
-        embed.set_thumbnail(url=EXERCISE_IMAGES["pushups"])
+        embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
         await interaction.response.send_message(embed=embed)
 
  
@@ -208,7 +209,7 @@ class Common(commands.Cog, name="common"):
             user=interaction.user,
             title=f"Reminders for {interaction.user.display_name}",
             generate_field_callback=ReminderFieldGenerator.generate_field,
-            exercise=None
+            exercise_url=None
         )
         embed = await paginator.generate_embed()
         content = "Reply with the **number** of the reminder you want to delete."
