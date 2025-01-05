@@ -9,10 +9,11 @@ from discord.ext import commands
 from reactionmenu import ViewButton, ViewMenu, ViewSelect
 
 import embeds
+from autocomplete import getMetaFromExercise
 from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import (COLOR_MAP, date_set, db_manager, getClickableCommand,
-                     getDiscordTimeStamp, getMetaFromExercise)
+                     getDiscordTimeStamp)
 from validations import validateEntryList, validateNotBot
 
 

@@ -1,6 +1,5 @@
 from discord import app_commands
 
-from .autocomplete import exercise_autocomplete, getMetaFromExercise
 from .graph import *
 from .reps_calc import *
 

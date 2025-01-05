@@ -18,8 +18,8 @@ async def exercise_autocomplete(
         exc for exc in EXERCISE_CHOICES if current.lower() in exc.name.lower()
     ]
 
-    # select max. the first 5 matches
-    return matches[:5]
+    # select max. the first 10 matches
+    return matches[:10]
 
 EXERCISE_CHOICES = [
     app_commands.Choice(name="Bench Press", value="bench"),

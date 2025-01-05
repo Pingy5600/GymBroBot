@@ -6,12 +6,12 @@ import dateparser
 import discord
 from discord.ext import commands
 
+from autocomplete import exercise_autocomplete, getMetaFromExercise
 from databank import db_manager
 from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
                     PRFieldGenerator, TopPRFieldGenerator)
 from exceptions import InvalidDate, NoEntries, TimeoutCommand
-from helpers import (date_set, exercise_autocomplete, getDiscordTimeStamp,
-                     getMetaFromExercise, ordinal, setGraph)
+from helpers import date_set, getDiscordTimeStamp, ordinal, setGraph
 from validations import (validateAndCleanWeight, validateEntryList,
                          validateNotBot, validatePermissions, validateUserList)
 
