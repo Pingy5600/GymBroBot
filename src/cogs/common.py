@@ -46,7 +46,7 @@ class Common(commands.Cog, name="common"):
             title="⚖️ Weight when performing pushups",
             description=(
                 f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\n"
-                f"Since you weigh **{weight}kg**, you are lifting **{weight}kg** per pushup."
+                f"Since you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."
             )
         )
         embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
