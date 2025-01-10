@@ -54,7 +54,7 @@ class Rep(commands.Cog, name="rep"):
 
         embed = DefaultEmbedWithExercise(
             title="📊 1RM Percentage Table",
-            exercise=exercise_meta.get("image"),
+            image_url=exercise_meta.get("image"),
             description=f"Based on a 1RM of **{one_rep_max} kg** for {exercise_meta.get('pretty-name')} achieved on {getDiscordTimeStamp(date)}",
         )
         
