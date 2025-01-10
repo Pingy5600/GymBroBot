@@ -284,13 +284,13 @@ class PR(commands.Cog, name="pr"):
         if user == None:
             user = interaction.user
 
-        validateNotBot(user)
+        validateNotBot(user) 
 
         exercise_meta = getMetaFromExercise(exercise)
 
         embed = DefaultEmbedWithExercise(
             f"{exercise_meta.get('pretty-name')} analysis for {user}",
-            exercise=exercise_meta.get('image')
+            image_url=exercise_meta.get('image')
         )
 
         # max of exercise
