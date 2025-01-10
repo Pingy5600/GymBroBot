@@ -14,7 +14,7 @@ from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
 from helpers import (COLOR_MAP, date_set, db_manager, getClickableCommand,
                      getDiscordTimeStamp)
-from validations import validateEntryList, validateNotBot
+from validations import validateEntryList, validateNotBot, validateAndCleanWeight
 
 
 class Common(commands.Cog, name="common"):
