@@ -20,10 +20,10 @@ async def update_exercise_lenghts():
         ) as con:
             with con.cursor() as cursor:
                 cursor.execute(
-                    "ALTER TABLE pr MODIFY COLUMN exercise VARCHAR(75);",
+                    "ALTER TABLE pr ALTER COLUMN exercise TYPE VARCHAR(75);",
                 )
                 cursor.execute(
-                    "ALTER TABLE reps MODIFY COLUMN exercise VARCHAR(75);",
+                    "ALTER TABLE reps ALTER COLUMN exercise TYPE VARCHAR(75);",
                 )
                 con.commit()
                 return True
