@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS pr (
   id SERIAL PRIMARY KEY,
   user_id varchar(30) NOT NULL,
-  exercise varchar(50) NOT NULL,
+  exercise varchar(75) NOT NULL,
   weight decimal NOT NULL DEFAULT 0,
   lifted_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS schema (
 CREATE TABLE IF NOT EXISTS reps (
   id SERIAL PRIMARY KEY,
   user_id varchar(30) NOT NULL,
-  exercise varchar(50) NOT NULL,
+  exercise varchar(75) NOT NULL,
   weight decimal NOT NULL DEFAULT 0,
   lifted_at timestamp DEFAULT CURRENT_TIMESTAMP,
   reps INTEGER NOT NULL DEFAULT 0

@@ -13,6 +13,25 @@ Description:
 Version: 5.5.0
 """
 
+async def update_exercise_lenghts():
+    try:
+        with psycopg2.connect(
+            host='gymbrobot_postgres', dbname='pg_gymbrobot', user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "ALTER TABLE pr MODIFY COLUMN exercise VARCHAR(75);",
+                )
+                cursor.execute(
+                    "ALTER TABLE reps MODIFY COLUMN exercise VARCHAR(75);",
+                )
+                con.commit()
+                return True
+            
+    except Exception as err:
+        print(err)
+        return (False, err)
+
 ### PR ###
 
 async def add_pr(user_id: str, exercise:str, weight:float, lifted_at=None):
