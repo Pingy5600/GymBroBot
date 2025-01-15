@@ -25,13 +25,6 @@ class Common(commands.Cog, name="common"):
     command_remind_group = discord.app_commands.Group(name="remind", description="remind Group")
     pushup_group = discord.app_commands.Group(name="pushup", description="pushup Group")
     
-    @discord.app_commands.command(name="update", description="temp update length")
-    async def update_length(self, interaction: discord.Interaction) -> None:
-        
-        await db_manager.update_exercise_lenghts()
-        await interaction.response.send_message("Done")
-
-
     @pushup_group.command(name="weight", description="How much weight are you pushing?")
     @discord.app_commands.describe(
         weight="How much do you weigh?",
