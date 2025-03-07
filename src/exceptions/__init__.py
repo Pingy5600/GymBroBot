@@ -226,3 +226,12 @@ class DuplicateUsers(CustomCheckFailure):
             self.getClickableCommandString(command, command_ids),
             emoji="‼️"
         )
+    
+class WrongChannel(app_commands.CheckFailure):
+    """
+    Thrown when a user is attempting something, but is in the wrong channel.
+    """
+
+    def __init__(self, message="Wrong channel!"):
+        self.message = message
+        super().__init__(self.message)
