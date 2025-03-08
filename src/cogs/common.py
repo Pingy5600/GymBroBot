@@ -262,7 +262,7 @@ class Common(commands.Cog, name="common"):
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'common'})
     @discord.app_commands.describe(user="Which user")
     @discord.app_commands.describe(reason="Reason for the pushups")
-    @discord.app_commands.checks.cooldown(rate=1, per=2700, key=lambda i: (i.guild_id, i.user.id))
+    @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member, reason: str) -> None:
@@ -345,7 +345,7 @@ class BanTypeView(discord.ui.View):
 
         # create embed to show who won
         result_embed = embeds.DefaultEmbed(
-            f"🏅 {winner} won!", f"{loser.mention} has been banned", user=winner
+            f"🏅 {winner} won!", f"{loser.mention} has pushups to do", user=winner
         )
 
         # get winner current streak
@@ -414,12 +414,8 @@ class BanTypeView(discord.ui.View):
         # wait one second so loser can still see in channel who won/lost
         await asyncio.sleep(1)
 
-        # ban the user
-        await interaction.followup.send("test")
-
-        # send ban message to loser
         banned_embed = embeds.DefaultEmbed(
-            f"🔨 You have been given pushups by {interaction.guild.name}!", user=loser
+            f"You have been given pushups in {interaction.guild.name}!", user=loser
         )
 
         banned_embed.add_field(
@@ -436,21 +432,21 @@ class BanTypeView(discord.ui.View):
 
         await interaction.followup.send(embed=banned_embed)
 
-    # @discord.ui.button(label="Rock Paper Scissors", style=discord.ButtonStyle.blurple, row=3, disabled=False, emoji='✂️')
-    # async def RPS_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #     await interaction.response.defer()
+    @discord.ui.button(label="Rock Paper Scissors", style=discord.ButtonStyle.blurple, row=3, disabled=False, emoji='✂️')
+    async def RPS_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
 
-    #     embed = discord.Embed(
-    #         title="Rock-Paper-Scissors",
-    #         description=f"{self.ban_starter.mention} challenges {self.user.mention} to a game of Rock-Paper-Scissors! (to the death)",
-    #         color=discord.Color.blurple(),
-    #     )
-    #     embed.set_footer(text="Click your choice below to play!")
+        embed = discord.Embed(
+            title="Rock-Paper-Scissors",
+            description=f"{self.ban_starter.mention} challenges {self.user.mention} to a game of Rock-Paper-Scissors! (to the death)",
+            color=discord.Color.blurple(),
+        )
+        embed.set_footer(text="Click your choice below to play!")
 
-    #     view = RPSView(self.ban_starter, self.user)
+        view = RPSView(self.ban_starter, self.user)
 
-    #     message = await interaction.edit_original_response(embed=embed, view=view)
-    #     view.message = message
+        message = await interaction.edit_original_response(embed=embed, view=view)
+        view.message = message
 
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
@@ -476,6 +472,104 @@ class BanTypeView(discord.ui.View):
             await interaction.response.send_message(random.choice(responses))
         
         return is_possible
+
+
+class RPSView(discord.ui.View):
+    def __init__(self, player1, player2):
+        super().__init__()
+        self.player1 = player1
+        self.player2 = player2
+        self.choices = {}
+        self.add_buttons()
+
+    def add_buttons(self):
+        for name, emoji in [("rock", "🪨"), ("paper", "📜"), ("scissors", "✂️")]:
+            button = discord.ui.Button(label=name.capitalize(), emoji=emoji, custom_id=name)
+            button.callback = self.button_callback
+            self.add_item(button)
+
+    async def button_callback(self, interaction: discord.Interaction):
+        # Ensure only the participants can play
+        if interaction.user not in [self.player1, self.player2]:
+            return await interaction.response.send_message(
+                "You're not a participant in this game!", ephemeral=True
+            )
+
+        # Record the player's choice
+        self.choices[interaction.user] = interaction.data["custom_id"]
+
+        # Check if both players have made their choice
+        if len(self.choices) == 2:
+            await self.process_results(interaction)
+        else:
+            await interaction.response.send_message(
+                f"{interaction.user.mention} has chosen! Waiting for the other player...", ephemeral=True
+            )
+
+    async def process_results(self, interaction: discord.Interaction):
+        # Disable buttons after the game is decided
+        for child in self.children:
+            child.disabled = True
+
+        # Get the choices
+        p1_choice = self.choices[self.player1]
+        p2_choice = self.choices[self.player2]
+
+        # Determine the winner
+        winner = self.get_winner(p1_choice, p2_choice)
+        loser = self.player1 if winner != self.player1 else self.player2
+        if winner == "draw":
+            result = "It's a draw! 🤝\n Pushups to both lol"
+        elif winner == self.player1:
+            result = f"{self.player1.mention} wins! 🎉\n{self.player2.mention} gets the pushups!"
+        else:
+            result = f"{self.player2.mention} wins! 🎉\n{self.player1.mention} gets the pushups!"
+
+        # Send the results
+        embed = discord.Embed(
+            title="Rock-Paper-Scissors Results",
+            description=(
+                f"{self.player1.mention} chose {self.get_emoji(p1_choice)}\n"
+                f"{self.player2.mention} chose {self.get_emoji(p2_choice)}\n\n{result}"
+            ),
+            color=discord.Color.green(),
+        )
+        await interaction.response.edit_message(embed=embed, view=self)
+
+        banned_embed = embeds.DefaultEmbed(
+            f"You have been given pushups in {interaction.guild.name}!", user=loser
+        )
+
+        if winner == "draw":
+            
+            banned_embed.add_field(
+                name="💡 Reason",
+                value=f"```We do not draw in this hoe!```",
+            )
+            await interaction.followup.send(embed=banned_embed)
+
+        else:
+            banned_embed.add_field(
+                name="💡 Reason",
+                value=f"```Lost a Rock Paper Scissors game to {winner}!```",
+            )
+
+            await interaction.followup.send(embed=banned_embed)
+
+    def get_winner(self, p1, p2):
+        """Determines the winner based on the game rules."""
+        rules = {
+            "rock": "scissors",
+            "scissors": "paper",
+            "paper": "rock",
+        }
+        if p1 == p2:
+            return "draw"
+        return self.player1 if rules[p1] == p2 else self.player2
+
+    def get_emoji(self, choice):
+        """Returns the emoji for a given choice."""
+        return {"rock": "🪨", "paper": "📜", "scissors": "✂️"}.get(choice, "❓")
     
 
 async def setup(bot):
