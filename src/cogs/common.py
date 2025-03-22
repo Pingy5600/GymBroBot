@@ -280,7 +280,7 @@ class Common(commands.Cog, name="common"):
                 "You can't give pushups to a bot!"
             ))
 
-        ban_explain_embed = embeds.DefaultEmbed("🔨 Pick your ban type")
+        ban_explain_embed = embeds.DefaultEmbed("Pick your type!")
         ban_explain_embed.add_field(
             name="🎰 Gamble",
             value=f"This is a 50/50. Either you ({interaction.user.mention}) or {user.mention} are banned.",
@@ -291,162 +291,152 @@ class Common(commands.Cog, name="common"):
             value=f"Play Rock Paper Scissors against each other. Loser gets banned."
         )
 
-        await interaction.followup.send(embed=ban_explain_embed, view=BanTypeView(user, interaction.user, self.bot, reason))
+        await interaction.followup.send(embed=ban_explain_embed, view=PushupTypeView(user, interaction.user, self.bot, reason))
 
 
-class BanTypeView(discord.ui.View):
-    def __init__(self, user, ban_starter, bot, reason, timeout = 180):
+class PushupTypeView(discord.ui.View):
+    def __init__(self, user, ban_starter, bot, reason, timeout=180):
+        super().__init__(timeout=timeout)
         self.user = user
         self.ban_starter = ban_starter
         self.bot = bot
         self.reason = reason
-        self.selected_roles = None
 
-        super().__init__(timeout=timeout)
-
-    
-    @discord.ui.button(label="Gamble", style=discord.ButtonStyle.blurple, row=3, disabled=False, emoji='🎰')
+    @discord.ui.button(label="Gamble", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # defer in case processing the selected data takes a while
-        await interaction.response.defer()
-        urls = [
-            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
-            "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
-            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWVqeXV3OHRpcHNtemx0ODJ4aHh1ZXdhejZ2aXQwN2o0Z21sdHJ3eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/qNCtzhsWCc7q4D2FB5/giphy.gif",
-            "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmM0am03ejVudHkzejkyODMwaWNjaXg1emtyYThrNGttd2J1cTByYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26ufjXhjqhpFgcONq/giphy.gif",
-            "https://media0.giphy.com/media/l2SqgVwLpAmvIfMCA/giphy.gif?cid=ecf05e47mfvwpbejd07zq4l2jyv74wyppg4ik3wnstsra73d&ep=v1_gifs_related&rid=giphy.gif&ct=g",
-        ]
+        async def callback_func(amount):
+            urls = [
+                "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
+                "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
+                "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWVqeXV3OHRpcHNtemx0ODJ4aHh1ZXdhejZ2aXQwN2o0Z21sdHJ3eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/qNCtzhsWCc7q4D2FB5/giphy.gif",
+                "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmM0am03ejVudHkzejkyODMwaWNjaXg1emtyYThrNGttd2J1cTByYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26ufjXhjqhpFgcONq/giphy.gif",
+                "https://media0.giphy.com/media/l2SqgVwLpAmvIfMCA/giphy.gif?cid=ecf05e47mfvwpbejd07zq4l2jyv74wyppg4ik3wnstsra73d&ep=v1_gifs_related&rid=giphy.gif&ct=g",
+            ]
+            
+            gamble_embed = embeds.DefaultEmbed(f"**🎰 {self.ban_starter.display_name} vs. {self.user.display_name}**")
+            gamble_embed.set_image(url=random.choice(urls))
+            await interaction.edit_original_response(embed=gamble_embed, view=None)
 
-        gamble_embed = embeds.DefaultEmbed(f"**🎰 {self.ban_starter.display_name} vs. {self.user.display_name}**")
-        gamble_embed.set_image(url=random.choice(urls))
-        await interaction.edit_original_response(embed=gamble_embed, view=None)
+            # wait 4 seconds
+            await asyncio.sleep(4)
 
-        # wait 4 seconds
-        await asyncio.sleep(4)
+            # determine who to ban
+            choices = [self.user, self.ban_starter]
+            loser = self.ban_starter if random.randint(0, 100) < 50 else self.user # 50/50 for starter to lose
+            choices.remove(loser)
+            winner = choices[0]
 
-        # determine who to ban
-        choices = [self.user, self.ban_starter]
-        loser = self.ban_starter if random.randint(0, 100) < 50 else self.user # 50/50 for starter to lose
-        choices.remove(loser)
-        winner = choices[0]
+            # save results to stats
+            await db_manager.increment_ban_gamble_wins(winner.id)
+            await db_manager.increment_ban_gamble_losses(loser.id)
 
-        # save results to stats
-        await db_manager.increment_ban_gamble_wins(winner.id)
-        await db_manager.increment_ban_gamble_losses(loser.id)
+            # reset the streaks
+            await db_manager.reset_ban_gamble_loss_streak(winner.id)
+            await db_manager.reset_ban_gamble_win_streak(loser.id)
 
-        # reset the streaks
-        await db_manager.reset_ban_gamble_loss_streak(winner.id)
-        await db_manager.reset_ban_gamble_win_streak(loser.id)
+            # check if current streaks are higher than best streak
+            await db_manager.check_ban_gamble_win_streak(winner.id)
+            await db_manager.check_ban_gamble_loss_streak(loser.id)
 
-        # check if current streaks are higher than best streak
-        await db_manager.check_ban_gamble_win_streak(winner.id)
-        await db_manager.check_ban_gamble_loss_streak(loser.id)
+            # Pushups opslaan en totaal ophalen
+            await db_manager.add_pushups(loser.id, amount)
+            total_pushups = await db_manager.get_pushups(loser.id)
+            
+            # create embed to show who won
+            result_embed = embeds.DefaultEmbed(
+                f"🏅 {winner} won!", f"{loser.mention} has pushups to do", user=winner
+            )
 
+            # get winner current streak
+            winner_current_streak = await db_manager.get_current_win_streak(winner.id)
+            if winner_current_streak[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", winner_current_streak[1]
+                ))
+            
+            # get winner highest streak
+            highest_win_streak = await db_manager.get_highest_win_streak(winner.id)
+            if highest_win_streak[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", highest_win_streak[1]
+                ))
+            
+            # get winner total wins
+            total_wins = await db_manager.get_ban_total_wins(winner.id)
+            if total_wins[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", total_wins[1]
+                ))
+            
+            # add stats field to embed
+            result_embed.add_field(
+                name="📈 Stats of winner",
+                value=f"""{winner.mention} current win streak```{winner_current_streak[0][0]}```
+                {winner.mention} highest win streak```{highest_win_streak[0][0]}```
+                {winner.mention} total wins```{total_wins[0][0]}```""",
+                inline=True
+            )
+            
+            # get loser current streak
+            loser_current_streak = await db_manager.get_current_loss_streak(loser.id)
+            if loser_current_streak[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", loser_current_streak[1]
+                ))
+            
+            # get loser highest streak
+            highest_loss_streak = await db_manager.get_highest_loss_streak(loser.id)
+            if highest_loss_streak[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", highest_loss_streak[1]
+                ))
+            
+            # get loser total losses
+            total_losses = await db_manager.get_ban_total_losses(loser.id)
+            if total_losses[0] == -1:
+                return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
+                    "Something went wrong...", total_losses[1]
+                ))
+            
+            # add stats field to embed
+            result_embed.add_field(
+                name="📉 Stats of loser",
+                value=f"""{loser.mention} current loss streak```{loser_current_streak[0][0]}```
+                {loser.mention} highest loss streak```{highest_loss_streak[0][0]}```
+                {loser.mention} total losses```{total_losses[0][0]}```""",
+                inline=True
+            )
 
-        # create embed to show who won
-        result_embed = embeds.DefaultEmbed(
-            f"🏅 {winner} won!", f"{loser.mention} has pushups to do", user=winner
-        )
+            # **Leeg veld toevoegen om juiste indeling te forceren**
+            result_embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        # get winner current streak
-        winner_current_streak = await db_manager.get_current_win_streak(winner.id)
-        if winner_current_streak[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", winner_current_streak[1]
-            ))
-        
-        # get winner highest streak
-        highest_win_streak = await db_manager.get_highest_win_streak(winner.id)
-        if highest_win_streak[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", highest_win_streak[1]
-            ))
-        
-        # get winner total wins
-        total_wins = await db_manager.get_ban_total_wins(winner.id)
-        if total_wins[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", total_wins[1]
-            ))
-        
-        # add stats field to embed
-        result_embed.add_field(
-            name="📈 Stats of winner",
-            value=f"""{winner.mention} current win streak```{winner_current_streak[0][0]}```
-            {winner.mention} highest win streak```{highest_win_streak[0][0]}```
-            {winner.mention} total wins```{total_wins[0][0]}```""",
-            inline=True
-        )
-        
-        # get loser current streak
-        loser_current_streak = await db_manager.get_current_loss_streak(loser.id)
-        if loser_current_streak[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", loser_current_streak[1]
-            ))
-        
-        # get loser highest streak
-        highest_loss_streak = await db_manager.get_highest_loss_streak(loser.id)
-        if highest_loss_streak[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", highest_loss_streak[1]
-            ))
-        
-        # get loser total losses
-        total_losses = await db_manager.get_ban_total_losses(loser.id)
-        if total_losses[0] == -1:
-            return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
-                "Something went wrong...", total_losses[1]
-            ))
-        
-        # add stats field to embed
-        result_embed.add_field(
-            name="📉 Stats of loser",
-            value=f"""{loser.mention} current loss streak```{loser_current_streak[0][0]}```
-            {loser.mention} highest loss streak```{highest_loss_streak[0][0]}```
-            {loser.mention} total losses```{total_losses[0][0]}```""",
-            inline=True
-        )
+            result_embed.add_field(
+                name="💪 added pushups",
+                value=f"```{amount}```",
+                inline=True
+            )
 
-        # edit embed with results of the 50/50
-        await interaction.edit_original_response(embed=result_embed)
-        
-        # wait one second so loser can still see in channel who won/lost
-        await asyncio.sleep(1)
+            result_embed.add_field(
+                name="📊 Total pushups",
+                value=f"```{total_pushups}```",
+                inline=True
+            )
 
-        banned_embed = embeds.DefaultEmbed(
-            f"You have been given pushups in {interaction.guild.name}!", user=loser
-        )
+            # **Leeg veld om layout consistent te houden**
+            result_embed.add_field(name="\u200b", value="\u200b", inline=True)
 
-        banned_embed.add_field(
-            name="💡 Reason",
-            value=f"```{self.reason}```",
-        )
+            # edit embed with results of the 50/50
+            await interaction.edit_original_response(embed=result_embed)
 
-        # add field to show you lost a 50/50
-        banned_embed.add_field(
-            name="🪦 You have lost a 50/50",
-            value=f"```You lost to {winner}```",
-            inline=False
-        )
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.user, self.ban_starter, self.bot, self.reason, callback_func))
 
-        await interaction.followup.send(embed=banned_embed)
-
-    @discord.ui.button(label="Rock Paper Scissors", style=discord.ButtonStyle.blurple, row=3, disabled=False, emoji='✂️')
+    @discord.ui.button(label="Rock Paper Scissors", style=discord.ButtonStyle.blurple, emoji='✂️')
     async def RPS_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
+        async def callback_func(amount):
+            view = RPSView(self.ban_starter, self.user, amount)
+            await interaction.edit_original_response(embed=embeds.DefaultEmbed(f"Rock Paper Scissors for {amount} pushups!"), view=view)
 
-        embed = discord.Embed(
-            title="Rock-Paper-Scissors",
-            description=f"{self.ban_starter.mention} challenges {self.user.mention} to a game of Rock-Paper-Scissors! (to the death)",
-            color=discord.Color.blurple(),
-        )
-        embed.set_footer(text="Click your choice below to play!")
-
-        view = RPSView(self.ban_starter, self.user)
-
-        message = await interaction.edit_original_response(embed=embed, view=view)
-        view.message = message
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.user, self.ban_starter, self.bot, self.reason, callback_func))
 
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
@@ -463,7 +453,55 @@ class BanTypeView(discord.ui.View):
             f"<@{interaction.user.id}> it's on sight now",
         ]
 
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.ban_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
         
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses))
+        
+        return is_possible
+        
+
+class Amount(discord.ui.View):
+    def __init__(self, user, ban_starter, bot, reason, callback_func):
+        super().__init__()
+        self.user = user
+        self.ban_starter = ban_starter
+        self.bot = bot
+        self.reason = reason
+        self.callback_func = callback_func
+
+    @discord.ui.button(label="10", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
+    async def amount_10(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, 10)
+
+    @discord.ui.button(label="25", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
+    async def amount_25(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, 25)
+
+    @discord.ui.button(label="50", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
+    async def amount_50(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.start_game(interaction, 50)
+
+    async def start_game(self, interaction: discord.Interaction, amount):
+        await self.callback_func(amount)
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
         # can only be triggered by the profile owner or an owner
         is_possible = (interaction.user.id == self.ban_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
         
@@ -475,10 +513,11 @@ class BanTypeView(discord.ui.View):
 
 
 class RPSView(discord.ui.View):
-    def __init__(self, player1, player2):
+    def __init__(self, player1, player2, amount):
         super().__init__()
         self.player1 = player1
         self.player2 = player2
+        self.amount = amount
         self.choices = {}
         self.add_buttons()
 
@@ -507,54 +546,73 @@ class RPSView(discord.ui.View):
             )
 
     async def process_results(self, interaction: discord.Interaction):
-        # Disable buttons after the game is decided
-        for child in self.children:
-            child.disabled = True
+        async def callback_func(amount):
+            # Disable buttons after the game is decided
+            for child in self.children:
+                child.disabled = True
 
-        # Get the choices
-        p1_choice = self.choices[self.player1]
-        p2_choice = self.choices[self.player2]
+            # Get the choices
+            p1_choice = self.choices[self.player1]
+            p2_choice = self.choices[self.player2]
 
-        # Determine the winner
-        winner = self.get_winner(p1_choice, p2_choice)
-        loser = self.player1 if winner != self.player1 else self.player2
-        if winner == "draw":
-            result = "It's a draw! 🤝\n Pushups to both lol"
-        elif winner == self.player1:
-            result = f"{self.player1.mention} wins! 🎉\n{self.player2.mention} gets the pushups!"
-        else:
-            result = f"{self.player2.mention} wins! 🎉\n{self.player1.mention} gets the pushups!"
+            # Determine the winner
+            winner = self.get_winner(p1_choice, p2_choice)
+            loser = self.player1 if winner != self.player1 else self.player2
+            if winner == "draw":
+                result = "It's a draw! 🤝\n Pushups to both lol"
+            elif winner == self.player1:
+                result = f"{self.player1.mention} wins! 🎉\n{self.player2.mention} gets the pushups!"
+            else:
+                result = f"{self.player2.mention} wins! 🎉\n{self.player1.mention} gets the pushups!"
 
-        # Send the results
-        embed = discord.Embed(
-            title="Rock-Paper-Scissors Results",
-            description=(
-                f"{self.player1.mention} chose {self.get_emoji(p1_choice)}\n"
-                f"{self.player2.mention} chose {self.get_emoji(p2_choice)}\n\n{result}"
-            ),
-            color=discord.Color.green(),
-        )
-        await interaction.response.edit_message(embed=embed, view=self)
-
-        banned_embed = embeds.DefaultEmbed(
-            f"You have been given pushups in {interaction.guild.name}!", user=loser
-        )
-
-        if winner == "draw":
-            
-            banned_embed.add_field(
-                name="💡 Reason",
-                value=f"```We do not draw in this hoe!```",
+            # Send the results
+            embed = discord.Embed(
+                title="Rock-Paper-Scissors Results",
+                description=(
+                    f"{self.player1.mention} chose {self.get_emoji(p1_choice)}\n"
+                    f"{self.player2.mention} chose {self.get_emoji(p2_choice)}\n\n{result}"
+                ),
+                color=discord.Color.green(),
             )
-            await interaction.followup.send(embed=banned_embed)
+            await interaction.response.edit_message(embed=embed, view=self)
 
-        else:
-            banned_embed.add_field(
-                name="💡 Reason",
-                value=f"```Lost a Rock Paper Scissors game to {winner}!```",
+            await db_manager.add_pushups(loser.id, amount)
+            total_pushups = await db_manager.get_pushups(loser.id)
+
+            # Nieuwe embed maken
+            pushup_embed = embeds.DefaultEmbed(
+                f"🏅 {winner} won!", f"{loser.mention} has {total_pushups} pushups to do", user=winner
             )
 
-            await interaction.followup.send(embed=banned_embed)
+            pushup_embed.add_field(
+                name="💪 Toegevoegde pushups",
+                value=f"```{amount}```",
+                inline=True
+            )
+
+            pushup_embed.add_field(
+                name="📊 Totaal aantal pushups",
+                value=f"```{total_pushups}```",
+                inline=True
+            )
+
+            await interaction.followup.send(embed=pushup_embed)
+
+            if winner == "draw":
+                
+                pushup_embed.add_field(
+                    name="💡 Reason",
+                    value=f"```We do not draw in this hoe!```",
+                )
+                await interaction.followup.send(embed=pushup_embed)
+
+            else:
+                pushup_embed.add_field(
+                    name="💡 Reason",
+                    value=f"```Lost a Rock Paper Scissors game to {winner}!```",
+                )
+
+                await interaction.followup.send(embed=pushup_embed)
 
     def get_winner(self, p1, p2):
         """Determines the winner based on the game rules."""

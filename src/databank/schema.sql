@@ -43,3 +43,8 @@ CREATE TABLE IF NOT EXISTS bangamble (
   total_wins INTEGER DEFAULT 0,
   total_losses INTEGER DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS pushups (
+    user_id BIGINT PRIMARY KEY,
+    count INT DEFAULT 0
+);

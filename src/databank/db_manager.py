@@ -489,6 +489,7 @@ async def delete_reminder(reminder_id: int) -> bool:
             print(f"Error deleting reminder: {err}")
             return False
 
+### GAMBLE ###
 
 async def increment_ban_gamble_wins(user_id):
 
@@ -793,3 +794,35 @@ async def get_ban_total_losses(user_id) -> list:
             
     except Exception as err:
         return [-1, err]
+    
+async def add_pushups(user_id: int, count: int):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO pushups (user_id, count) VALUES (%s, %s)"
+                    "ON CONFLICT (user_id) DO UPDATE SET count = pushups.count + EXCLUDED.count",
+                    (user_id, count)
+                )
+                con.commit()
+        return True
+    
+    except Exception as e:
+        return False
+    
+async def get_pushups(user_id: int):
+    try:
+        with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute("SELECT count FROM pushups WHERE user_id = %s", (user_id,))
+                result = cursor.fetchone()
+                return result[0] if result else 0
+            
+    except Exception as e:
+        return 0
