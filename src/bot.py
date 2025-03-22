@@ -37,7 +37,6 @@ def save_ids_func(cmds):
     """
     for cmd in cmds:
         bot.command_ids[cmd.name] = cmd.id
-        bot.logger.info(f"Saved id for {cmd.name} - {cmd.id}")
 
 
 bot.save_ids = save_ids_func
@@ -118,6 +117,7 @@ async def on_ready() -> None:
     bot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
     bot.logger.info("-------------------")
 
+    # Start the loops
     try:
         check_remindme.start()
         change_status_loop.start()
@@ -125,6 +125,7 @@ async def on_ready() -> None:
     except Exception as e:
         bot.logger.warning(e)
 
+    # Sync the commands
     cmds = await bot.tree.sync()
     bot.save_ids(cmds)
 
