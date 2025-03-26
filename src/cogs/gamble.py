@@ -230,16 +230,37 @@ class PushupTypeView(discord.ui.View):
 
     @discord.ui.button(label="Mines", style=discord.ButtonStyle.blurple, emoji='💣')
     async def mines_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        async def callback_func(amount, interaction):
-            view = MinesView(self.gamble_starter, self.user, amount)
-            await interaction.response.edit_message(embed=embeds.DefaultEmbed("💣 Mines!", f"Mines left: {view.transform_value(amount)}"), view=view)
+        # Definieer de amount waarde hier
+        amount = 25  # Voorbeeldwaarde, pas dit aan volgens je logica
 
+        # Creëer het dropdown menu voor het kiezen van het aantal mines
+        options = [discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 24)]  # Keuzes van 1 tot 23 mines
+        select = discord.ui.Select(placeholder="Select the number of mines", options=options)
+        
+        async def select_callback(interaction: discord.Interaction):
+            # Haal het aantal mines op uit de keuze van de speler
+            mines_amount = int(select.values[0])
+            
+            # Start het mines game met het gekozen aantal mines en amount
+            view = MinesView(self.gamble_starter, self.user, amount, mines_amount)
+            await interaction.response.edit_message(
+                embed=embeds.DefaultEmbed("💣 Mines!", f"Number of mines: {mines_amount}"),  # Aangepast naar logischer bericht
+                view=view
+            )
+            
+        select.callback = select_callback
+
+        # Maak een nieuwe View aan en voeg de select toe
+        view = discord.ui.View()
+        view.add_item(select)
+
+        # Verzend het dropdown-menu en de uitleg voor de speler
         await interaction.response.edit_message(
             embed=embeds.DefaultEmbed(
                 "Choose pushup amount!",  
-                "10 pushups = click 5 safe spots\n25 pushups = click 10 safe spots\n50 pushups = click 20 safe spots"
+                "Select the number of mines (1-23) to play"
             ), 
-            view=Amount(self.gamble_starter, self.bot, callback_func)
+            view=view
         )
 
     async def interaction_check(self, interaction: discord.Interaction):
@@ -436,35 +457,54 @@ class RPSView(discord.ui.View):
     def get_emoji(self, choice):
         """Returns the emoji for a given choice."""
         return {"rock": "🪨", "paper": "📜", "scissors": "✂️"}.get(choice, "❓")
-    
+
 
 class MinesView(discord.ui.View):
-    def __init__(self, player1, player2, amount):
+    def __init__(self, player1, player2, amount, mines_amount):
         super().__init__()
         self.player1 = player1
         self.player2 = player2
         self.amount = amount
-        self.tiles_left = self.transform_value(amount)
+        self.mines_amount = mines_amount
+        self.tiles_left = 24 - mines_amount
+        self.pushups = 0
+        self.selected_tiles = 0
+        self.required_choices = self.calculate_required_choices(mines_amount)
         
-          # Randomly select 5 positions for mines
+        # Randomly select the positions for mines (excluding the last button)
         self.buttons = []
-
-        # Create 25 buttons for the grid
-        mines = random.sample(range(25), 5)
+        mines = random.sample(range(24), mines_amount)  # Only pick from first 24 buttons
+        
         for i in range(25):
-            is_mine = i in mines
-            button = discord.ui.Button(label="❓", style=discord.ButtonStyle.blurple, row=i//5, custom_id=f"button_{i}_mine_{is_mine}")
-            button.callback = self.button_click
+            if i == 24:
+                # The last button is the cashout button
+                button = discord.ui.Button(
+                    label="💰 Cashout", 
+                    style=discord.ButtonStyle.green, 
+                    row=i // 5, 
+                    custom_id="cashout"
+                )
+                button.callback = self.cashout_click
+            else:
+                is_mine = i in mines
+                button = discord.ui.Button(
+                    label="❓",
+                    style=discord.ButtonStyle.blurple,
+                    row=i // 5,
+                    custom_id=f"button_{i}_mine_{is_mine}"
+                )
+                button.callback = self.button_click
+
             self.buttons.append(button)
             self.add_item(button)
 
-
     async def button_click(self, interaction: discord.Interaction):
-        # check if button is a mine
+        # Check if button is a mine
         custom_id = interaction.data['custom_id']
-        button_index = int(custom_id.split('_')[1])  # Extract button index from the custom_id
+        button_index = int(custom_id.split('_')[1])  # Extract button index
         is_mine = custom_id.split('_')[3] == 'True'
 
+        # Disable the clicked button
         for button in self.buttons:
             if button.custom_id == custom_id:
                 button.disabled = True
@@ -472,82 +512,108 @@ class MinesView(discord.ui.View):
         button = self.buttons[button_index]
 
         self.tiles_left -= 1
-        if self.tiles_left == 0 and not is_mine:
-            # End the game
-            return await self.end_game(interaction, win=True)
+        self.selected_tiles += 1
 
+        # Bereken de pushups voor de huidige veilige tegel volgens de formule
+        pushups_for_tile = self.calculate_pushups()
+
+        # Vermenigvuldig het aantal pushups per veilige tegel met de berekende waarde
+        self.pushups += pushups_for_tile
+
+        # Update embed met de huidige toestand
+        embed = interaction.message.embeds[0]
+        embed.description = f"Tiles left: {self.tiles_left}\nPushups so far: {int(self.pushups)}"
+
+        # If the user clicks on a mine, game ends
         if is_mine:
-            # If it's a mine, turn the button red (bomb)
             button.style = discord.ButtonStyle.danger
             button.label = "💣"
             return await self.end_game(interaction, win=False)
-        
+
         else:
-            # If it's not a mine, turn it green (safe) and disable it
             button.style = discord.ButtonStyle.success
             button.label = "🏳️"
 
-        embed = interaction.message.embeds[0]
-        embed.description = f"Mines left: {self.tiles_left}"
+        # Update the 'Next Tile Pushups' field value, if it exists, otherwise add it
+        next_pushups = self.calculate_pushups()
+        next_pushups_field = None
+        for field in embed.fields:
+            if field.name == "Next Tile Pushups:":
+                next_pushups_field = field
+
+        if next_pushups_field:
+            # Update the value of the existing field
+            next_pushups_field.value = f"```{next_pushups}```"
+        else:
+            # Add the "Next Tile Pushups" field for the first time
+            embed.add_field(
+                name="Next Tile Pushups:",
+                value=f"```{next_pushups}```",
+                inline=True
+            )
+
+        # Update the embed and view
         await interaction.response.edit_message(embed=embed, view=self)
 
+        # If no tiles are left, the game ends
+        if self.tiles_left == 0:
+            return await self.end_game(interaction, win=True)
 
-    async def end_game(self, interaction, win):
+
+    async def cashout_click(self, interaction: discord.Interaction):
+        """Handles the cashout button, stopping the game without penalties."""
+        await self.end_game(interaction, win=True, cashout=True)
+
+    async def end_game(self, interaction, win, cashout=False):
         # Disable all buttons
         for button in self.buttons:
             button.disabled = True
 
-        winner = self.player1 if win else self.player2
-        loser = self.player2 if win else self.player1
+        if cashout:
+            embed = embeds.DefaultEmbed(
+                "💰 Cashout!", 
+                f"{self.player1.mention} chose to cash out safely! Pushups given: {int(self.pushups)}",
+            )
+        else:
+            winner = self.player1 if win else self.player2
+            loser = self.player2 if win else self.player1
 
-        embed = embeds.DefaultEmbed(
-            f"🏅 {winner} won!", 
-            f"{loser.mention} has pushups to do", 
-            user=winner,
-        )
-        embed.add_field(
-            name="💪 Added pushups",
-            value=f"```{self.amount}```",
-            inline=True
-        )
+            embed = embeds.DefaultEmbed(
+                f"🏅 {winner} won!", 
+                f"{loser.mention} has pushups to do", 
+                user=winner,
+            )
+            embed.add_field(
+                name="💪 Added pushups",
+                value=f"```{int(self.pushups)}```",
+                inline=True
+            )
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    async def interaction_check(self, interaction: discord.Interaction):
-        """Check that the user is the one who is clicking buttons
-        Args:
-            interaction (discord.Interaction): Users Interaction
-
-        Returns:
-            bool
-        """
-        responses = [
-            f"<@{interaction.user.id}> shatap lil bro",
-            f"<@{interaction.user.id}> you are NOT him",
-            f"<@{interaction.user.id}> blud thinks he's funny",
-            f"<@{interaction.user.id}> it's on sight now",
-        ]
-
-        # can only be triggered by the profile owner or an owner
-        is_possible = (interaction.user.id == self.player1.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+    def calculate_pushups(self):
+        """Calculate the pushups for the current tile based on the formula."""
+        # P(m) = a * 1/(T - m) + b
+        T = 24  # Total tiles
+        a = 5  # Example factor
+        b = 1  # Example base value
+        m = self.mines_amount  # Number of mines
         
-        # send message if usr cannot interact with button
-        if not is_possible:
-            await interaction.response.send_message(random.choice(responses), ephemeral=True)
-        
-        return is_possible
+        # Pushups for the current tile
+        pushups = a * (1 / (T - m)) + b
+        return pushups
 
-    def transform_value(self, value):
-        # Define the transformation rules
-        if value == 10:
-            return 5
-        elif value == 25:
-            return 10
-        elif value == 50:
-            return 15
+    def calculate_required_choices(self, mines_amount):
+        """Calculate how many safe tiles the player needs to choose before cashing out."""
+        if mines_amount >= 22:
+            return 0  # Immediate cashout possible
+        elif mines_amount >= 20:
+            return 1
+        elif mines_amount >= 10:
+            return 2
         else:
-            return value  # If no rule applies, return the value as is
-
+            return 3
+    
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
