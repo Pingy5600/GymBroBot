@@ -48,7 +48,7 @@ class Gamble(commands.Cog, name="gamble"):
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
-    @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
+    @discord.app_commands.checks.cooldown(rate=1, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member) -> None:
@@ -74,12 +74,12 @@ class Gamble(commands.Cog, name="gamble"):
         gamble_explanation_embed = embeds.DefaultEmbed("Pick your type!")
         gamble_explanation_embed.add_field(
             name="🎰 50/50",
-            value=f"This is a 50/50. Either you ({interaction.user.mention}) or {user.mention} are banned.",
+            value=f"This is a 50/50. Either you ({interaction.user.mention}) or {user.mention} gets the pushups.",
             inline=True
         )
         gamble_explanation_embed.add_field(
             name="✂️ Rock Paper Scissors",
-            value=f"Play Rock Paper Scissors against each other. Loser gets banned."
+            value=f"Play Rock Paper Scissors against each other."
         )
         gamble_explanation_embed.add_field(
             name="💣 Mines",
@@ -574,13 +574,18 @@ class MinesView(discord.ui.View):
                 "💰 Cashout!", 
                 f"{self.player1.mention} chose to cash out safely! Pushups given: {int(self.pushups)}",
             )
+            await db_manager.add_pushups(self.player2.id, int(self.pushups))
+
         else:
             winner = self.player1 if win else self.player2
             loser = self.player2 if win else self.player1
 
+            await db_manager.add_pushups(loser.id, int(self.pushups))
+            total = await db_manager.get_pushups(loser.id)
+
             embed = embeds.DefaultEmbed(
                 f"🏅 {winner} won!", 
-                f"{loser.mention} has pushups to do", 
+                f"{loser.mention} has a total of {total} pushups.", 
                 user=winner,
             )
             embed.add_field(
@@ -613,7 +618,29 @@ class MinesView(discord.ui.View):
             return 2
         else:
             return 3
-    
+
+
+class ResetCooldownView(discord.ui.View):
+    def __init__(self, image, user, cooldown):
+        super().__init__(timeout=None)
+        self.image = image
+        self.user = user
+        self.cooldown = cooldown
+
+    @discord.ui.button(label="Reset Cooldown", style=discord.ButtonStyle.primary, emoji="⏲️")
+    async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        await db_manager.add_pushups(self.user.id, 20)
+        total = await db_manager.get_pushups(self.user.id)
+        self.cooldown.reset()
+
+        embed = embeds.OperationSucceededEmbed("Cooldown Reset", f"🥳 Congratulations! You are a crippling gambling addict. You also have 20 extra pushups to complete, making a total of {total} pushups.")
+        embed.set_image(url=self.image)
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+        
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))
