@@ -48,11 +48,10 @@ class Gamble(commands.Cog, name="gamble"):
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
-    @discord.app_commands.describe(reason="Reason for the pushups")
     @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
-    async def pushup(self, interaction, user: discord.Member, reason: str) -> None:
+    async def pushup(self, interaction, user: discord.Member) -> None:
         """Give someone pushups
 
         Args:
@@ -66,10 +65,15 @@ class Gamble(commands.Cog, name="gamble"):
             return await interaction.followup.send(embed=embeds.OperationFailedEmbed(
                 "You can't give pushups to a bot!"
             ))
+        
+        if user == interaction.user:
+            return await interaction.followup.send(embed=embeds.OperationFailedEmbed(
+                "You can't give pushups to yourself"
+            ))
 
         gamble_explanation_embed = embeds.DefaultEmbed("Pick your type!")
         gamble_explanation_embed.add_field(
-            name="🎰 Gamble",
+            name="🎰 50/50",
             value=f"This is a 50/50. Either you ({interaction.user.mention}) or {user.mention} are banned.",
             inline=True
         )
@@ -82,22 +86,17 @@ class Gamble(commands.Cog, name="gamble"):
             value=f"25 possible mines. You have to guess where they are. If you hit one, you lose."
         )
 
-        await interaction.followup.send(embed=gamble_explanation_embed, view=PushupTypeView(user, interaction.user, self.bot, reason))
-
-
-async def setup(bot):
-    await bot.add_cog(Gamble(bot))
+        await interaction.followup.send(embed=gamble_explanation_embed, view=PushupTypeView(user, interaction.user, self.bot))
 
 
 class PushupTypeView(discord.ui.View):
-    def __init__(self, user, gamble_starter, bot, reason, timeout=180):
+    def __init__(self, user, gamble_starter, bot, timeout=180):
         super().__init__(timeout=timeout)
         self.user = user
         self.gamble_starter = gamble_starter
         self.bot = bot
-        self.reason = reason
 
-    @discord.ui.button(label="Gamble", style=discord.ButtonStyle.blurple, emoji='🎰')
+    @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         async def callback_func(amount, interaction):
             urls = [
@@ -110,7 +109,7 @@ class PushupTypeView(discord.ui.View):
             
             gamble_embed = embeds.DefaultEmbed(f"**🎰 {self.gamble_starter.display_name} vs. {self.user.display_name}**")
             gamble_embed.set_image(url=random.choice(urls))
-            await interaction.edit_original_response(embed=gamble_embed, view=None)
+            await interaction.response.edit_message(embed=gamble_embed, view=None)
 
             # wait 4 seconds
             await asyncio.sleep(4)
@@ -166,9 +165,7 @@ class PushupTypeView(discord.ui.View):
             # add stats field to embed
             result_embed.add_field(
                 name="📈 Stats of winner",
-                value=f"""{winner.mention} current win streak```{winner_current_streak[0][0]}```
-                {winner.mention} highest win streak```{highest_win_streak[0][0]}```
-                {winner.mention} total wins```{total_wins[0][0]}```""",
+                value=f"""{winner.mention} current win streak```{winner_current_streak[0][0]}```\n{winner.mention} highest win streak```{highest_win_streak[0][0]}```\n{winner.mention} total wins```{total_wins[0][0]}```""",
                 inline=True
             )
             
@@ -196,9 +193,7 @@ class PushupTypeView(discord.ui.View):
             # add stats field to embed
             result_embed.add_field(
                 name="📉 Stats of loser",
-                value=f"""{loser.mention} current loss streak```{loser_current_streak[0][0]}```
-                {loser.mention} highest loss streak```{highest_loss_streak[0][0]}```
-                {loser.mention} total losses```{total_losses[0][0]}```""",
+                value=f"""{loser.mention} current loss streak```{loser_current_streak[0][0]}```\n{loser.mention} highest loss streak```{highest_loss_streak[0][0]}```\n{loser.mention} total losses```{total_losses[0][0]}```""",
                 inline=True
             )
 
@@ -223,7 +218,7 @@ class PushupTypeView(discord.ui.View):
             # edit embed with results of the 50/50
             await interaction.edit_original_response(embed=result_embed)
 
-        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, self.reason, callback_func))
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
 
     @discord.ui.button(label="Rock Paper Scissors", style=discord.ButtonStyle.blurple, emoji='✂️')
     async def RPS_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -231,7 +226,7 @@ class PushupTypeView(discord.ui.View):
             view = RPSView(self.gamble_starter, self.user, amount)
             await interaction.response.edit_message(embed=embeds.DefaultEmbed(f"Rock Paper Scissors for {amount} pushups!"), view=view)
 
-        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, self.reason, callback_func))
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
 
     @discord.ui.button(label="Mines", style=discord.ButtonStyle.blurple, emoji='💣')
     async def mines_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -244,7 +239,7 @@ class PushupTypeView(discord.ui.View):
                 "Choose pushup amount!",  
                 "10 pushups = click 5 safe spots\n25 pushups = click 10 safe spots\n50 pushups = click 20 safe spots"
             ), 
-            view=Amount(self.gamble_starter, self.bot, self.reason, callback_func)
+            view=Amount(self.gamble_starter, self.bot, callback_func)
         )
 
     async def interaction_check(self, interaction: discord.Interaction):
@@ -273,11 +268,10 @@ class PushupTypeView(discord.ui.View):
         
 
 class Amount(discord.ui.View):
-    def __init__(self, gamble_starter, bot, reason, callback_func):
+    def __init__(self, gamble_starter, bot, callback_func):
         super().__init__()
         self.gamble_starter = gamble_starter
         self.bot = bot
-        self.reason = reason
         self.callback_func = callback_func
 
     @discord.ui.button(label="10", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
@@ -364,13 +358,56 @@ class RPSView(discord.ui.View):
 
         # Determine the winner
         winner = self.get_winner(p1_choice, p2_choice)
-        loser = self.player1 if winner != self.player1 else self.player2
+
         if winner == "draw":
-            result = "It's a draw! 🤝\n Pushups to both lol"
-        elif winner == self.player1:
-            result = f"{self.player1.mention} wins! 🎉\n{self.player2.mention} gets the pushups!"
+            result = "It's a draw! 🤝\nBoth players have to do pushups!"
+
+            # Add pushups to both players
+            await db_manager.add_pushups(self.player1.id, self.amount)
+            await db_manager.add_pushups(self.player2.id, self.amount)
+
+            total_pushups_p1 = await db_manager.get_pushups(self.player1.id)
+            total_pushups_p2 = await db_manager.get_pushups(self.player2.id)
+
+            pushup_embed = embeds.DefaultEmbed(
+                "🏅 It's a draw!",
+                f"Both {self.player1.mention} and {self.player2.mention} have pushups to do!"
+            )
+
+            pushup_embed.add_field(
+                name=f"💪 {self.player1.display_name} pushups",
+                value=f"```{self.amount}``` \n```Total: {total_pushups_p1}```",
+                inline=True
+            )
+
+            pushup_embed.add_field(
+                name=f"💪 {self.player2.display_name} pushups",
+                value=f"```{self.amount}``` \n```Total: {total_pushups_p2}```",
+                inline=True
+            )
+
         else:
-            result = f"{self.player2.mention} wins! 🎉\n{self.player1.mention} gets the pushups!"
+            loser = self.player1 if winner != self.player1 else self.player2
+            result = f"{winner.mention} wins! 🎉\n{loser.mention} gets the pushups!"
+
+            await db_manager.add_pushups(loser.id, self.amount)
+            total_pushups = await db_manager.get_pushups(loser.id)
+
+            pushup_embed = embeds.DefaultEmbed(
+                f"🏅 {winner} won!", f"{loser.mention} has {total_pushups} pushups to do", user=winner
+            )
+
+            pushup_embed.add_field(
+                name="💪 Added pushups",
+                value=f"```{self.amount}```",
+                inline=True
+            )
+
+            pushup_embed.add_field(
+                name="📊 Total pushups",
+                value=f"```{total_pushups}```",
+                inline=True
+            )
 
         # Send the results
         embed = discord.Embed(
@@ -382,44 +419,8 @@ class RPSView(discord.ui.View):
             color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=embed, view=self)
-
-        await db_manager.add_pushups(loser.id, self.amount)
-        total_pushups = await db_manager.get_pushups(loser.id)
-
-        # Nieuwe embed maken
-        pushup_embed = embeds.DefaultEmbed(
-            f"🏅 {winner} won!", f"{loser.mention} has {total_pushups} pushups to do", user=winner
-        )
-
-        pushup_embed.add_field(
-            name="💪 Toegevoegde pushups",
-            value=f"```{self.amount}```",
-            inline=True
-        )
-
-        pushup_embed.add_field(
-            name="📊 Totaal aantal pushups",
-            value=f"```{total_pushups}```",
-            inline=True
-        )
-
         await interaction.followup.send(embed=pushup_embed)
 
-        if winner == "draw":
-            
-            pushup_embed.add_field(
-                name="💡 Reason",
-                value=f"```We do not draw in this hoe!```",
-            )
-            await interaction.followup.send(embed=pushup_embed)
-
-        else:
-            pushup_embed.add_field(
-                name="💡 Reason",
-                value=f"```Lost a Rock Paper Scissors game to {winner}!```",
-            )
-
-            await interaction.followup.send(embed=pushup_embed)
 
     def get_winner(self, p1, p2):
         """Determines the winner based on the game rules."""
@@ -489,7 +490,7 @@ class MinesView(discord.ui.View):
         embed = interaction.message.embeds[0]
         embed.description = f"Mines left: {self.tiles_left}"
         await interaction.response.edit_message(embed=embed, view=self)
-            
+
 
     async def end_game(self, interaction, win):
         # Disable all buttons
@@ -505,13 +506,36 @@ class MinesView(discord.ui.View):
             user=winner,
         )
         embed.add_field(
-            name="💪 Toegevoegde pushups",
+            name="💪 Added pushups",
             value=f"```{self.amount}```",
             inline=True
         )
 
         await interaction.response.edit_message(embed=embed, view=self)
-    
+
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.player1.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+        
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+        
+        return is_possible
 
     def transform_value(self, value):
         # Define the transformation rules
@@ -523,3 +547,7 @@ class MinesView(discord.ui.View):
             return 15
         else:
             return value  # If no rule applies, return the value as is
+
+
+async def setup(bot):
+    await bot.add_cog(Gamble(bot))
