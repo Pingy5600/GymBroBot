@@ -467,7 +467,7 @@ class MinesView(discord.ui.View):
         self.amount = amount
         self.mines_amount = mines_amount
         self.tiles_left = 24 - mines_amount
-        self.pushups = 0
+        self.pushups = 1
         self.selected_tiles = 0
         self.required_choices = self.calculate_required_choices(mines_amount)
         
@@ -475,28 +475,30 @@ class MinesView(discord.ui.View):
         self.buttons = []
         mines = random.sample(range(24), mines_amount)  # Only pick from first 24 buttons
         
-        for i in range(25):
-            if i == 24:
-                # The last button is the cashout button
-                button = discord.ui.Button(
-                    label="💰 Cashout", 
-                    style=discord.ButtonStyle.green, 
-                    row=i // 5, 
-                    custom_id="cashout"
-                )
-                button.callback = self.cashout_click
-            else:
-                is_mine = i in mines
-                button = discord.ui.Button(
-                    label="❓",
-                    style=discord.ButtonStyle.blurple,
-                    row=i // 5,
-                    custom_id=f"button_{i}_mine_{is_mine}"
-                )
-                button.callback = self.button_click
+        for i in range(24):
+            is_mine = i in mines
+            button = discord.ui.Button(
+                label="❓",
+                style=discord.ButtonStyle.blurple,
+                row=i // 5,
+                custom_id=f"button_{i}_mine_{is_mine}"
+            )
+            button.callback = self.button_click
 
             self.buttons.append(button)
             self.add_item(button)
+
+        # The last button is the cashout button
+        button = discord.ui.Button(
+            label="💰 Cashout", 
+            style=discord.ButtonStyle.green, 
+            row=i // 5, 
+            custom_id="cashout"
+        )
+        button.callback = self.cashout_click
+
+        self.buttons.append(button)
+        self.add_item(button)
 
     async def button_click(self, interaction: discord.Interaction):
         # Check if button is a mine
@@ -504,57 +506,37 @@ class MinesView(discord.ui.View):
         button_index = int(custom_id.split('_')[1])  # Extract button index
         is_mine = custom_id.split('_')[3] == 'True'
 
-        # Disable the clicked button
-        for button in self.buttons:
-            if button.custom_id == custom_id:
-                button.disabled = True
-
         button = self.buttons[button_index]
-
-        self.tiles_left -= 1
-        self.selected_tiles += 1
-
-        # Bereken de pushups voor de huidige veilige tegel volgens de formule
-        pushups_for_tile = self.calculate_pushups()
-
-        # Vermenigvuldig het aantal pushups per veilige tegel met de berekende waarde
-        self.pushups = 0
-        while self.pushups == 0:
-            self.pushups += pushups_for_tile
-
-        self.pushups *= pushups_for_tile
-
-        # Update embed met de huidige toestand
-        embed = interaction.message.embeds[0]
-        embed.description = f"Tiles left: {self.tiles_left}\nPushups so far: {(self.pushups)}"
+        button.disabled = True
 
         # If the user clicks on a mine, game ends
         if is_mine:
             button.style = discord.ButtonStyle.danger
             button.label = "💣"
             return await self.end_game(interaction, win=False)
+        
+        # Bereken de pushups voor de huidige veilige tegel volgens de formule
+        pushup_multiplier = self.calculate_pushups()
+        self.pushups *= pushup_multiplier
 
-        else:
-            button.style = discord.ButtonStyle.success
-            button.label = "🏳️"
+        # Field is safe, update button and values
+        button.style = discord.ButtonStyle.success
+        button.label = "🏳️"
+        self.tiles_left -= 1
+        self.selected_tiles += 1
+
+        # Update embed met de huidige toestand
+        embed = interaction.message.embeds[0]
+        embed.description = f"Tiles left: **{self.tiles_left}**\nPushups so far: **{self.pushups}**"
 
         # Update the 'Next Tile Pushups' field value, if it exists, otherwise add it
-        next_pushups = self.calculate_pushups()
-        next_pushups_field = None
-        for field in embed.fields:
-            if field.name == "Next Tile Pushups:":
-                next_pushups_field = field
-
-        if next_pushups_field:
-            # Update the value of the existing field
-            next_pushups_field.value = f"```{next_pushups}```"
-        else:
-            # Add the "Next Tile Pushups" field for the first time
-            embed.add_field(
-                name="Next Tile Pushups:",
-                value=f"```{next_pushups}```",
-                inline=True
-            )
+        next_pushups_multiplier = self.calculate_pushups() # we calculate pushups again because the tiles left and selected tiles changed
+        embed.clear_fields()
+        embed.add_field(
+            name="Next Tile Pushups:",
+            value=f"```{self.pushups * next_pushups_multiplier}```",
+            inline=True
+        )
 
         # Update the embed and view
         await interaction.response.edit_message(embed=embed, view=self)
