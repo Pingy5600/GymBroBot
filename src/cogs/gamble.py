@@ -48,7 +48,7 @@ class Gamble(commands.Cog, name="gamble"):
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
-    @discord.app_commands.checks.cooldown(rate=1, per=2700, key=lambda i: (i.guild_id, i.user.id))
+    @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member) -> None:
@@ -518,11 +518,15 @@ class MinesView(discord.ui.View):
         pushups_for_tile = self.calculate_pushups()
 
         # Vermenigvuldig het aantal pushups per veilige tegel met de berekende waarde
-        self.pushups += pushups_for_tile
+        self.pushups = 0
+        while self.pushups == 0:
+            self.pushups += pushups_for_tile
+
+        self.pushups *= pushups_for_tile
 
         # Update embed met de huidige toestand
         embed = interaction.message.embeds[0]
-        embed.description = f"Tiles left: {self.tiles_left}\nPushups so far: {int(self.pushups)}"
+        embed.description = f"Tiles left: {self.tiles_left}\nPushups so far: {(self.pushups)}"
 
         # If the user clicks on a mine, game ends
         if is_mine:
