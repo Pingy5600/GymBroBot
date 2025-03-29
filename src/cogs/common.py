@@ -110,6 +110,7 @@ class Common(commands.Cog, name="common"):
         # Haal de kleur op uit COLOR_MAP
         user_id = str(user.id)
         user_color = COLOR_MAP.get(user_id, None)
+        total_pushups = await db_manager.get_pushups(user.id)
         
         if user_color:
             # Embed met de specifieke kleur van de gebruiker
@@ -118,7 +119,7 @@ class Common(commands.Cog, name="common"):
                 description="This is your profile! Here is your own color",
                 color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
             )
-            embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+            embed.add_field(name="Pushups to do", value=f"```{total_pushups}```", inline=True)
 
         else:
             # Standaard embed als de gebruiker geen kleur heeft
@@ -127,6 +128,8 @@ class Common(commands.Cog, name="common"):
                 description="You have not set a custom color.",
                 color=discord.Color.default()
             )
+            embed.add_field(name="Pushups to do", value=f"```{total_pushups}```", inline=True)
+
 
         embed.set_thumbnail(url=user.display_avatar.url)
 

@@ -9,8 +9,9 @@ from discord.ext import commands
 from autocomplete import getMetaFromExercise
 import checks
 import embeds
+from exceptions import InvalidPushups
 from helpers import db_manager
-from validations import validateAndCleanWeight
+from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
 
 class Gamble(commands.Cog, name="gamble"):
     def __init__(self,bot):
@@ -45,6 +46,49 @@ class Gamble(commands.Cog, name="gamble"):
         embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
         await interaction.response.send_message(embed=embed)
 
+
+    @pushup_group.command(name="done", description="Lowers the total pushups if you have done them. Be honest!")
+    @discord.app_commands.describe(done="The number of pushups you've completed", user="Which user")
+    async def done(self, interaction: discord.Interaction, done: int, user: discord.User = None):
+        await interaction.response.defer(thinking=True)
+
+        if user is None:
+            user = interaction.user
+
+        validatePushups(done)
+        validateNotBot(user)
+        validatePermissions(user, interaction)
+        
+        # Haal het totaal aantal pushups voor de gebruiker op
+        total_pushups = await db_manager.get_pushups(interaction.user.id)
+
+        # Zorg ervoor dat het aantal pushups dat is gedaan niet groter is dan het totaal
+        if done > total_pushups:
+            raise InvalidPushups()
+
+        # Verminder het aantal pushups
+        new_total = total_pushups - done
+
+        # Werk de pushups bij in de database
+        success = await db_manager.add_pushups(interaction.user.id, -done)
+
+        if success:
+            pushup_embed = embeds.DefaultEmbed(
+                f"Great job {user.display_name} 💪",
+                f"Successfully removed {done} pushups from your total."
+            )
+
+            pushup_embed.add_field(
+                name="📊 Total pushups",
+                value=f"```{total_pushups}```",
+                inline=True
+            )
+            pushup_embed.set_footer(text="The time to gamble is now!")
+            await interaction.followup.send(embed=pushup_embed)
+
+        else:
+            raise InvalidPushups()
+        
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
@@ -518,7 +562,6 @@ class MinesView(discord.ui.View):
         # Bereken de pushups voor de huidige veilige tegel volgens de formule
         pushup_multiplier = self.calculate_pushups()
         self.pushups *= pushup_multiplier
-
         # Field is safe, update button and values
         button.style = discord.ButtonStyle.success
         button.label = "🏳️"
@@ -586,12 +629,13 @@ class MinesView(discord.ui.View):
         """Calculate the pushups for the current tile based on the formula."""
         # P(m) = a * 1/(T - m) + b
         T = 24  # Total tiles
-        a = 5  # Example factor
-        b = 1  # Example base value
+        a = 6.25  # Example factor
+        b = -2.8  # Example base value
+        c = 0.6
         m = self.mines_amount  # Number of mines
         
         # Pushups for the current tile
-        pushups = a * (1 / (T - m)) + b
+        pushups = c * a * (T / (T - m)) + b
         return pushups
 
     def calculate_required_choices(self, mines_amount):

@@ -99,7 +99,7 @@ class PR(commands.Cog, name="pr"):
 
 
     @command_pr_group.command(name="delete", description="Delete a specific PR")
-    @discord.app_commands.describe(exercise="Exercise for the PR")
+    @discord.app_commands.describe(exercise="Exercise for the PR", user="Which user")
     @discord.app_commands.autocomplete(exercise=exercise_autocomplete)
     async def delete_pr(
         self, 

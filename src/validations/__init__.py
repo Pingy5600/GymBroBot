@@ -1,4 +1,4 @@
-from exceptions import (BotNotUser, DuplicateUsers, InvalidReps, InvalidWeight,
+from exceptions import (BotNotUser, DuplicateUsers, InvalidPushups, InvalidReps, InvalidWeight,
                         NoEntries, NoPermission)
 
 
@@ -51,3 +51,7 @@ def validatePermissions(user, interaction):
 def validateUserList(users):
     if len(users) != len(set(users)):
         raise DuplicateUsers()
+    
+def validatePushups(pushups_done):
+    if pushups_done <= 0:
+        raise InvalidPushups()
