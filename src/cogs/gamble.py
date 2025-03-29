@@ -129,6 +129,10 @@ class Gamble(commands.Cog, name="gamble"):
             name="💣 Mines",
             value=f"25 possible mines. You have to guess where they are. If you hit one, you lose."
         )
+        gamble_explanation_embed.add_field(
+            name="💥 Russian Roulette",
+            value="Choose the amount bullets in the chamber and pull the trigger. If you dare."
+        )
 
         await interaction.followup.send(embed=gamble_explanation_embed, view=PushupTypeView(user, interaction.user, self.bot))
 
@@ -307,6 +311,24 @@ class PushupTypeView(discord.ui.View):
             view=view
         )
 
+    @discord.ui.button(label="Russian Roulette", style=discord.ButtonStyle.blurple, emoji="💥")
+    async def russian_roulette_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        async def callback_func(amount, interaction):
+            view = discord.ui.View()
+            view.add_item(BulletSelect(self.gamble_starter, self.user, amount))
+            
+            embed = embeds.DefaultEmbed(
+                "💥 With how many bullets do you want to play?",
+                "There are 6 spots in the chamber"
+            )
+            embed.add_field(
+                name="🎲 Odds",
+                value=f"```1 bullet  -> {round(amount*0.25)} pushups\n2 bullets -> {round(amount*0.5)} pushups \n3 bullets -> {amount} pushups\n4 bullets -> {round(amount*1.5)} pushups\n5 bullets -> {round(amount*1.75)} pushups\n6 bullets -> {round(amount*2)} pushups```",
+            )
+            await interaction.response.edit_message(embed=embed, view=view)
+
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
+
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
         Args:
@@ -327,7 +349,7 @@ class PushupTypeView(discord.ui.View):
         
         # send message if usr cannot interact with button
         if not is_possible:
-            await interaction.response.send_message(random.choice(responses))
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
         
         return is_possible
         
@@ -377,7 +399,67 @@ class Amount(discord.ui.View):
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
         
         return is_possible
+    
 
+class BulletSelect(discord.ui.Select):
+    def __init__(self, gamble_starter, opponent, amount):
+        options = [
+            discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 7)
+        ]
+        super().__init__(placeholder="Pick the number of bullets", options=options)
+
+        self.gamble_starter = gamble_starter
+        self.opponent = opponent
+        self.amount = amount
+
+    async def callback(self, interaction: discord.Interaction):
+        embed = embeds.DefaultEmbed(
+            "💥 Pulling the trigger...",
+            f"You are playing with **{self.values[0]}** bullets in the chamber"
+        )
+        images = [
+            "https://media.tenor.com/fklGVnlUSFQAAAAM/russian-roulette.gif",
+            "https://i.gifer.com/Hmk7.gif",
+            "https://media.tenor.com/nDYDbjcSDZMAAAAM/gru-gun-point.gif",
+            "https://i.imgur.com/SavjtWP.gif",
+            "https://64.media.tumblr.com/6e6bacf4c0410e487dc40fbfe7d77636/6d084d98424e0608-1b/s540x810/b04e0438e043723874956e6d180b263c1b081c02.gifv"
+        ]
+        embed.set_image(url=random.choice(images))
+        await interaction.response.edit_message(embed=embed, view=None)
+
+        await asyncio.sleep(3)
+        
+        odds_calc = lambda bullets: {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75, 6: 2}.get(bullets, 1)
+
+        # determine who to give pushups to
+        choices = [self.opponent, self.gamble_starter]
+
+        loser = self.gamble_starter if random.randint(1, 6) <= int(self.values[0]) else self.opponent
+        choices.remove(loser)
+        winner = choices[0]
+
+        total_pushups = odds_calc(self.values[0]) * self.amount
+        if winner == self.gamble_starter:
+            
+            result_embed = embeds.DefaultEmbed(
+                "🍀 PHEW! You survived!",
+                "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
+            )
+        else:
+            result_embed = embeds.DefaultEmbed(
+                "💀 RIP! You died!",
+                f"Well, at least you didn't die as a degenerate gambling addict... right?"
+            )
+
+        await db_manager.add_pushups(loser.id, total_pushups)
+        result_embed.add_field(
+            name="💪 Pushups added",
+            value=f"```{loser} has been given {total_pushups} pushups```"
+        )
+
+        await interaction.edit_original_response(embed=result_embed, view=None)
+
+        
 
 class RPSView(discord.ui.View):
     def __init__(self, player1, player2, amount):
