@@ -10,7 +10,7 @@ from autocomplete import getMetaFromExercise
 import checks
 import embeds
 from exceptions import InvalidPushups
-from helpers import db_manager
+from helpers import db_manager, getClickableCommand
 from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
 
 class Gamble(commands.Cog, name="gamble"):
@@ -92,7 +92,7 @@ class Gamble(commands.Cog, name="gamble"):
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
-    @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
+    @discord.app_commands.checks.cooldown(rate=1, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member) -> None:
@@ -733,11 +733,12 @@ class MinesView(discord.ui.View):
 
 
 class ResetCooldownView(discord.ui.View):
-    def __init__(self, image, user, cooldown):
+    def __init__(self, image, user, cooldown, bot):
         super().__init__(timeout=None)
         self.image = image
         self.user = user
         self.cooldown = cooldown
+        self.bot = bot
 
     @discord.ui.button(label="Reset Cooldown", style=discord.ButtonStyle.primary, emoji="⏲️")
     async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -746,13 +747,17 @@ class ResetCooldownView(discord.ui.View):
         total = await db_manager.get_pushups(self.user.id)
         self.cooldown.reset()
 
-        embed = embeds.OperationSucceededEmbed("Cooldown Reset", f"🥳 Congratulations! You are a crippling gambling addict. You also have 20 extra pushups to complete, making a total of {total} pushups.")
+        pushup_group = self.bot.tree.get_command("pushup")
+        gamble_command = pushup_group.get_command("gamble")
+
+        embed = embeds.OperationSucceededEmbed("Cooldown Reset", f"🥳 Congratulations! You are a crippling gambling addict. You also have 20 extra pushups to complete, making a total of {total} pushups.\n\nGamble again: {getClickableCommand(gamble_command, self.bot.command_ids)}")
         embed.set_image(url=self.image)
         await interaction.response.edit_message(
             embed=embed,
             view=None
         )
-        
+
+            
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))

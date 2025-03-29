@@ -286,8 +286,8 @@ async def on_tree_error(interaction, error):
             embed.set_image(url=chosen_image)
 
             if interaction.response.is_done():
-                return await interaction.followup.send(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown))
-            return await interaction.response.send_message(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown))
+                return await interaction.followup.send(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown, bot))
+            return await interaction.response.send_message(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown, bot))
     
         #Default message
         embed = embeds.OperationFailedEmbed(
