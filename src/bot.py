@@ -261,13 +261,12 @@ async def on_tree_error(interaction, error):
 
     elif isinstance(error, discord.app_commands.CommandOnCooldown):
 
-        
         minutes, seconds = divmod(error.retry_after, 60)
         hours, minutes = divmod(minutes, 60)
         hours = hours % 24
 
         # if the command is /pushup gamble, we need to send a custom message
-        if True: #TODO detect als dit van pushup gamble komt of niet
+        if interaction.command and interaction.command.qualified_name == "pushup gamble":
             gambling_images = [
                 "https://ip.bitcointalk.org/?u=https%3A%2F%2Ftalkimg.com%2Fimages%2F2023%2F12%2F16%2FEcNR9.jpeg&t=672&c=142sggGpakNc5A",
                 "https://cdn.discordapp.com/attachments/1354445408381964349/1354445408599937085/IMG_3122.jpg?ex=67e55115&is=67e3ff95&hm=b5238bb1b084ea03cc60c0f86c1e14afcf0f7d0d3399fd8474651e770c9187b7&",
