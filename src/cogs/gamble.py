@@ -2,6 +2,7 @@ import asyncio
 import math
 import os
 import random
+import numpy as np
 
 import discord
 from discord.ext import commands
@@ -80,7 +81,7 @@ class Gamble(commands.Cog, name="gamble"):
 
             pushup_embed.add_field(
                 name="📊 Total pushups",
-                value=f"```{total_pushups}```",
+                value=f"```{new_total}```",
                 inline=True
             )
             pushup_embed.set_footer(text="The time to gamble is now!")
@@ -92,7 +93,7 @@ class Gamble(commands.Cog, name="gamble"):
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
-    @discord.app_commands.checks.cooldown(rate=1, per=2700, key=lambda i: (i.guild_id, i.user.id))
+    @discord.app_commands.checks.cooldown(rate=100, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
     @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member) -> None:
@@ -586,6 +587,14 @@ class RPSView(discord.ui.View):
 
 
 class MinesView(discord.ui.View):
+    # Polynoomcoëfficiënten voor elk aantal mijnen
+    MINE_FORMULAS = {
+        1: [0.000354501, -0.0135447, 0.17502, -0.753632, 1.92677],
+        2: [0.00525133, -0.198152, 2.46482, -10.8408, 13.5547],
+        3: [0.0434703, -1.59444, 19.1199, -81.8585, 92.4608],
+        # Voeg hier coëfficiënten toe voor 4, 5, ..., 23 mines
+    }
+
     def __init__(self, player1, player2, amount, mines_amount):
         super().__init__()
         self.player1 = player1
@@ -593,14 +602,14 @@ class MinesView(discord.ui.View):
         self.amount = amount
         self.mines_amount = mines_amount
         self.tiles_left = 24 - mines_amount
-        self.pushups = 1
+        self.pushups = 1  # Start multiplier
         self.selected_tiles = 0
         self.required_choices = self.calculate_required_choices(mines_amount)
-        
-        # Randomly select the positions for mines (excluding the last button)
+
+        # Randomly select mine positions
         self.buttons = []
-        mines = random.sample(range(24), mines_amount)  # Only pick from first 24 buttons
-        
+        mines = random.sample(range(24), mines_amount)
+
         for i in range(24):
             is_mine = i in mines
             button = discord.ui.Button(
@@ -614,7 +623,7 @@ class MinesView(discord.ui.View):
             self.buttons.append(button)
             self.add_item(button)
 
-        # The last button is the cashout button
+        # Cashout button
         button = discord.ui.Button(
             label="💰 Cashout", 
             style=discord.ButtonStyle.green, 
@@ -627,56 +636,51 @@ class MinesView(discord.ui.View):
         self.add_item(button)
 
     async def button_click(self, interaction: discord.Interaction):
-        # Check if button is a mine
+        """Verwerkt een klik op een tegel."""
         custom_id = interaction.data['custom_id']
-        button_index = int(custom_id.split('_')[1])  # Extract button index
+        button_index = int(custom_id.split('_')[1])
         is_mine = custom_id.split('_')[3] == 'True'
 
         button = self.buttons[button_index]
         button.disabled = True
 
-        # If the user clicks on a mine, game ends
         if is_mine:
             button.style = discord.ButtonStyle.danger
             button.label = "💣"
             return await self.end_game(interaction, win=False)
-        
-        # Bereken de pushups voor de huidige veilige tegel volgens de formule
-        pushup_multiplier = self.calculate_pushups()
-        self.pushups *= pushup_multiplier
-        # Field is safe, update button and values
+
+        # Verhoog aantal correcte keuzes en bereken multiplier
+        self.selected_tiles += 1
+        multiplier = self.calculate_multiplier(self.selected_tiles)
+        self.pushups *= multiplier  # Pushups groeien met de multiplier
+
         button.style = discord.ButtonStyle.success
         button.label = "🏳️"
         self.tiles_left -= 1
-        self.selected_tiles += 1
 
-        # Update embed met de huidige toestand
         embed = interaction.message.embeds[0]
-        embed.description = f"Tiles left: **{self.tiles_left}**\nPushups so far: **{self.pushups}**"
+        embed.description = f"Tiles left: **{self.tiles_left}**\nPushups so far: **{self.pushups:.2f}**"
 
-        # Update the 'Next Tile Pushups' field value, if it exists, otherwise add it
-        next_pushups_multiplier = self.calculate_pushups() # we calculate pushups again because the tiles left and selected tiles changed
+        # Bereken multiplier voor de volgende correcte keuze
+        next_multiplier = self.calculate_multiplier(self.selected_tiles + 1)
         embed.clear_fields()
         embed.add_field(
             name="Next Tile Pushups:",
-            value=f"```{self.pushups * next_pushups_multiplier}```",
+            value=f"```{self.pushups * next_multiplier:.2f}```",
             inline=True
         )
 
-        # Update the embed and view
         await interaction.response.edit_message(embed=embed, view=self)
 
-        # If no tiles are left, the game ends
         if self.tiles_left == 0:
             return await self.end_game(interaction, win=True)
-
 
     async def cashout_click(self, interaction: discord.Interaction):
         """Handles the cashout button, stopping the game without penalties."""
         await self.end_game(interaction, win=True, cashout=True)
 
     async def end_game(self, interaction, win, cashout=False):
-        # Disable all buttons
+        """Einde van het spel."""
         for button in self.buttons:
             button.disabled = True
 
@@ -707,23 +711,25 @@ class MinesView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    def calculate_pushups(self):
-        """Calculate the pushups for the current tile based on the formula."""
-        # P(m) = a * 1/(T - m) + b
-        T = 24  # Total tiles
-        a = 6.25  # Example factor
-        b = -2.8  # Example base value
-        c = 0.6
-        m = self.mines_amount  # Number of mines
+    def calculate_multiplier(self, x):
+        """Berekent de multiplier op basis van het aantal correcte tiles (x) en aantal mijnen (self.mines_amount)."""
         
-        # Pushups for the current tile
-        pushups = c * a * (T / (T - m)) + b
-        return pushups
+        MINE_FORMULAS = {
+            1: [0.000354501, -0.0135447, 0.17502, -0.753632, 1.92677],
+            2: [0.00525133, -0.198152, 2.46482, -10.8408, 13.5547],
+            3: [0.0434703, -1.59444, 19.1199, -81.8585, 92.4608],
+        }
+
+        if self.mines_amount in MINE_FORMULAS:
+            coefficients = MINE_FORMULAS[self.mines_amount]
+            return np.polyval(coefficients, x)  # Evalueren van de polynoom
+        else:
+            return 1  # Fallback als er geen formule beschikbaar is
 
     def calculate_required_choices(self, mines_amount):
         """Calculate how many safe tiles the player needs to choose before cashing out."""
         if mines_amount >= 22:
-            return 0  # Immediate cashout possible
+            return 0
         elif mines_amount >= 20:
             return 1
         elif mines_amount >= 10:
