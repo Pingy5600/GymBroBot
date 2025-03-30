@@ -511,7 +511,7 @@ class BulletSelect(discord.ui.Select):
         # determine who to give pushups to
         choices = [self.opponent, self.gamble_starter]
 
-        loser = self.gamble_starter if random.randint(1, 6) <= int(self.values[0]) else self.opponent
+        loser = self.gamble_starter if random.randint(1, 6) >= int(self.values[0]) else self.opponent
         choices.remove(loser)
         winner = choices[0]
 
