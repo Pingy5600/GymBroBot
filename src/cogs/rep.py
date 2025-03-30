@@ -1,7 +1,6 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
-import dateparser
 import discord
 from discord.ext import commands
 
@@ -9,12 +8,11 @@ from autocomplete import exercise_autocomplete, getMetaFromExercise
 from databank import db_manager
 from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
                     RepFieldGenerator)
-from exceptions import InvalidDate, TimeoutCommand
-from helpers import (calculate_1rm_table, date_set, getDiscordTimeStamp,
-                     set3DGraph)
-from validations import (validateAndCleanWeight, validateEntryList,
-                         validateNotBot, validatePermissions, validateReps,
-                         validateUserList)
+from exceptions import TimeoutCommand
+from helpers import calculate_1rm_table, getDiscordTimeStamp, set3DGraph
+from validations import (validateAndCleanWeight, validateDate,
+                         validateEntryList, validateNotBot,
+                         validatePermissions, validateReps, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -90,18 +88,7 @@ class Rep(commands.Cog, name="rep"):
         validateNotBot(user)
         weight = validateAndCleanWeight(weight)
         validateReps(reps)
-
-        if date is None:
-            date = "vandaag"
-        
-        try:
-            date_obj = dateparser.parse(date, settings=date_set)
-
-            if date_obj is None:
-                raise InvalidDate()
-
-        except ValueError:
-            raise InvalidDate()
+        date_obj = validateDate(date)
         
         exercise_meta: dict[str, str] = getMetaFromExercise(exercise)
 

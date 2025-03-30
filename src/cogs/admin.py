@@ -14,13 +14,12 @@ import embeds
 from checks import is_admin
 from exceptions import CogLoadError
 
-
 class Admin(commands.Cog, name="admin"):
     def __init__(self, bot):
         self.bot = bot
         self.title = "🚧 Admin"
 
-    command_cog_group = app_commands.Group(name="cog", description="Cog Group")
+    command_cog_group = discord.app_commands.Group(name="cog", description="Cog Group")
 
 
     @is_admin()

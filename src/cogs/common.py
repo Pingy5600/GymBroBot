@@ -9,12 +9,11 @@ from discord.ext import commands
 from reactionmenu import ViewButton, ViewMenu, ViewSelect
 
 import embeds
-from autocomplete import getMetaFromExercise
-from embeds import DefaultEmbed, Paginator, ReminderFieldGenerator
+from embeds import Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import (COLOR_MAP, date_set, db_manager, getClickableCommand,
+from helpers import (COLOR_MAP, db_manager, getClickableCommand,
                      getDiscordTimeStamp)
-from validations import validateEntryList, validateNotBot, validateAndCleanWeight
+from validations import validateEntryList, validateNotBot
 
 
 class Common(commands.Cog, name="common"):
@@ -22,34 +21,7 @@ class Common(commands.Cog, name="common"):
         self.bot = bot
         self.title = "🤖 Common"
 
-    command_remind_group = discord.app_commands.Group(name="remind", description="remind Group")
-    pushup_group = discord.app_commands.Group(name="pushup", description="pushup Group")
-    
-    @pushup_group.command(name="weight", description="How much weight are you pushing?")
-    @discord.app_commands.describe(
-        weight="How much do you weigh?",
-        variant="Which variant are you performing?"
-    )
-    @discord.app_commands.choices(variant=[  # value is percentage of weight lifted
-        discord.app_commands.Choice(name="Regular", value=64),
-        discord.app_commands.Choice(name="Feet 30cm elevated", value=70),
-        discord.app_commands.Choice(name="Feet 60cm elevated", value=74),  
-        discord.app_commands.Choice(name="Hands 30cm elevated", value=55),
-        discord.app_commands.Choice(name="Hands 60cm elevated", value=41),
-        discord.app_commands.Choice(name="On knees", value=49),
-    ])
-    async def weight(self, interaction: discord.Interaction, weight: str, variant: discord.app_commands.Choice[int]):
-        weight = validateAndCleanWeight(weight)
-        
-        embed = DefaultEmbed(
-            title="⚖️ Weight when performing pushups",
-            description=(
-                f"Selected variant **'{variant.name}'** requires you to lift **{variant.value}%** of your body weight.\n"
-                f"Since you weigh **{weight}kg**, you are lifting **{math.ceil(weight * variant.value / 100)}kg** per pushup."
-            )
-        )
-        embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
-        await interaction.response.send_message(embed=embed)
+    command_remind_group = discord.app_commands.Group(name="remind", description="Remind Group")
 
  
     @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
@@ -135,6 +107,7 @@ class Common(commands.Cog, name="common"):
         # Haal de kleur op uit COLOR_MAP
         user_id = str(user.id)
         user_color = COLOR_MAP.get(user_id, None)
+        total_pushups = await db_manager.get_pushups(user.id)
         
         if user_color:
             # Embed met de specifieke kleur van de gebruiker
@@ -143,7 +116,7 @@ class Common(commands.Cog, name="common"):
                 description="This is your profile! Here is your own color",
                 color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
             )
-            embed.add_field(name="A lot more coming soon", value="COMING SOON", inline=True)
+            embed.add_field(name="Pushups to do", value=f"```{total_pushups}```", inline=True)
 
         else:
             # Standaard embed als de gebruiker geen kleur heeft
@@ -152,6 +125,8 @@ class Common(commands.Cog, name="common"):
                 description="You have not set a custom color.",
                 color=discord.Color.default()
             )
+            embed.add_field(name="Pushups to do", value=f"```{total_pushups}```", inline=True)
+
 
         embed.set_thumbnail(url=user.display_avatar.url)
 
@@ -166,7 +141,13 @@ class Common(commands.Cog, name="common"):
         # Stel de tijdzone in op CET (Central European Time)
         tz = pytz.timezone('CET')
 
-        t = dateparser.parse(wanneer, settings=date_set)
+        t = dateparser.parse(wanneer, settings={
+            'DATE_ORDER': 'DMY',
+            'TIMEZONE': 'CET',
+            'PREFER_DAY_OF_MONTH': 'first',
+            'PREFER_DATES_FROM': 'past',
+            'DEFAULT_LANGUAGES': ["en", "nl"]
+        })
 
         if t is None:
             raise InvalidTime("Geen geldig tijdstip")
@@ -250,11 +231,6 @@ class Common(commands.Cog, name="common"):
             description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'], full_time=True)}."
         )
         await interaction.followup.send(embed=embed)
-
-
-    @discord.app_commands.command(name="goat", description="Need help? ask the goat!")
-    async def goat(self, interaction: discord.Interaction):
-        await interaction.response.send_message("<@462932133170774036>")
 
 
 async def setup(bot):

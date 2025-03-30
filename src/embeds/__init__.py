@@ -11,7 +11,7 @@ SUCCES_COLOR = 0x39AC39
 
 
 class DefaultEmbed(discord.Embed):
-    def __init__(self, title, description=None):
+    def __init__(self, title, description=None, user=None):
         super().__init__(
             title=f"{title}",
             description=description,
