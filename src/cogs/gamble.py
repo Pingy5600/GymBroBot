@@ -279,37 +279,41 @@ class PushupTypeView(discord.ui.View):
 
     @discord.ui.button(label="Mines", style=discord.ButtonStyle.blurple, emoji='💣')
     async def mines_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Definieer de amount waarde hier
-        amount = 25  # Voorbeeldwaarde, pas dit aan volgens je logica
-
         # Creëer het dropdown menu voor het kiezen van het aantal mines
         options = [discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 24)]  # Keuzes van 1 tot 23 mines
-        select = discord.ui.Select(placeholder="Select the number of mines", options=options)
+        mines_select = discord.ui.Select(placeholder="Select the number of mines", options=options)
         
         async def select_callback(interaction: discord.Interaction):
-            # Haal het aantal mines op uit de keuze van de speler
-            mines_amount = int(select.values[0])
+            mines_amount = int(mines_select.values[0])
+            view =  MinesView(self.gamble_starter, self.user, mines_amount)
+
+            embed = embeds.DefaultEmbed(
+                title="💣 Mines!",
+                description=f"Tiles left: **{24-mines_amount}**\nPushups so far: **1**"
+            )
+            embed.add_field(
+                name="Next Tile Pushups",
+                value=f"```{round(MinesView.ODDS[mines_amount-1][0])}```",
+                inline=True
+            )
             
-            # Start het mines game met het gekozen aantal mines en amount
-            view = MinesView(self.gamble_starter, self.user, amount, mines_amount)
             await interaction.response.edit_message(
-                embed=embeds.DefaultEmbed("💣 Mines!", f"Number of mines: {mines_amount}"),  # Aangepast naar logischer bericht
+                embed=embed,
                 view=view
             )
             
-        select.callback = select_callback
+        mines_select.callback = select_callback
 
-        # Maak een nieuwe View aan en voeg de select toe
-        view = discord.ui.View()
-        view.add_item(select)
+        mines_select_view = discord.ui.View()
+        mines_select_view.add_item(mines_select)
 
         # Verzend het dropdown-menu en de uitleg voor de speler
         await interaction.response.edit_message(
             embed=embeds.DefaultEmbed(
-                "Choose pushup amount!",  
-                "Select the number of mines (1-23) to play"
+                "With how many mines do you wish to play?",  
+                "Select the number of mines (1-23)"
             ), 
-            view=view
+            view=mines_select_view
         )
 
     @discord.ui.button(label="Russian Roulette", style=discord.ButtonStyle.blurple, emoji="💥")
@@ -587,26 +591,43 @@ class RPSView(discord.ui.View):
 
 
 class MinesView(discord.ui.View):
-    # Polynoomcoëfficiënten voor elk aantal mijnen
-    MINE_FORMULAS = {
-        1: [0.000354501, -0.0135447, 0.17502, -0.753632, 1.92677],
-        2: [0.00525133, -0.198152, 2.46482, -10.8408, 13.5547],
-        3: [0.0434703, -1.59444, 19.1199, -81.8585, 92.4608],
-        # Voeg hier coëfficiënten toe voor 4, 5, ..., 23 mines
-    }
 
-    def __init__(self, player1, player2, amount, mines_amount):
+    ODDS = [
+        [1.03, 1.08, 1.12, 1.18, 1.24, 1.3, 1.37, 1.46, 1.55, 1.65, 1.77, 1.9, 2.06, 2.25, 2.47, 2.75, 3.09, 3.54, 4.12, 4.95, 6.19, 8.25, 12.38],
+        [1.08, 1.17, 1.29, 1.41, 1.65, 1.74, 1.94, 2.18, 2.47, 2.83, 3.26, 3.81, 4.5, 5.4, 6.6, 8.25, 10.61, 14.14, 19.8, 29.7, 49.5, 99],
+        [1.12, 1.29, 1.48, 1.71, 2, 2.35, 2.79, 3.35, 4.07, 5, 6.26, 7.96, 10.35, 13.8, 18.97, 27.11, 40.66, 65.06, 113.85, 227.7, 569.25],
+        [1.18, 1.41, 1.71, 2.09, 2.58, 3.23, 4.09, 5.26, 6.88, 9.17, 12.51, 17.52, 25.3, 37.95, 59.64, 99.39, 178.91, 357.81, 834.9, 2504.7],
+        [1.24, 1.56, 2, 2.58, 3.39, 4.52, 6.14, 8.5, 12.04, 17.52, 26.27, 40.87, 66.41, 113.85, 208.72, 417.45, 939.26, 2504.7, 8766.45],
+        [1.3, 1.74, 2.35, 3.23, 4.52, 6.46, 9.44, 14.17, 21.89, 35.03, 58.38, 102.17, 189.75, 379.5, 834.9, 2087.25, 6261.75, 25047],
+        [1.37, 1.94, 2.79, 4.09, 6.14, 9.44, 14.95, 24.47, 41.6, 73.95, 138.66, 277.33, 600.87, 1442.1, 3965.77, 13219.25, 59486.62],
+        [1.46, 2.18, 3.35, 5.26, 8.5, 14.17, 24.47, 44.05, 83.2, 166.4, 356.56, 831.98, 2163.15, 6489.45, 23794.65, 118973.25],
+        [1.55, 2.47, 4.07, 6.88, 12.04, 21.89, 41.6, 83.2, 176.8, 404.1, 1010.26, 2828.73, 9193.39, 36773.55, 202254.52],
+        [1.65, 2.83, 5, 9.17, 17.52, 35.03, 73.95, 166.4, 404.1, 1077.61, 3232.84, 11314.94, 49031.4, 294188.4],
+        [1.77, 3.26, 6.26, 12.51, 26.27, 58.38, 138.66, 356.56, 1010.26, 3232.84, 12123.15, 56574.69, 367735.5],
+        [1.9, 3.81, 7.96, 17.52, 40.87, 102.17, 277.33, 831.98, 2828.73, 11314.94, 56574.69, 396022.85],
+        [2.06, 4.5, 10.35, 25.3, 66.41, 189.75, 600.87, 2163.15, 9193.39, 49031.4, 367735.5],
+        [2.25, 5.4, 13.8, 37.95, 113.85, 379.5, 1442.1, 6489.45, 36773.55, 294188.4],
+        [2.47, 6.6, 18.97, 59.64, 208.72, 834.9, 3965.77, 23794.65, 202254.52],
+        [2.75, 8.25, 27.11, 99.39, 417.45, 2087.25, 13219.25, 118973.25],
+        [3.09, 10.61, 40.66, 178.91, 939.26, 6261.75, 59486.62],
+        [3.54, 14.14, 65.06, 357.81, 2504.7, 25047],
+        [4.12, 19.8, 113.85, 834.9, 8766.45],
+        [4.95, 29.7, 277.7, 2504.7],
+        [6.19, 49.5, 593.25],
+        [8.25, 99],
+        [12.37]
+    ]
+    
+    def __init__(self, player1, player2, mines_amount):
         super().__init__()
         self.player1 = player1
         self.player2 = player2
-        self.amount = amount
         self.mines_amount = mines_amount
         self.tiles_left = 24 - mines_amount
         self.pushups = 1  # Start multiplier
         self.selected_tiles = 0
-        self.required_choices = self.calculate_required_choices(mines_amount)
-
-        # Randomly select mine positions
+        
+        # Randomly select the positions for mines (excluding the last button)
         self.buttons = []
         mines = random.sample(range(24), mines_amount)
 
@@ -623,17 +644,18 @@ class MinesView(discord.ui.View):
             self.buttons.append(button)
             self.add_item(button)
 
-        # Cashout button
-        button = discord.ui.Button(
+        # The last button is the cashout button
+        self.cashout_button = discord.ui.Button(
             label="💰 Cashout", 
             style=discord.ButtonStyle.green, 
             row=i // 5, 
             custom_id="cashout"
         )
-        button.callback = self.cashout_click
+        self.cashout_button.callback = self.cashout_click
+        self.cashout_button.disabled = True
 
-        self.buttons.append(button)
-        self.add_item(button)
+        self.buttons.append(self.cashout_button)
+        self.add_item(self.cashout_button)
 
     async def button_click(self, interaction: discord.Interaction):
         """Verwerkt een klik op een tegel."""
@@ -648,36 +670,45 @@ class MinesView(discord.ui.View):
             button.style = discord.ButtonStyle.danger
             button.label = "💣"
             return await self.end_game(interaction, win=False)
-
-        # Verhoog aantal correcte keuzes en bereken multiplier
-        self.selected_tiles += 1
-        multiplier = self.calculate_multiplier(self.selected_tiles)
-        self.pushups *= multiplier  # Pushups groeien met de multiplier
-
+        
+        self.cashout_button.disabled = False
+        
+        # Bereken de pushups voor de huidige veilige tegel volgens de formule
+        self.pushups = self.calculate_pushups()
+        
+        # Field is safe, update button and values
         button.style = discord.ButtonStyle.success
         button.label = "🏳️"
         self.tiles_left -= 1
 
+        # If no tiles are left, the game ends
+        if self.tiles_left == 0:
+            return await self.end_game(interaction, win=True)
+
+        # If no tiles are left, the game ends
+        if self.tiles_left == 0:
+            return await self.end_game(interaction, win=True)
+
+        # Update embed met de huidige toestand
         embed = interaction.message.embeds[0]
         embed.description = f"Tiles left: **{self.tiles_left}**\nPushups so far: **{self.pushups:.2f}**"
 
-        # Bereken multiplier voor de volgende correcte keuze
-        next_multiplier = self.calculate_multiplier(self.selected_tiles + 1)
+        # Update the 'Next Tile Pushups' field value, if it exists, otherwise add it
+        next_pushups= self.calculate_pushups() # we calculate pushups again because the tiles left and selected tiles changed
         embed.clear_fields()
         embed.add_field(
-            name="Next Tile Pushups:",
-            value=f"```{self.pushups * next_multiplier:.2f}```",
+            name="Next Tile Pushups",
+            value=f"```{next_pushups}```",
             inline=True
         )
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-        if self.tiles_left == 0:
-            return await self.end_game(interaction, win=True)
 
     async def cashout_click(self, interaction: discord.Interaction):
         """Handles the cashout button, stopping the game without penalties."""
         await self.end_game(interaction, win=True, cashout=True)
+
 
     async def end_game(self, interaction, win, cashout=False):
         """Einde van het spel."""
@@ -711,31 +742,9 @@ class MinesView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-    def calculate_multiplier(self, x):
-        """Berekent de multiplier op basis van het aantal correcte tiles (x) en aantal mijnen (self.mines_amount)."""
-        
-        MINE_FORMULAS = {
-            1: [0.000354501, -0.0135447, 0.17502, -0.753632, 1.92677],
-            2: [0.00525133, -0.198152, 2.46482, -10.8408, 13.5547],
-            3: [0.0434703, -1.59444, 19.1199, -81.8585, 92.4608],
-        }
-
-        if self.mines_amount in MINE_FORMULAS:
-            coefficients = MINE_FORMULAS[self.mines_amount]
-            return np.polyval(coefficients, x)  # Evalueren van de polynoom
-        else:
-            return 1  # Fallback als er geen formule beschikbaar is
-
-    def calculate_required_choices(self, mines_amount):
-        """Calculate how many safe tiles the player needs to choose before cashing out."""
-        if mines_amount >= 22:
-            return 0
-        elif mines_amount >= 20:
-            return 1
-        elif mines_amount >= 10:
-            return 2
-        else:
-            return 3
+    def calculate_pushups(self):
+        """Calculate the pushups for the current tile."""
+        return round(MinesView.ODDS[self.mines_amount-1][self.selected_tiles])
 
 
 class ResetCooldownView(discord.ui.View):
