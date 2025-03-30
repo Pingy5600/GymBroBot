@@ -364,6 +364,30 @@ class PushupTypeView(discord.ui.View):
             view=mines_select_view
         )
 
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+        
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+        
+        return is_possible
+
     @discord.ui.button(label="Russian Roulette", style=discord.ButtonStyle.blurple, emoji="💥")
     async def russian_roulette_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         async def callback_func(amount, interaction):
@@ -512,7 +536,7 @@ class BulletSelect(discord.ui.Select):
 
         await interaction.edit_original_response(embed=result_embed, view=None)
 
-        
+
 
 class RPSView(discord.ui.View):
     def __init__(self, player1, player2, amount):
@@ -807,6 +831,30 @@ class MinesView(discord.ui.View):
     def calculate_pushups(self):
         """Calculate the pushups for the current tile."""
         return round(MinesView.ODDS[self.mines_amount-1][self.selected_tiles], 2)
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+        
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+        
+        return is_possible
 
 
 class ResetCooldownView(discord.ui.View):
