@@ -89,7 +89,43 @@ class Gamble(commands.Cog, name="gamble"):
 
         else:
             raise InvalidPushups()
-        
+
+    @pushup_group.command(name="add", description="Adds pushups to a user's total. Admin only!")
+    @checks.is_admin_or_has_permissions()  # Zorg ervoor dat alleen admins of gebruikers in de lijst dit kunnen uitvoeren
+    @discord.app_commands.describe(add="The number of pushups to add", user="Which user")
+    async def add_pushups(self, interaction: discord.Interaction, add: int, user: discord.User):
+        await interaction.response.defer(thinking=True)
+
+        # Validaties (zorg ervoor dat de admin geen fout maakt)
+        validatePushups(add)
+        validateNotBot(user)
+
+        # Haal het totaal aantal pushups voor de gebruiker op
+        total_pushups = await db_manager.get_pushups(user.id)
+
+        # Voeg de opgegeven pushups toe
+        new_total = total_pushups + add
+
+        # Werk de pushups bij in de database
+        success = await db_manager.add_pushups(user.id, add)
+
+        if success:
+            pushup_embed = embeds.DefaultEmbed(
+                f"Pushups added",
+                f"Successfully added {add} pushups to {user.display_name}'s total."
+            )
+
+            pushup_embed.add_field(
+                name="📊 New total pushups",
+                value=f"```{new_total}```",
+                inline=True
+            )
+            pushup_embed.set_footer(text="Keep pushing yourself!")
+            await interaction.followup.send(embed=pushup_embed)
+
+        else:
+            raise InvalidPushups()
+
 
     @pushup_group.command(name="gamble", description="Give someone pushups", extras={'cog': 'gamble'})
     @discord.app_commands.describe(user="Which user")
@@ -291,16 +327,23 @@ class PushupTypeView(discord.ui.View):
                 title="💣 Mines!",
             )
             embed.add_field(
+                name="*Mines*",
+                value=f"```{mines_amount}```"
+            )
+            embed.add_field(
+                name="*Safe Tiles left*",
+                value=f"```{24-mines_amount}```",
+                inline=True
+            )
+            embed.add_field(
                 name="*Pushups so far*",
-                value=f"```1```"
+                value=f"```1```",
+                inline=False
             )
             embed.add_field(
                 name="*Next Tile Pushups*",
                 value=f"```{round(MinesView.ODDS[mines_amount-1][0], 2)}```",
-            )
-            embed.add_field(
-                name="*Tiles left*",
-                value=f"```{24-mines_amount}```"
+                inline=True
             )
             
             await interaction.response.edit_message(
@@ -623,7 +666,7 @@ class MinesView(discord.ui.View):
         [8.25, 99],
         [12.37]
     ]
-    
+
     def __init__(self, player1, player2, mines_amount):
         super().__init__()
         self.player1 = player1
@@ -632,7 +675,7 @@ class MinesView(discord.ui.View):
         self.tiles_left = 24 - mines_amount
         self.pushups = 1  # Start multiplier
         self.selected_tiles = 0
-        
+
         # Randomly select the positions for mines (excluding the last button)
         self.buttons = []
         mines = random.sample(range(24), mines_amount)
@@ -676,12 +719,12 @@ class MinesView(discord.ui.View):
             button.style = discord.ButtonStyle.danger
             button.label = "💣"
             return await self.end_game(interaction, win=False)
-        
+
         self.cashout_button.disabled = False
-        
+
         # Bereken de pushups voor de huidige veilige tegel volgens de formule
         self.pushups = self.calculate_pushups()
-        
+
         # Field is safe, update button and values
         button.style = discord.ButtonStyle.success
         button.label = "🏳️"
@@ -699,25 +742,30 @@ class MinesView(discord.ui.View):
         next_pushups= self.calculate_pushups() # we calculate pushups again because the tiles left and selected tiles changed
         embed.clear_fields()
         embed.add_field(
+            name="*Mines*",
+            value=f"```{self.mines_amount}```"
+        )
+        embed.add_field(
+            name="*Safe Tiles left*",
+            value=f"```{self.tiles_left}```",
+            inline=True
+        )
+        embed.add_field(
             name="*Pushups so far*",
-            value=f"```{self.pushups:.2f}```"
+            value=f"```{self.pushups:.2f}```",
+            inline=False
         )
         embed.add_field(
             name="*Next Tile Pushups*",
             value=f"```{next_pushups}```",
-        )
-        embed.add_field(
-            name="*Tiles left*",
-            value=f"```{self.tiles_left}```"
+            inline=True
         )
 
         await interaction.response.edit_message(embed=embed, view=self)
 
-
     async def cashout_click(self, interaction: discord.Interaction):
         """Handles the cashout button, stopping the game without penalties."""
         await self.end_game(interaction, win=True, cashout=True)
-
 
     async def end_game(self, interaction, win, cashout=False):
         """Einde van het spel."""
@@ -727,8 +775,13 @@ class MinesView(discord.ui.View):
         if cashout:
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
-                f"{self.player1.mention} chose to cash out safely! Pushups given: {round(self.pushups)}",
+                f"{self.player1.mention} chose to cash out safely!",
             )
+            embed.add_field(
+                name="💪 Pushups given:",
+                value=f"```{round(self.pushups)}```"
+            )
+            embed.set_thumbnail(url=self.player1.display_avatar.url)
             await db_manager.add_pushups(self.player2.id, round(self.pushups))
 
         else:
@@ -748,6 +801,7 @@ class MinesView(discord.ui.View):
                 value=f"```{int(self.pushups)}```",
                 inline=True
             )
+            embed.set_thumbnail(url=winner.display_avatar.url)
 
         await interaction.response.edit_message(embed=embed, view=self)
 
@@ -766,7 +820,7 @@ class ResetCooldownView(discord.ui.View):
 
     @discord.ui.button(label="Reset Cooldown", style=discord.ButtonStyle.primary, emoji="⏲️")
     async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        
+
         await db_manager.add_pushups(self.user.id, 20)
         total = await db_manager.get_pushups(self.user.id)
         self.cooldown.reset()
@@ -781,7 +835,6 @@ class ResetCooldownView(discord.ui.View):
             view=None
         )
 
-            
 
 async def setup(bot):
     await bot.add_cog(Gamble(bot))

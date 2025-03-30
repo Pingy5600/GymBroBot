@@ -54,8 +54,8 @@ def validateUserList(users):
         raise DuplicateUsers()
     
 
-def validatePushups(pushups_done):
-    if pushups_done <= 0:
+def validatePushups(pushups):
+    if pushups <= 0:
         raise InvalidPushups()
     
 
