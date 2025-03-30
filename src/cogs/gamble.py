@@ -832,11 +832,14 @@ class MinesView(discord.ui.View):
 
     def flip_tiles(self):
         for button in self.buttons:
-            is_mine = button.custom_id.split('_')[3] == 'True'
-            if is_mine:
-                button.label = "💣"
-            else:
-                button.label = "🏳️"
+            try:
+                is_mine = button.custom_id.split('_')[3] == 'True'
+                if is_mine:
+                    button.label = "💣"
+                else:
+                    button.label = "🏳️"
+            except:
+                pass
     
     def calculate_pushups(self):
         """Calculate the pushups for the current tile."""
