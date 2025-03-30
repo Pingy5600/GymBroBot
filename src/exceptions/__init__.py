@@ -226,3 +226,28 @@ class DuplicateUsers(CustomCheckFailure):
             self.getClickableCommandString(command, command_ids),
             emoji="‼️"
         )
+    
+class WrongChannel(app_commands.CheckFailure):
+    """
+    Thrown when a user is attempting something, but is in the wrong channel.
+    """
+
+    def __init__(self, message="Wrong channel!"):
+        self.message = message
+        super().__init__(self.message)
+
+class InvalidPushups(CustomCheckFailure):
+    """
+    Thrown when a user inputs an invalid pushup amount value
+    """
+
+    def __init__(self, message="You provided an invalid pushup amount. Please use the correct format."):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_ids):
+        return OperationFailedEmbed(
+            self.message,
+            self.getClickableCommandString(command, command_ids),
+            emoji="⚖️"
+        )

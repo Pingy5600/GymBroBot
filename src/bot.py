@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 import embeds
 import exceptions
 from helpers import db_manager
+from cogs.gamble import ResetCooldownView
 
 load_dotenv()
 
@@ -37,7 +38,6 @@ def save_ids_func(cmds):
     """
     for cmd in cmds:
         bot.command_ids[cmd.name] = cmd.id
-        bot.logger.info(f"Saved id for {cmd.name} - {cmd.id}")
 
 
 bot.save_ids = save_ids_func
@@ -118,6 +118,7 @@ async def on_ready() -> None:
     bot.logger.info(f"Running on: {platform.system()} {platform.release()} ({os.name})")
     bot.logger.info("-------------------")
 
+    # Start the loops
     try:
         check_remindme.start()
         change_status_loop.start()
@@ -125,6 +126,7 @@ async def on_ready() -> None:
     except Exception as e:
         bot.logger.warning(e)
 
+    # Sync the commands
     cmds = await bot.tree.sync()
     bot.save_ids(cmds)
 
@@ -256,6 +258,47 @@ async def on_tree_error(interaction, error):
     # check if the error is a custom exception
     if isinstance(error, exceptions.CustomCheckFailure):
         embed = error.getEmbed(interaction.command, bot.command_ids)
+
+    elif isinstance(error, discord.app_commands.CommandOnCooldown):
+
+        minutes, seconds = divmod(error.retry_after, 60)
+        hours, minutes = divmod(minutes, 60)
+        hours = hours % 24
+
+        # if the command is /pushup gamble, we need to send a custom message
+        if interaction.command and interaction.command.qualified_name == "pushup gamble":
+            gambling_images = [
+                "https://ip.bitcointalk.org/?u=https%3A%2F%2Ftalkimg.com%2Fimages%2F2023%2F12%2F16%2FEcNR9.jpeg&t=672&c=142sggGpakNc5A",
+                "https://cdn.discordapp.com/attachments/1354445408381964349/1354445408599937085/IMG_3122.jpg?ex=67e55115&is=67e3ff95&hm=b5238bb1b084ea03cc60c0f86c1e14afcf0f7d0d3399fd8474651e770c9187b7&",
+                "https://media.discordapp.net/attachments/1354445408381964349/1354459284141899787/images.png?ex=67e55e01&is=67e40c81&hm=07ca095246383cfb17443997f5bbdb2b937c50ab03b50183ec63a5d8115f800f&=&format=webp&quality=lossless&width=213&height=370",
+                "https://media.discordapp.net/attachments/1354445408381964349/1354460186667913286/screen-shot-2022-11-09-at-5-05-23-pm.png?ex=67e55ed9&is=67e40d59&hm=d613852ce69caa2b5c981674e19d1b1558f8a521e5ec9fdfd6b7c4475b73de72&=&format=webp&quality=lossless&width=1209&height=1050",
+                "https://media.discordapp.net/attachments/1354445408381964349/1354459434096791693/612bda234ef378922222ac125f19fdecfe816df0e177cfe0b599a7cc00de6016_1.png?ex=67e55e25&is=67e40ca5&hm=dfff2176c1c1a8d2cd6f878cb11182acb412d4e66215e134dd72e1110398cc05&=&format=webp&quality=lossless&width=851&height=1050",
+                "https://media.tenor.com/Qwf2iW-zslMAAAAM/ohnepixel-hobby.gif",
+                "https://c.tenor.com/YMJClCmllbYAAAAd/tenor.gif",
+
+            ]
+            embed = embeds.OperationFailedEmbed(
+                f"**Please slow down** - You can use this command again in {f'{round(hours)} hours ' if round(hours) > 0 else ''}{f'{round(minutes)} minutes ' if round(minutes) > 0 else ''}{f'{round(seconds)} seconds' if round(seconds) > 0 else ''}.\nYou can also be a true gambler and click this button to reset your cooldown*.",
+                emoji="⏲️"
+            )
+            embed.set_footer(text="*This will give you 20 pushups to complete.")
+            chosen_image=random.choice(gambling_images)
+            embed.set_image(url=chosen_image)
+
+            if interaction.response.is_done():
+                return await interaction.followup.send(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown, bot))
+            return await interaction.response.send_message(embed=embed, ephemeral=False, view=ResetCooldownView(chosen_image, interaction.user, error.cooldown, bot))
+    
+        #Default message
+        embed = embeds.OperationFailedEmbed(
+            f"**Please slow down** - You can use this command again in {f'{round(hours)} hours ' if round(hours) > 0 else ''}{f'{round(minutes)} minutes ' if round(minutes) > 0 else ''}{f'{round(seconds)} seconds' if round(seconds) > 0 else ''}.",
+            emoji="⏲️"
+        )
+
+        # send out response
+        if interaction.response.is_done():
+            return await interaction.followup.send(embed=embed, ephemeral=True)
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
     
     # user missing permissions
     elif isinstance(error, discord.app_commands.MissingPermissions):

@@ -11,7 +11,7 @@ async def exercise_autocomplete(
     
     # bench, deadlift, squat are displayed by default
     if current is None or current == "":
-        return EXERCISE_CHOICES[:3]
+        return EXERCISE_CHOICES[:4]
     
     # get the best matches otherwise
     matches = [
@@ -25,6 +25,7 @@ EXERCISE_CHOICES = [
     app_commands.Choice(name="Bench Press", value="bench"),
     app_commands.Choice(name="Deadlift", value="deadlift"),
     app_commands.Choice(name="Squats", value="squats"),
+    app_commands.Choice(name="Barbell Military Press (Overhead press)", value="barbell-military-press-overhead-press"),
 	app_commands.Choice(name="Weighted Lateral Neck Flexion", value="weighted-lateral-neck-flexion"),
 	app_commands.Choice(name="Weighted Lying Neck Extension (Neck Harness)", value="weighted-lying-neck-extension-neck-harness"),
 	app_commands.Choice(name="Weighted Lying Neck Flexion (Neck Harness)", value="weighted-lying-neck-flexion-neck-harness"),
@@ -116,7 +117,6 @@ EXERCISE_CHOICES = [
 	app_commands.Choice(name="Cable Lateral Raise", value="cable-lateral-raise"),
 	app_commands.Choice(name="Lever Shoulder Press", value="lever-shoulder-press"),
 	app_commands.Choice(name="Standing Close Grip Military Press", value="standing-close-grip-military-press"),
-	app_commands.Choice(name="Barbell Military Press (Overhead press)", value="barbell-military-press-overhead-press"),
 	app_commands.Choice(name="Dumbbell Chest Supported Lateral Raises", value="dumbbell-chest-supported-lateral-raises"),
 	app_commands.Choice(name="Dumbbell 6 Way Raise", value="dumbbell-6-way-raise"),
 	app_commands.Choice(name="Dumbbell 4 Way Lateral Raise", value="dumbbell-4-way-lateral-raise"),

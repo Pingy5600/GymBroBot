@@ -1,5 +1,6 @@
-from exceptions import (BotNotUser, DuplicateUsers, InvalidReps, InvalidWeight,
+from exceptions import (BotNotUser, DuplicateUsers, InvalidDate, InvalidPushups, InvalidReps, InvalidWeight,
                         NoEntries, NoPermission)
+import dateparser
 
 
 def validateAndCleanWeight(weight):
@@ -51,3 +52,29 @@ def validatePermissions(user, interaction):
 def validateUserList(users):
     if len(users) != len(set(users)):
         raise DuplicateUsers()
+    
+
+def validatePushups(pushups_done):
+    if pushups_done <= 0:
+        raise InvalidPushups()
+    
+
+def validateDate(date):
+    date_set = {
+        'DATE_ORDER': 'DMY',
+        'TIMEZONE': 'CET',
+        'PREFER_DAY_OF_MONTH': 'first',
+        'PREFER_DATES_FROM': 'past',
+        'DEFAULT_LANGUAGES': ["en", "nl"]
+    }
+    if date is None:
+            date = 'vandaag'
+
+    try:    
+        date_obj = dateparser.parse(date, settings=date_set)
+        
+        if date_obj is None:
+            raise ValueError("Invalid date format")
+
+    except ValueError:
+        raise InvalidDate()
