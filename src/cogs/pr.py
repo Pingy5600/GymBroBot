@@ -2,7 +2,6 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
-import dateparser
 import discord
 from discord.ext import commands
 
@@ -10,10 +9,11 @@ from autocomplete import exercise_autocomplete, getMetaFromExercise
 from databank import db_manager
 from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
                     PRFieldGenerator, TopPRFieldGenerator)
-from exceptions import InvalidDate, NoEntries, TimeoutCommand
-from helpers import date_set, getDiscordTimeStamp, ordinal, setGraph
-from validations import (validateAndCleanWeight, validateEntryList,
-                         validateNotBot, validatePermissions, validateUserList)
+from exceptions import NoEntries, TimeoutCommand
+from helpers import getDiscordTimeStamp, ordinal, setGraph
+from validations import (validateAndCleanWeight, validateDate,
+                         validateEntryList, validateNotBot,
+                         validatePermissions, validateUserList)
 
 POOL = ThreadPoolExecutor()
 
@@ -36,18 +36,7 @@ class PR(commands.Cog, name="pr"):
 
         validateNotBot(user)
         pr = validateAndCleanWeight(pr)
-
-        if date is None:
-            date = 'vandaag'
-
-        try:    
-            date_obj = dateparser.parse(date, settings=date_set)
-            
-            if date_obj is None:
-                raise ValueError("Invalid date format")
-
-        except ValueError:
-            raise InvalidDate()
+        date_obj = validateDate(date)
 
         resultaat = await db_manager.add_pr(user.id, exercise, pr, date_obj)
 

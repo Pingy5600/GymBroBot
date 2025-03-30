@@ -3,13 +3,6 @@ from discord import app_commands
 from .graph import *
 from .reps_calc import *
 
-date_set = {
-    'DATE_ORDER': 'DMY',
-    'TIMEZONE': 'CET',
-    'PREFER_DAY_OF_MONTH': 'first',
-    'PREFER_DATES_FROM': 'past',
-    'DEFAULT_LANGUAGES': ["en", "nl"]
-}
 
 def getDiscordTimeStamp(old_timestamp, full_time=False):
     timestamp = int(old_timestamp.timestamp())
