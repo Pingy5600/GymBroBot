@@ -515,9 +515,8 @@ class BulletSelect(discord.ui.Select):
         choices.remove(loser)
         winner = choices[0]
 
-        total_pushups = odds_calc(self.values[0]) * self.amount
+        total_pushups = odds_calc(int(self.values[0])) * self.amount
         if winner == self.gamble_starter:
-            
             result_embed = embeds.DefaultEmbed(
                 "🍀 PHEW! You survived!",
                 "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
