@@ -298,6 +298,7 @@ class PushupTypeView(discord.ui.View):
 
             # **Leeg veld om layout consistent te houden**
             result_embed.add_field(name="\u200b", value="\u200b", inline=True)
+            result_embed.set_thumbnail(url=winner.display_avatar.url)
 
             # edit embed with results of the 50/50
             await interaction.edit_original_response(embed=result_embed)
