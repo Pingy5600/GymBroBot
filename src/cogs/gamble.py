@@ -795,6 +795,8 @@ class MinesView(discord.ui.View):
         for button in self.buttons:
             button.disabled = True
 
+        self.flip_tiles()
+
         if cashout:
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
@@ -828,6 +830,14 @@ class MinesView(discord.ui.View):
 
         await interaction.response.edit_message(embed=embed, view=self)
 
+    def flip_tiles(self):
+        for button in self.buttons:
+            is_mine = button.custom_id.split('_')[3] == 'True'
+            if is_mine:
+                button.label = "💣"
+            else:
+                button.label = "🏳️"
+    
     def calculate_pushups(self):
         """Calculate the pushups for the current tile."""
         return round(MinesView.ODDS[self.mines_amount-1][self.selected_tiles], 2)
