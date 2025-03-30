@@ -131,7 +131,6 @@ class Gamble(commands.Cog, name="gamble"):
     @discord.app_commands.describe(user="Which user")
     @discord.app_commands.checks.cooldown(rate=3, per=2700, key=lambda i: (i.guild_id, i.user.id))
     @checks.not_in_dm()
-    @checks.in_correct_server()
     async def pushup(self, interaction, user: discord.Member) -> None:
         """Give someone pushups
 
