@@ -289,12 +289,18 @@ class PushupTypeView(discord.ui.View):
 
             embed = embeds.DefaultEmbed(
                 title="💣 Mines!",
-                description=f"Tiles left: **{24-mines_amount}**\nPushups so far: **1**"
             )
             embed.add_field(
-                name="Next Tile Pushups",
-                value=f"```{round(MinesView.ODDS[mines_amount-1][0])}```",
-                inline=True
+                name="*Pushups so far*",
+                value=f"```1```"
+            )
+            embed.add_field(
+                name="*Next Tile Pushups*",
+                value=f"```{round(MinesView.ODDS[mines_amount-1][0], 2)}```",
+            )
+            embed.add_field(
+                name="*Tiles left*",
+                value=f"```{24-mines_amount}```"
             )
             
             await interaction.response.edit_message(
@@ -680,10 +686,7 @@ class MinesView(discord.ui.View):
         button.style = discord.ButtonStyle.success
         button.label = "🏳️"
         self.tiles_left -= 1
-
-        # If no tiles are left, the game ends
-        if self.tiles_left == 0:
-            return await self.end_game(interaction, win=True)
+        self.selected_tiles += 1
 
         # If no tiles are left, the game ends
         if self.tiles_left == 0:
@@ -691,15 +694,21 @@ class MinesView(discord.ui.View):
 
         # Update embed met de huidige toestand
         embed = interaction.message.embeds[0]
-        embed.description = f"Tiles left: **{self.tiles_left}**\nPushups so far: **{self.pushups:.2f}**"
 
         # Update the 'Next Tile Pushups' field value, if it exists, otherwise add it
         next_pushups= self.calculate_pushups() # we calculate pushups again because the tiles left and selected tiles changed
         embed.clear_fields()
         embed.add_field(
-            name="Next Tile Pushups",
+            name="*Pushups so far*",
+            value=f"```{self.pushups:.2f}```"
+        )
+        embed.add_field(
+            name="*Next Tile Pushups*",
             value=f"```{next_pushups}```",
-            inline=True
+        )
+        embed.add_field(
+            name="*Tiles left*",
+            value=f"```{self.tiles_left}```"
         )
 
         await interaction.response.edit_message(embed=embed, view=self)
@@ -718,15 +727,15 @@ class MinesView(discord.ui.View):
         if cashout:
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
-                f"{self.player1.mention} chose to cash out safely! Pushups given: {int(self.pushups)}",
+                f"{self.player1.mention} chose to cash out safely! Pushups given: {round(self.pushups)}",
             )
-            await db_manager.add_pushups(self.player2.id, int(self.pushups))
+            await db_manager.add_pushups(self.player2.id, round(self.pushups))
 
         else:
             winner = self.player1 if win else self.player2
             loser = self.player2 if win else self.player1
 
-            await db_manager.add_pushups(loser.id, int(self.pushups))
+            await db_manager.add_pushups(loser.id, round(self.pushups))
             total = await db_manager.get_pushups(loser.id)
 
             embed = embeds.DefaultEmbed(
@@ -744,7 +753,7 @@ class MinesView(discord.ui.View):
 
     def calculate_pushups(self):
         """Calculate the pushups for the current tile."""
-        return round(MinesView.ODDS[self.mines_amount-1][self.selected_tiles])
+        return round(MinesView.ODDS[self.mines_amount-1][self.selected_tiles], 2)
 
 
 class ResetCooldownView(discord.ui.View):
