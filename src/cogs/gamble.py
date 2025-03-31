@@ -317,54 +317,13 @@ class PushupTypeView(discord.ui.View):
 
     @discord.ui.button(label="Mines", style=discord.ButtonStyle.blurple, emoji='💣')
     async def mines_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Creëer het dropdown menu voor het kiezen van het aantal mines
-        options = [discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 24)]  # Keuzes van 1 tot 23 mines
-        mines_select = discord.ui.Select(placeholder="Select the number of mines", options=options)
-        
-        async def select_callback(interaction: discord.Interaction):
-            mines_amount = int(mines_select.values[0])
-            view =  MinesView(self.gamble_starter, self.user, mines_amount)
-
-            embed = embeds.DefaultEmbed(
-                title="💣 Mines!",
-            )
-            embed.add_field(
-                name="*Mines*",
-                value=f"```{mines_amount}```"
-            )
-            embed.add_field(
-                name="*Safe Tiles left*",
-                value=f"```{24-mines_amount}```",
-                inline=True
-            )
-            embed.add_field(
-                name="*Pushups so far*",
-                value=f"```1```",
-                inline=False
-            )
-            embed.add_field(
-                name="*Next Tile Pushups*",
-                value=f"```{round(MinesView.ODDS[mines_amount-1][0], 2)}```",
-                inline=True
-            )
-            
-            await interaction.response.edit_message(
-                embed=embed,
-                view=view
-            )
-            
-        mines_select.callback = select_callback
-
-        mines_select_view = discord.ui.View()
-        mines_select_view.add_item(mines_select)
-
         # Verzend het dropdown-menu en de uitleg voor de speler
         await interaction.response.edit_message(
             embed=embeds.DefaultEmbed(
                 "With how many mines do you wish to play?",  
                 "Select the number of mines (1-23)"
             ), 
-            view=mines_select_view
+            view=MinesSelectView(self.gamble_starter, self.user)
         )
 
     async def interaction_check(self, interaction: discord.Interaction):
@@ -432,6 +391,80 @@ class PushupTypeView(discord.ui.View):
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
 
         return is_possible
+
+class MinesSelectView(discord.ui.View):
+
+    def __init__(self, gamble_starter, user):
+        super().__init__()
+        self.gamble_starter = gamble_starter
+        self.user = user
+      
+    @discord.ui.select(placeholder="Select the number of mines", options=[discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 24)])
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        mines_amount = int(select.values[0])
+        view =  MinesView(self.gamble_starter, self.user, mines_amount)
+
+        embed = embeds.DefaultEmbed(
+            title="💣 Mines!",
+        )
+        embed.add_field(
+            name="*Mines*",
+            value=f"```{mines_amount}```"
+        )
+        embed.add_field(
+            name="*Safe Tiles left*",
+            value=f"```{24-mines_amount}```",
+            inline=True
+        )
+        embed.add_field(
+            name="*Pushups so far*",
+            value=f"```1```",
+            inline=False
+        )
+        embed.add_field(
+            name="*Next Tile Pushups*",
+            value=f"```{round(MinesView.ODDS[mines_amount-1][0], 2)}```",
+            inline=True
+        )
+        
+        await interaction.response.edit_message(
+            embed=embed,
+            view=view
+        )
+
+
+    @discord.ui.button(label="See odds", style=discord.ButtonStyle.blurple, emoji="🃏")
+    async def odds(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        await interaction.response.send_message(
+            embed=MinesOddsView.get_odds_table(1),
+            view=MinesOddsView()
+        )
+
+class MinesOddsView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+    def get_odds_table(mines):
+        embed = embeds.DefaultEmbed(
+            "🃏 Odds",
+            f"Odds for Minefield when playing with {mines} mines"
+        )
+        for (i, odd) in enumerate(MinesView.ODDS[mines-1]):
+            embed.add_field(
+                name=f"{i+1} flags",
+                value=f"```{odd}x```",
+            )
+        return embed
+
+    @discord.ui.select(placeholder="Select the number of mines", options=[discord.SelectOption(label=str(i), value=str(i)) for i in range(1, 24)])
+    async def select_callback(self, interaction: discord.Interaction, select: discord.ui.Select):
+        mines_amount = int(select.values[0])
+
+        await interaction.response.edit_message(
+            embed=MinesOddsView.get_odds_table(mines_amount),
+            view=self
+        )
 
 
 class Amount(discord.ui.View):
@@ -690,7 +723,7 @@ class MinesView(discord.ui.View):
         [8.25, 99],
         [12.37]
     ]
-    ODDS = [[value * 3 for value in row] for row in ODDS]
+    ODDS = [[round(value * 3, 2) for value in row] for row in ODDS]
 
     def __init__(self, player1, player2, mines_amount):
         super().__init__()
