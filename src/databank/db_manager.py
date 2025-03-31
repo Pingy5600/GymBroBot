@@ -826,3 +826,48 @@ async def get_pushups(user_id: int):
             
     except Exception as e:
         return 0
+    
+async def add_pushups_done(user_id: int, count: int):
+    """Voegt het aantal voltooide pushups toe aan de pushups_done tabel."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'), 
+            dbname=os.environ.get('POSTGRES_DB'), 
+            user=os.environ.get('POSTGRES_USER'), 
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO pushups_done (user_id, count) 
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id) DO UPDATE 
+                    SET count = pushups_done.count + EXCLUDED.count
+                    """,
+                    (user_id, count)
+                )
+                con.commit()
+        return True
+    
+    except Exception:
+        return False
+
+async def get_pushups_done(user_id: int):
+    """Haalt het totaal aantal voltooide pushups op."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'), 
+            dbname=os.environ.get('POSTGRES_DB'), 
+            user=os.environ.get('POSTGRES_USER'), 
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute("SELECT count FROM pushups_done WHERE user_id = %s", (user_id,))
+                result = cursor.fetchone()
+                return result[0] if result else 0
+            
+    except Exception:
+        return 0
+

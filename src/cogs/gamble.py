@@ -60,18 +60,18 @@ class Gamble(commands.Cog, name="gamble"):
         validateNotBot(user)
         validatePermissions(user, interaction)
 
-        # Haal het totaal aantal pushups voor de gebruiker op
+        # Haal het totaal aantal pushups op
         total_pushups = await db_manager.get_pushups(user.id)
 
-        # Zorg ervoor dat het aantal pushups dat is gedaan niet groter is dan het totaal
         if done > total_pushups:
             raise InvalidPushups()
 
-        # Verminder het aantal pushups
+        # Update de pushups
         new_total = total_pushups - done
-
-        # Werk de pushups bij in de database
         success = await db_manager.add_pushups(user.id, -done)
+
+        # ✅ Voeg de voltooide pushups toe
+        await db_manager.add_pushups_done(user.id, done)
 
         if success:
             pushup_embed = embeds.DefaultEmbed(
@@ -89,6 +89,7 @@ class Gamble(commands.Cog, name="gamble"):
 
         else:
             raise InvalidPushups()
+
 
     @pushup_group.command(name="add", description="Adds pushups to a user's total. Admin only!")
     @checks.is_admin_or_has_permissions()  # Zorg ervoor dat alleen admins of gebruikers in de lijst dit kunnen uitvoeren
