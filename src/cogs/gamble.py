@@ -541,13 +541,13 @@ class BulletSelect(discord.ui.Select):
         await interaction.response.edit_message(embed=embed, view=None)
 
         await asyncio.sleep(3)
-        
+
         odds_calc = lambda bullets: {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75, 6: 2}.get(bullets, 1)
 
         # determine who to give pushups to
         choices = [self.opponent, self.gamble_starter]
 
-        loser = self.gamble_starter if random.randint(1, 6) >= int(self.values[0]) else self.opponent
+        loser = self.gamble_starter if random.randint(1, 6) <= int(self.values[0]) else self.opponent
         choices.remove(loser)
         winner = choices[0]
 
