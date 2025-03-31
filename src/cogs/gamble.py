@@ -48,7 +48,7 @@ class Gamble(commands.Cog, name="gamble"):
         await interaction.response.send_message(embed=embed)
 
 
-    @pushup_group.command(name="done", description="Lowers the total pushups if you have done them. Be honest!")
+    @pushup_group.command(name="done", description="Lowers the Total remaining pushups if you have done them. Be honest!")
     @discord.app_commands.describe(done="The number of pushups you've completed", user="Which user")
     async def done(self, interaction: discord.Interaction, done: int, user: discord.User = None):
         await interaction.response.defer(thinking=True)
@@ -80,7 +80,7 @@ class Gamble(commands.Cog, name="gamble"):
             )
 
             pushup_embed.add_field(
-                name="📊 Total pushups",
+                name="📊 Total remaining pushups",
                 value=f"```{new_total}```",
                 inline=True
             )
@@ -117,7 +117,7 @@ class Gamble(commands.Cog, name="gamble"):
             )
 
             pushup_embed.add_field(
-                name="📊 New total pushups",
+                name="📊 New Total remaining pushups",
                 value=f"```{new_total}```",
                 inline=True
             )
@@ -293,7 +293,7 @@ class PushupTypeView(discord.ui.View):
             )
 
             result_embed.add_field(
-                name="📊 Total pushups",
+                name="📊 Total remaining pushups",
                 value=f"```{total_pushups}```",
                 inline=True
             )
@@ -629,7 +629,7 @@ class RPSView(discord.ui.View):
             )
 
             pushup_embed.add_field(
-                name="📊 Total pushups",
+                name="📊 Total remaining pushups",
                 value=f"```{total_pushups}```",
                 inline=True
             )

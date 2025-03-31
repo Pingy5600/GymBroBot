@@ -115,7 +115,7 @@ class Common(commands.Cog, name="common"):
             # Embed met de specifieke kleur van de gebruiker
             embed = discord.Embed(
                 title=f"Profile of {user}",
-                description="This is your profile! Here is your own color",
+                description="This is your profile!",
                 color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
             )
         else:
