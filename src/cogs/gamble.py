@@ -59,9 +59,9 @@ class Gamble(commands.Cog, name="gamble"):
         validatePushups(done)
         validateNotBot(user)
         validatePermissions(user, interaction)
-        
+
         # Haal het totaal aantal pushups voor de gebruiker op
-        total_pushups = await db_manager.get_pushups(interaction.user.id)
+        total_pushups = await db_manager.get_pushups(user.id)
 
         # Zorg ervoor dat het aantal pushups dat is gedaan niet groter is dan het totaal
         if done > total_pushups:
@@ -71,7 +71,7 @@ class Gamble(commands.Cog, name="gamble"):
         new_total = total_pushups - done
 
         # Werk de pushups bij in de database
-        success = await db_manager.add_pushups(interaction.user.id, -done)
+        success = await db_manager.add_pushups(user.id, -done)
 
         if success:
             pushup_embed = embeds.DefaultEmbed(
@@ -191,7 +191,7 @@ class PushupTypeView(discord.ui.View):
                 "https://media0.giphy.com/media/l2SqgVwLpAmvIfMCA/giphy.gif?cid=ecf05e47mfvwpbejd07zq4l2jyv74wyppg4ik3wnstsra73d&ep=v1_gifs_related&rid=giphy.gif&ct=g",
                 "https://cdn.discordapp.com/attachments/727476894106386504/1356030902341337119/image0.jpg?ex=67eb15b0&is=67e9c430&hm=e2e771ab978522ec94efc43a956e85712268fb5ad33e95133e0789f9914f5a30&"
             ]
-            
+
             gamble_embed = embeds.DefaultEmbed(f"**🎰 {self.gamble_starter.display_name} vs. {self.user.display_name}**")
             gamble_embed.set_image(url=random.choice(urls))
             await interaction.response.edit_message(embed=gamble_embed, view=None)
@@ -220,7 +220,7 @@ class PushupTypeView(discord.ui.View):
             # Pushups opslaan en totaal ophalen
             await db_manager.add_pushups(loser.id, amount)
             total_pushups = await db_manager.get_pushups(loser.id)
-            
+
             # create embed to show who won
             result_embed = embeds.DefaultEmbed(
                 f"🏅 {winner} won!", f"{loser.mention} has been given pushups", user=winner
@@ -232,49 +232,49 @@ class PushupTypeView(discord.ui.View):
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", winner_current_streak[1]
                 ))
-            
+
             # get winner highest streak
             highest_win_streak = await db_manager.get_highest_win_streak(winner.id)
             if highest_win_streak[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", highest_win_streak[1]
                 ))
-            
+
             # get winner total wins
             total_wins = await db_manager.get_ban_total_wins(winner.id)
             if total_wins[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", total_wins[1]
                 ))
-            
+
             # add stats field to embed
             result_embed.add_field(
                 name="📈 Stats of winner",
                 value=f"""{winner.mention} current win streak```{winner_current_streak[0][0]}```\n{winner.mention} highest win streak```{highest_win_streak[0][0]}```\n{winner.mention} total wins```{total_wins[0][0]}```""",
                 inline=True
             )
-            
+
             # get loser current streak
             loser_current_streak = await db_manager.get_current_loss_streak(loser.id)
             if loser_current_streak[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", loser_current_streak[1]
                 ))
-            
+
             # get loser highest streak
             highest_loss_streak = await db_manager.get_highest_loss_streak(loser.id)
             if highest_loss_streak[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", highest_loss_streak[1]
                 ))
-            
+
             # get loser total losses
             total_losses = await db_manager.get_ban_total_losses(loser.id)
             if total_losses[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", total_losses[1]
                 ))
-            
+
             # add stats field to embed
             result_embed.add_field(
                 name="📉 Stats of loser",
@@ -425,13 +425,13 @@ class PushupTypeView(discord.ui.View):
 
         # can only be triggered by the profile owner or an owner
         is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
-        
+
         # send message if usr cannot interact with button
         if not is_possible:
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
-        
+
         return is_possible
-        
+
 
 class Amount(discord.ui.View):
     def __init__(self, gamble_starter, bot, callback_func):
@@ -536,7 +536,6 @@ class BulletSelect(discord.ui.Select):
         )
 
         await interaction.edit_original_response(embed=result_embed, view=None)
-
 
 
 class RPSView(discord.ui.View):
@@ -690,6 +689,7 @@ class MinesView(discord.ui.View):
         [8.25, 99],
         [12.37]
     ]
+    ODDS = [[value * 3 for value in row] for row in ODDS]
 
     def __init__(self, player1, player2, mines_amount):
         super().__init__()
@@ -895,6 +895,29 @@ class ResetCooldownView(discord.ui.View):
             embed=embed,
             view=None
         )
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.user) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+        
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+        
+        return is_possible
 
 
 async def setup(bot):
