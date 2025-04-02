@@ -53,4 +53,3 @@ CREATE TABLE IF NOT EXISTS pushups_done (
     user_id BIGINT PRIMARY KEY,
     count INT NOT NULL DEFAULT 0
 );
-

@@ -794,25 +794,44 @@ async def get_ban_total_losses(user_id) -> list:
             
     except Exception as err:
         return [-1, err]
-    
+
+
 async def add_pushups(user_id: int, count: int):
     try:
         with psycopg2.connect(
-        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
-    ) as con:
+            host=os.environ.get('POSTGRES_HOST'), 
+            dbname=os.environ.get('POSTGRES_DB'), 
+            user=os.environ.get('POSTGRES_USER'), 
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
             
             with con.cursor() as cursor:
+                # Update push-ups
                 cursor.execute(
-                    "INSERT INTO pushups (user_id, count) VALUES (%s, %s)"
-                    "ON CONFLICT (user_id) DO UPDATE SET count = pushups.count + EXCLUDED.count",
-                    (user_id, count)
+                    """
+                    UPDATE pushups 
+                    SET count = GREATEST(count + %s, 0) 
+                    WHERE user_id = %s
+                    RETURNING count
+                    """,
+                    (count, user_id)
                 )
+                
+                new_count = cursor.fetchone()[0]  # Haal de nieuwe push-up count op
+
+                # Reset double_or_nothing_used als de push-ups op 0 staan
+                if new_count == 0:
+                    cursor.execute(
+                        "UPDATE pushups SET double_or_nothing_used = FALSE WHERE user_id = %s",
+                        (user_id,)
+                    )
+
                 con.commit()
         return True
-    
-    except Exception as e:
+    except Exception:
         return False
-    
+
+
 async def get_pushups(user_id: int):
     try:
         with psycopg2.connect(
@@ -826,7 +845,8 @@ async def get_pushups(user_id: int):
             
     except Exception as e:
         return 0
-    
+
+
 async def add_pushups_done(user_id: int, count: int):
     """Voegt het aantal voltooide pushups toe aan de pushups_done tabel."""
     try:
@@ -853,6 +873,7 @@ async def add_pushups_done(user_id: int, count: int):
     except Exception:
         return False
 
+
 async def get_pushups_done(user_id: int):
     """Haalt het totaal aantal voltooide pushups op."""
     try:
@@ -871,3 +892,41 @@ async def get_pushups_done(user_id: int):
     except Exception:
         return 0
 
+
+async def has_used_double_or_nothing(user_id: int) -> bool:
+    """Checkt of de gebruiker Double or Nothing al heeft gebruikt."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'), 
+            dbname=os.environ.get('POSTGRES_DB'), 
+            user=os.environ.get('POSTGRES_USER'), 
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute("SELECT double_or_nothing_used FROM pushups WHERE user_id = %s", (user_id,))
+                result = cursor.fetchone()
+                return result[0] if result else False
+    except Exception:
+        return False
+
+
+async def set_double_or_nothing(user_id: int, used: bool) -> bool:
+    """Zet de status van Double or Nothing voor een gebruiker."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'), 
+            dbname=os.environ.get('POSTGRES_DB'), 
+            user=os.environ.get('POSTGRES_USER'), 
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE pushups SET double_or_nothing_used = %s WHERE user_id = %s",
+                    (used, user_id)
+                )
+                con.commit()
+        return True
+    except Exception:
+        return False
