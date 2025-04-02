@@ -2,7 +2,6 @@ import asyncio
 import math
 import os
 import random
-import numpy as np
 
 import discord
 from discord.ext import commands
@@ -221,6 +220,10 @@ class PushupTypeView(discord.ui.View):
             # Pushups opslaan en totaal ophalen
             await db_manager.add_pushups(loser.id, amount)
             total_pushups = await db_manager.get_pushups(loser.id)
+
+            # Stuur DM naar loser dat hij pushups heeft gekregen
+            if loser.id != self.gamble_starter.id:
+                await send_dm_pushups(loser, self.gamble_starter, amount, '50/50')
 
             # create embed to show who won
             result_embed = embeds.DefaultEmbed(
@@ -564,6 +567,10 @@ class BulletSelect(discord.ui.Select):
             )
 
         await db_manager.add_pushups(loser.id, total_pushups)
+        # Stuur DM naar loser dat hij pushups heeft gekregen
+        if loser.id != self.gamble_starter.id:
+            await send_dm_pushups(loser, self.gamble_starter, total_pushups, 'Russian Roulette')
+
         result_embed.add_field(
             name="💪 Pushups added",
             value=f"```{loser} has been given {total_pushups} pushups```"
@@ -843,6 +850,8 @@ class MinesView(discord.ui.View):
             )
             embed.set_thumbnail(url=self.player1.display_avatar.url)
             await db_manager.add_pushups(self.player2.id, round(self.pushups))
+            # Stuur DM naar loser dat hij pushups heeft gekregen
+            await send_dm_pushups(self.player2, self.player1, round(self.pushups), 'Mines')
 
         else:
             winner = self.player1 if win else self.player2
@@ -850,6 +859,10 @@ class MinesView(discord.ui.View):
 
             await db_manager.add_pushups(loser.id, round(self.pushups))
             total = await db_manager.get_pushups(loser.id)
+
+            # Stuur DM naar loser dat hij pushups heeft gekregen
+            if loser.id != self.player1.id:
+                await send_dm_pushups(self.player2, self.player1, round(self.pushups), 'Mines')
 
             embed = embeds.DefaultEmbed(
                 f"🏅 {winner} won!", 
@@ -952,6 +965,34 @@ class ResetCooldownView(discord.ui.View):
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
         
         return is_possible
+
+
+async def send_dm_pushups(user, giver, pushups, game_type):
+    """Sends a user a DM that they have been given pushups
+
+    Args:
+        user (discord.User): Who has been given pushups
+        giver (_type_): Who has given the pushups
+        pushups (int): how many pushups
+        game_type (str): the game type
+    """
+    embed = embeds.DefaultEmbed(
+        "💪 You have been given pushups!",
+    )
+    embed.add_field(
+        name="👤 Given by",
+        value=giver.mention
+    )
+    embed.add_field(
+        name="🎲 Game played",
+        value=game_type
+    )
+    embed.add_field(
+        name="🦍 Amount",
+        value=str(pushups)
+    )
+
+    await user.send(embed=embed)
 
 
 async def setup(bot):
