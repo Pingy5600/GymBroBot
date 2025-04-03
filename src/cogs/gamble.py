@@ -411,7 +411,7 @@ class PushupTypeView(discord.ui.View):
             "https://media.giphy.com/media/LRVnPYqM8DLag/giphy.gif?cid=790b7611eb6ynljhvv3ebixlsxwp65dngxtkgsbafx5tgnri&ep=v1_gifs_search&rid=giphy.gif&ct=g",
             "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWI2eW5samh2djNlYml4bHN4d3A2NWRuZ3h0a2dzYmFmeDV0Z25yaSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3ohhwF34cGDoFFhRfy/giphy.gif",
             "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHNlc2wzOGdoNW0yemRzY212aGR0OGVldnAxOHR5aWM2Z29oNGJ3biZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xUVC1UDpyuwOEPVlue/giphy.gif",
-            "https://media.giphy.com/media/Ta3v3I4GI1gH7Rqek6/giphy.gif?cid=ecf05e47txq5anmmmxry05qelpmaloceqaq6njm338kwhjxn&ep=v1_gifs_search&rid=giphy.gif&ct=g"
+            "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExc3NrZTRtMG16aWM3ODAwaWZycGo0dXQ3enBjNTBucm0xcWZzcWU1MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ta3v3I4GI1gH7Rqek6/giphy.gif"
         ]
         gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
         gamble_embed.set_image(url=random.choice(gifs))
