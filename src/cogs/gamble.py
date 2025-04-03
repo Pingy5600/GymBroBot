@@ -413,7 +413,7 @@ class PushupTypeView(discord.ui.View):
             "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHNlc2wzOGdoNW0yemRzY212aGR0OGVldnAxOHR5aWM2Z29oNGJ3biZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xUVC1UDpyuwOEPVlue/giphy.gif",
             "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExc3NrZTRtMG16aWM3ODAwaWZycGo0dXQ3enBjNTBucm0xcWZzcWU1MiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Ta3v3I4GI1gH7Rqek6/giphy.gif"
         ]
-        gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
+        gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing**")
         gamble_embed.set_image(url=random.choice(gifs))
         await interaction.response.edit_message(embed=gamble_embed, view=None)
 
