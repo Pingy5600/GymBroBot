@@ -181,11 +181,17 @@ class Gamble(commands.Cog, name="gamble"):
             name="💥 Russian Roulette",
             value="Choose the amount bullets in the chamber and pull the trigger. If you dare."
         )
-        # gamble_explanation_embed.add_field(
-        #     name="💎 Double or Nothing",
-        #     value="Toss a coinflip and double your remaining pushups or make it zero."
-        # )
-        await interaction.followup.send(embed=gamble_explanation_embed, view=PushupTypeView(user, interaction.user, self.bot))
+        should_explain_double_reset = await db_manager.has_used_double_or_nothing(interaction.user.id)
+        don_exlanation = f"Toss a coinflip and double your remaining pushups or make it zero. *You need to complete all your pushups before you can use this again!*" if should_explain_double_reset else "Toss a coinflip and double your remaining pushups or make it zero."
+        gamble_explanation_embed.add_field(
+            name="💎 Double or Nothing",
+            value=don_exlanation
+        )
+
+        view = PushupTypeView(user, interaction.user, self.bot)
+        await view.setup()
+
+        await interaction.followup.send(embed=gamble_explanation_embed, view=view)
 
 
 class PushupTypeView(discord.ui.View):
@@ -194,6 +200,11 @@ class PushupTypeView(discord.ui.View):
         self.user = user
         self.gamble_starter = gamble_starter
         self.bot = bot
+
+    async def setup(self):
+        """update the double or nothing button's disabled state."""
+        should_disable = await db_manager.has_used_double_or_nothing(self.gamble_starter.id)
+        self.double_or_nothing_button.disabled = should_disable
 
     @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -385,47 +396,46 @@ class PushupTypeView(discord.ui.View):
         await interaction.response.edit_message(embed=embeds.DefaultEmbed("💪 Choose your pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
 
 
+    @discord.ui.button(label="💎 Double or Nothing", style=discord.ButtonStyle.danger, custom_id="double_or_nothing_button")
+    async def double_or_nothing_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        user_id = interaction.user.id
 
-    # @discord.ui.button(label="💎 Double or Nothing", style=discord.ButtonStyle.danger, disabled=False)
-    # async def double_or_nothing_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #     user_id = interaction.user.id
+        # Haal huidige push-ups op
+        current_pushups = await db_manager.get_pushups(user_id)
+        if current_pushups == 0:
+            await interaction.response.send_message("Je hebt geen push-ups om te gokken!", ephemeral=True)
+            return
 
-    #     # Haal huidige push-ups op
-    #     current_pushups = await db_manager.get_pushups(user_id)
-    #     if current_pushups == 0:
-    #         await interaction.response.send_message("Je hebt geen push-ups om te gokken!", ephemeral=True)
-    #         return
+        # 🎰 Start de gamble animatie
+        gifs = [
+            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
+            "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
+        ]
+        gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
+        gamble_embed.set_image(url=random.choice(gifs))
+        await interaction.response.edit_message(embed=gamble_embed, view=None)
 
-    #     # 🎰 Start de gamble animatie
-    #     gifs = [
-    #         "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
-    #         "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
-    #     ]
-    #     gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
-    #     gamble_embed.set_image(url=random.choice(gifs))
-    #     await interaction.response.edit_message(embed=gamble_embed, view=None)
+        # ⏳ Wacht 4 seconden
+        await asyncio.sleep(4)
 
-    #     # ⏳ Wacht 4 seconden
-    #     await asyncio.sleep(4)
+        # 50/50 kans
+        if random.choice([True, False]):
+            await db_manager.add_pushups(user_id, -current_pushups)  # Reset push-ups naar 0
+            result_text = f"🎉 **Je hebt gewonnen!**\nJe push-ups zijn gereset naar **0**!"
 
-    #     # 50/50 kans
-    #     if random.randint(0, 100) < 50:
-    #         await db_manager.add_pushups(user_id, -current_pushups)  # Reset push-ups naar 0
-    #         await db_manager.set_double_or_nothing(user_id, False)  # Reset de cooldown
-    #         result_text = f"🎉 **Je hebt gewonnen!**\nJe push-ups zijn gereset naar **0**!"
+        else:
+            await db_manager.add_pushups(user_id, current_pushups)  # Push-ups verdubbelen
+            await db_manager.set_double_or_nothing(user_id, True)
+            result_text = f"😬 **Pech!**\nJe push-ups zijn verdubbeld naar **{current_pushups * 2}**!"
 
-    #     else:
-    #         await db_manager.add_pushups(user_id, current_pushups)  # Push-ups verdubbelen
-    #         result_text = f"😬 **Pech!**\nJe push-ups zijn verdubbeld naar **{current_pushups * 2}**!"
-    #         # Markeer dat de speler Double or Nothing heeft gebruikt en disable de knop
-    #         await db_manager.set_double_or_nothing(user_id, True)
 
-    #     # 📜 Embed met resultaat
-    #     result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
-    #     result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        # 📜 Embed met resultaat
+        result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
+        result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
 
-    #     # Stuur resultaat en verwijder knoppen
-    #     await interaction.edit_original_response(embed=result_embed, view=None)
+        # Stuur resultaat en verwijder knoppen
+        await interaction.edit_original_response(embed=result_embed, view=None)
+
 
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
