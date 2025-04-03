@@ -214,8 +214,7 @@ class PushupTypeView(discord.ui.View):
                 "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
                 "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaWVqeXV3OHRpcHNtemx0ODJ4aHh1ZXdhejZ2aXQwN2o0Z21sdHJ3eiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/qNCtzhsWCc7q4D2FB5/giphy.gif",
                 "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExdmM0am03ejVudHkzejkyODMwaWNjaXg1emtyYThrNGttd2J1cTByYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26ufjXhjqhpFgcONq/giphy.gif",
-                "https://media0.giphy.com/media/l2SqgVwLpAmvIfMCA/giphy.gif?cid=ecf05e47mfvwpbejd07zq4l2jyv74wyppg4ik3wnstsra73d&ep=v1_gifs_related&rid=giphy.gif&ct=g",
-                "https://cdn.discordapp.com/attachments/727476894106386504/1356030902341337119/image0.jpg?ex=67eb15b0&is=67e9c430&hm=e2e771ab978522ec94efc43a956e85712268fb5ad33e95133e0789f9914f5a30&"
+                "https://media0.giphy.com/media/l2SqgVwLpAmvIfMCA/giphy.gif?cid=ecf05e47mfvwpbejd07zq4l2jyv74wyppg4ik3wnstsra73d&ep=v1_gifs_related&rid=giphy.gif&ct=g"
             ]
 
             gamble_embed = embeds.DefaultEmbed(f"**🎰 {self.gamble_starter.display_name} vs. {self.user.display_name}**")
@@ -408,8 +407,11 @@ class PushupTypeView(discord.ui.View):
 
         # 🎰 Start de gamble animatie
         gifs = [
-            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
-            "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
+            "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXh2aHdrOGhteDVtM2twN2N0dDcwZmNrZmhmbWN3bTdqYzR4Y3QyNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/bubpLP4o75fmIVukRr/giphy.gif",
+            "https://media.giphy.com/media/LRVnPYqM8DLag/giphy.gif?cid=790b7611eb6ynljhvv3ebixlsxwp65dngxtkgsbafx5tgnri&ep=v1_gifs_search&rid=giphy.gif&ct=g",
+            "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZWI2eW5samh2djNlYml4bHN4d3A2NWRuZ3h0a2dzYmFmeDV0Z25yaSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3ohhwF34cGDoFFhRfy/giphy.gif",
+            "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExdHNlc2wzOGdoNW0yemRzY212aGR0OGVldnAxOHR5aWM2Z29oNGJ3biZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xUVC1UDpyuwOEPVlue/giphy.gif",
+            "https://media.giphy.com/media/Ta3v3I4GI1gH7Rqek6/giphy.gif?cid=ecf05e47txq5anmmmxry05qelpmaloceqaq6njm338kwhjxn&ep=v1_gifs_search&rid=giphy.gif&ct=g"
         ]
         gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
         gamble_embed.set_image(url=random.choice(gifs))
