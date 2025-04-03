@@ -48,6 +48,7 @@ class Gamble(commands.Cog, name="gamble"):
         embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
         await interaction.response.send_message(embed=embed)
 
+
     @pushup_group.command(name="done", description="Lowers the Total remaining pushups if you have done them. Be honest!")
     @discord.app_commands.describe(done="The number of pushups you've completed", user="Which user")
     async def done(self, interaction: discord.Interaction, done: int, user: discord.User = None):
@@ -70,8 +71,9 @@ class Gamble(commands.Cog, name="gamble"):
         new_total = total_pushups - done
         success = await db_manager.add_pushups(user.id, -done)
 
-        # ✅ Voeg de voltooide pushups toe
+        # Voeg de voltooide pushups toe
         await db_manager.add_pushups_done(user.id, done)
+        total_done = await db_manager.get_pushups_done(user.id)
 
         if success:
             pushup_embed = embeds.DefaultEmbed(
@@ -84,7 +86,16 @@ class Gamble(commands.Cog, name="gamble"):
                 value=f"```{new_total}```",
                 inline=True
             )
+
+            pushup_embed.add_field(
+                name="🏆 Pushups done",
+                value=f"```{total_done}```",
+                inline=True
+            )
+
             pushup_embed.set_footer(text="The time to gamble is now!")
+            pushup_embed.set_thumbnail(url=user.display_avatar.url)
+
             await interaction.followup.send(embed=pushup_embed)
 
         else:
@@ -660,14 +671,15 @@ class BulletSelect(discord.ui.Select):
         # Resultaat embed
         if loser == self.gamble_starter:
             result_embed = embeds.DefaultEmbed(
-                "💀 RIP! You died!",
+                f"💀 RIP! You died to {winner.display_name}!",
                 f"Well, at least you didn't die as a degenerate gambling addict... right?"
             )
         else:
             result_embed = embeds.DefaultEmbed(
-                "🍀 PHEW! You survived!",
+                f"🍀 PHEW! You survived agains {loser.display_name}!",
                 "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
             )
+        result_embed.set_thumbnail(url=winner.display_avatar.url)
 
         # Push-ups opslaan
         await db_manager.add_pushups(loser.id, pushups_to_add)
@@ -946,7 +958,7 @@ class MinesView(discord.ui.View):
         if cashout:
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
-                f"{self.player1.mention} chose to cash out safely!",
+                f"{self.player1.mention} chose to cash out safely against {self.player2.mention}!",
             )
             embed.add_field(
                 name="💪 Pushups given:",
