@@ -664,21 +664,15 @@ class BulletSelect(discord.ui.Select):
 
         await asyncio.sleep(3)
 
-        # Bij 6 kogels verlies je altijd
-        if bullets == 6:
-            loser = self.gamble_starter
-            winner = self.opponent
-            pushups_to_add = self.amount * 2
-        else:
-            # Kans berekenen (bullets/6)
-            loser = self.gamble_starter if bullets < random.randint(0, 5) else self.opponent
-            winner = self.opponent if loser == self.gamble_starter else self.gamble_starter
+        # Kans berekenen (bullets/6)
+        loser = self.gamble_starter if random.randint(0, 5) < bullets else self.opponent
+        winner = self.opponent if loser == self.gamble_starter else self.gamble_starter
 
-            # Odds toewijzen
-            win_odds = {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75}
-            lose_odds = {1: 1.75, 2: 1.5, 3: 1, 4: 0.5, 5: 0.25}
+        # Odds toewijzen
+        win_odds = {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75, 6: 2}
+        lose_odds = {1: 1.75, 2: 1.5, 3: 1, 4: 0.5, 5: 0.25, 6: 2}
 
-            pushups_to_add = int(self.amount * (lose_odds[bullets] if loser == self.gamble_starter else win_odds[bullets]))
+        pushups_to_add = int(self.amount * (lose_odds[bullets] if loser == self.gamble_starter else win_odds[bullets]))
 
         # Resultaat embed
         if loser == self.gamble_starter:
