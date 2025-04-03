@@ -14,6 +14,7 @@ from exceptions import InvalidPushups
 from helpers import db_manager, getClickableCommand
 from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
 
+
 class Gamble(commands.Cog, name="gamble"):
     def __init__(self,bot):
         self.bot = bot
@@ -170,7 +171,10 @@ class Gamble(commands.Cog, name="gamble"):
             name="💥 Russian Roulette",
             value="Choose the amount bullets in the chamber and pull the trigger. If you dare."
         )
-
+        # gamble_explanation_embed.add_field(
+        #     name="💎 Double or Nothing",
+        #     value="Toss a coinflip and double your remaining pushups or make it zero."
+        # )
         await interaction.followup.send(embed=gamble_explanation_embed, view=PushupTypeView(user, interaction.user, self.bot))
 
 
@@ -326,47 +330,92 @@ class PushupTypeView(discord.ui.View):
             view=MinesSelectView(self.gamble_starter, self.user)
         )
 
-    async def interaction_check(self, interaction: discord.Interaction):
-        """Check that the user is the one who is clicking buttons
-        Args:
-            interaction (discord.Interaction): Users Interaction
-
-        Returns:
-            bool
-        """
-        responses = [
-            f"<@{interaction.user.id}> shatap lil bro",
-            f"<@{interaction.user.id}> you are NOT him",
-            f"<@{interaction.user.id}> blud thinks he's funny",
-            f"<@{interaction.user.id}> it's on sight now",
-        ]
-
-        # can only be triggered by the profile owner or an owner
-        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
-        
-        # send message if usr cannot interact with button
-        if not is_possible:
-            await interaction.response.send_message(random.choice(responses), ephemeral=True)
-        
-        return is_possible
-
     @discord.ui.button(label="Russian Roulette", style=discord.ButtonStyle.blurple, emoji="💥")
     async def russian_roulette_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
         async def callback_func(amount, interaction):
             view = discord.ui.View()
             view.add_item(BulletSelect(self.gamble_starter, self.user, amount))
-            
+
             embed = embeds.DefaultEmbed(
-                "💥 With how many bullets do you want to play?",
+                "💥 Russian Roulette",
                 "There are 6 spots in the chamber"
             )
+
             embed.add_field(
-                name="🎲 Odds",
-                value=f"```1 bullet  -> {round(amount*0.25)} pushups\n2 bullets -> {round(amount*0.5)} pushups \n3 bullets -> {amount} pushups\n4 bullets -> {round(amount*1.5)} pushups\n5 bullets -> {round(amount*1.75)} pushups\n6 bullets -> {round(amount*2)} pushups```",
+                name="🎲 **Odds for Winning**",
+                value=f"""
+    1 Bullet     -> {round(amount*0.25)} pushups  
+    2 Bullets    -> {round(amount*0.5)} pushups  
+    3 Bullets    -> {amount} pushups  
+    4 Bullets    -> {round(amount*1.5)} pushups  
+    5 Bullets    -> {round(amount*1.75)} pushups  
+    6 Bullets    -> {round(amount*2)} pushups
+                """,
+                inline=False
             )
+
+            embed.add_field(
+                name="💀 **Odds for Losing**",
+                value=f"""
+    1 Bullet     -> {round(amount*1.75)} pushups  
+    2 Bullets    -> {round(amount*1.5)} pushups  
+    3 Bullets    -> {amount} pushups  
+    4 Bullets    -> {round(amount*0.5)} pushups  
+    5 Bullets    -> {round(amount*0.25)} pushups  
+    6 Bullets    -> {round(amount*2)} pushups
+                """,
+                inline=False
+            )
+
+            embed.set_footer(text="The more bullets, the higher the risk... Choose wisely!")
+            embed.color = discord.Color.blurple()  # Set the embed color to match the button color
+
             await interaction.response.edit_message(embed=embed, view=view)
 
-        await interaction.response.edit_message(embed=embeds.DefaultEmbed("Choose pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
+        await interaction.response.edit_message(embed=embeds.DefaultEmbed("💪 Choose your pushup amount!"), view=Amount(self.gamble_starter, self.bot, callback_func))
+
+
+
+    # @discord.ui.button(label="💎 Double or Nothing", style=discord.ButtonStyle.danger, disabled=False)
+    # async def double_or_nothing_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+    #     user_id = interaction.user.id
+
+    #     # Haal huidige push-ups op
+    #     current_pushups = await db_manager.get_pushups(user_id)
+    #     if current_pushups == 0:
+    #         await interaction.response.send_message("Je hebt geen push-ups om te gokken!", ephemeral=True)
+    #         return
+
+    #     # 🎰 Start de gamble animatie
+    #     gifs = [
+    #         "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExczV5enBkbTVoNGZoZHUwdmdzdDdjbzFoZ3VoMDA4MTVxdDY2Ymo2byZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/6jqfXikz9yzhS/giphy.gif",
+    #         "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExemNibW9ra2Njemh5Zm4wZDB4bWQzemhmM2lodjd3cXhyNXZjeXM5eiZlcD12MV9pbnRlcm5naWZfYnlfaWQmY3Q9Zw/26uf2YTgF5upXUTm0/giphy.gif",
+    #     ]
+    #     gamble_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing** 🎰")
+    #     gamble_embed.set_image(url=random.choice(gifs))
+    #     await interaction.response.edit_message(embed=gamble_embed, view=None)
+
+    #     # ⏳ Wacht 4 seconden
+    #     await asyncio.sleep(4)
+
+    #     # 50/50 kans
+    #     if random.randint(0, 100) < 50:
+    #         await db_manager.add_pushups(user_id, -current_pushups)  # Reset push-ups naar 0
+    #         await db_manager.set_double_or_nothing(user_id, False)  # Reset de cooldown
+    #         result_text = f"🎉 **Je hebt gewonnen!**\nJe push-ups zijn gereset naar **0**!"
+
+    #     else:
+    #         await db_manager.add_pushups(user_id, current_pushups)  # Push-ups verdubbelen
+    #         result_text = f"😬 **Pech!**\nJe push-ups zijn verdubbeld naar **{current_pushups * 2}**!"
+    #         # Markeer dat de speler Double or Nothing heeft gebruikt en disable de knop
+    #         await db_manager.set_double_or_nothing(user_id, True)
+
+    #     # 📜 Embed met resultaat
+    #     result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
+    #     result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
+
+    #     # Stuur resultaat en verwijder knoppen
+    #     await interaction.edit_original_response(embed=result_embed, view=None)
 
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
@@ -392,8 +441,8 @@ class PushupTypeView(discord.ui.View):
 
         return is_possible
 
-class MinesSelectView(discord.ui.View):
 
+class MinesSelectView(discord.ui.View):
     def __init__(self, gamble_starter, user):
         super().__init__()
         self.gamble_starter = gamble_starter
@@ -432,18 +481,43 @@ class MinesSelectView(discord.ui.View):
             view=view
         )
 
-
     @discord.ui.button(label="See odds", style=discord.ButtonStyle.blurple, emoji="🃏")
     async def odds(self, interaction: discord.Interaction, button: discord.ui.Button):
         
         await interaction.response.send_message(
             embed=MinesOddsView.get_odds_table(1),
-            view=MinesOddsView()
+            view=MinesOddsView(self.gamble_starter)
         )
 
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+
+        return is_possible
+
+
 class MinesOddsView(discord.ui.View):
-    def __init__(self):
+    def __init__(self, gamble_starter):
         super().__init__()
+        self.gamble_starter = gamble_starter
 
     def get_odds_table(mines):
         embed = embeds.DefaultEmbed(
@@ -465,6 +539,30 @@ class MinesOddsView(discord.ui.View):
             embed=MinesOddsView.get_odds_table(mines_amount),
             view=self
         )
+    
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+
+        return is_possible
 
 
 class Amount(discord.ui.View):
@@ -478,13 +576,13 @@ class Amount(discord.ui.View):
     async def amount_10(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.start_game(interaction, 10)
 
-    @discord.ui.button(label="25", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
+    @discord.ui.button(label="20", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
     async def amount_25(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.start_game(interaction, 25)
+        await self.start_game(interaction, 20)
 
-    @discord.ui.button(label="50", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
+    @discord.ui.button(label="30", style=discord.ButtonStyle.blurple, row=2, emoji='💪')
     async def amount_50(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.start_game(interaction, 50)
+        await self.start_game(interaction, 30)
 
     async def start_game(self, interaction: discord.Interaction, amount):
         await self.callback_func(amount, interaction)
@@ -526,9 +624,11 @@ class BulletSelect(discord.ui.Select):
         self.amount = amount
 
     async def callback(self, interaction: discord.Interaction):
+        bullets = int(self.values[0])
+        
         embed = embeds.DefaultEmbed(
             "💥 Pulling the trigger...",
-            f"You are playing with **{self.values[0]}** bullets in the chamber"
+            f"You are playing with **{bullets}** bullets in the chamber"
         )
         images = [
             "https://media.tenor.com/fklGVnlUSFQAAAAM/russian-roulette.gif",
@@ -542,31 +642,41 @@ class BulletSelect(discord.ui.Select):
 
         await asyncio.sleep(3)
 
-        odds_calc = lambda bullets: {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75, 6: 2}.get(bullets, 1)
-
-        # determine who to give pushups to
-        choices = [self.opponent, self.gamble_starter]
-
-        loser = self.gamble_starter if random.randint(1, 6) <= int(self.values[0]) else self.opponent
-        choices.remove(loser)
-        winner = choices[0]
-
-        total_pushups = odds_calc(int(self.values[0])) * self.amount
-        if winner == self.gamble_starter:
-            result_embed = embeds.DefaultEmbed(
-                "🍀 PHEW! You survived!",
-                "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
-            )
+        # Bij 6 kogels verlies je altijd
+        if bullets == 6:
+            loser = self.gamble_starter
+            winner = self.opponent
+            pushups_to_add = self.amount * 2
         else:
+            # Kans berekenen (bullets/6)
+            loser = self.gamble_starter if random.randint(1, 6) <= bullets else self.opponent
+            winner = self.opponent if loser == self.gamble_starter else self.gamble_starter
+
+            # **Odds toewijzen** 
+            win_odds = {1: 0.25, 2: 0.5, 3: 1, 4: 1.5, 5: 1.75}
+            lose_odds = {1: 1.75, 2: 1.5, 3: 1, 4: 0.5, 5: 0.25}
+
+            pushups_to_add = int(self.amount * (lose_odds[bullets] if loser == self.gamble_starter else win_odds[bullets]))
+
+        # Resultaat embed
+        if loser == self.gamble_starter:
             result_embed = embeds.DefaultEmbed(
                 "💀 RIP! You died!",
                 f"Well, at least you didn't die as a degenerate gambling addict... right?"
             )
+        else:
+            result_embed = embeds.DefaultEmbed(
+                "🍀 PHEW! You survived!",
+                "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
+            )
 
-        await db_manager.add_pushups(loser.id, total_pushups)
+        # Push-ups opslaan
+        await db_manager.add_pushups(loser.id, pushups_to_add)
+
+        # Resultaten weergeven
         result_embed.add_field(
             name="💪 Pushups added",
-            value=f"```{loser} has been given {total_pushups} pushups```"
+            value=f"```{loser} has been given {pushups_to_add} pushups```"
         )
 
         await interaction.edit_original_response(embed=result_embed, view=None)
@@ -945,7 +1055,7 @@ class ResetCooldownView(discord.ui.View):
         ]
 
         # can only be triggered by the profile owner or an owner
-        is_possible = (interaction.user.id == self.user) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+        is_possible = (interaction.user.id == self.user.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
         
         # send message if usr cannot interact with button
         if not is_possible:
