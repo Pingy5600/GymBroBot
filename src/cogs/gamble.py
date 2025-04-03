@@ -48,7 +48,6 @@ class Gamble(commands.Cog, name="gamble"):
         embed.set_thumbnail(url=getMetaFromExercise("pushups")["image"])
         await interaction.response.send_message(embed=embed)
 
-
     @pushup_group.command(name="done", description="Lowers the Total remaining pushups if you have done them. Be honest!")
     @discord.app_commands.describe(done="The number of pushups you've completed", user="Which user")
     async def done(self, interaction: discord.Interaction, done: int, user: discord.User = None):
