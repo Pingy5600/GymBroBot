@@ -45,11 +45,15 @@ CREATE TABLE IF NOT EXISTS bangamble (
 );
 
 CREATE TABLE IF NOT EXISTS pushups (
-    user_id BIGINT PRIMARY KEY,
-    count INT DEFAULT 0
+  user_id BIGINT PRIMARY KEY,
+  count INT DEFAULT 0,
+  double_or_nothing_used BOOLEAN DEFAULT FALSE
 );
 
+-- Nodig voor als table al bestond
+ALTER TABLE pushups ADD COLUMN IF NOT EXISTS double_or_nothing_used BOOLEAN DEFAULT FALSE;
+
 CREATE TABLE IF NOT EXISTS pushups_done (
-    user_id BIGINT PRIMARY KEY,
-    count INT NOT NULL DEFAULT 0
+  user_id BIGINT PRIMARY KEY,
+  count INT NOT NULL DEFAULT 0
 );
