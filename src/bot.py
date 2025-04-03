@@ -15,6 +15,7 @@ import embeds
 import exceptions
 from helpers import db_manager
 from cogs.gamble import ResetCooldownView
+from helpers import insert_missing_badges
 
 load_dotenv()
 
@@ -342,5 +343,6 @@ bot.tree.on_error = on_tree_error
 
 
 init_db()
+insert_missing_badges()
 asyncio.run(load_cogs())
 bot.run(os.environ.get("BOT_TOKEN"))

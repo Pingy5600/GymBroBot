@@ -57,3 +57,19 @@ CREATE TABLE IF NOT EXISTS pushups_done (
   user_id BIGINT PRIMARY KEY,
   count INT NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS badges (
+  id SERIAL PRIMARY KEY,  
+  name TEXT UNIQUE NOT NULL,  -- Name of the badge
+  description TEXT,  -- Short description of the badge
+  icon_url TEXT,  -- URL to badge image/icon
+  rarity TEXT CHECK (rarity IN ('Common', 'Rare', 'Epic', 'Legendary')) NOT NULL DEFAULT 'Common',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_badges (
+  user_id BIGINT NOT NULL,
+  badge_id INTEGER REFERENCES badges(id) ON DELETE CASCADE,
+  earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, badge_id)
+);
