@@ -31,7 +31,7 @@ def validateReps(reps):
 def validateNotBot(user):
     if user.bot:
         raise BotNotUser()
-
+ 
 
 def validateEntryList(entries, message="No entries found for the specified exercise."):
     if len(entries) == 0:
@@ -73,9 +73,10 @@ def validateDate(date):
 
     try:    
         date_obj = dateparser.parse(date, settings=date_set)
-
-        if date_obj is None:
-            raise ValueError("Invalid date format")
-
     except ValueError:
         raise InvalidDate()
+    
+    if date_obj is None:
+        raise ValueError("Invalid date format")
+
+    return date_obj
