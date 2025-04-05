@@ -10,6 +10,7 @@ from databank import db_manager
 from embeds import (DefaultEmbed, DefaultEmbedWithExercise, Paginator,
                     PRFieldGenerator, TopPRFieldGenerator)
 from exceptions import NoEntries, TimeoutCommand
+from helpers.badges import check_for_badge
 from helpers import getDiscordTimeStamp, ordinal, setGraph
 from validations import (validateAndCleanWeight, validateDate,
                          validateEntryList, validateNotBot,
@@ -54,7 +55,9 @@ class PR(commands.Cog, name="pr"):
         embed.add_field(name="Excercise", value=exercise_meta.get('pretty-name'), inline=True)
         embed.add_field(name="Date", value=getDiscordTimeStamp(date_obj), inline=True)
 
-        return await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed)
+
+        await check_for_badge(user, exercise, pr, date_obj, interaction)
 
 
     @command_pr_group.command(name="list", description="Gives PR of the given user")

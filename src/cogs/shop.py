@@ -3,6 +3,7 @@ from discord.ext import commands
 
 import embeds
 from databank import db_manager
+from helpers.badges import add_badges_field_to_embed
 from shop import Shop
 
 
@@ -40,28 +41,7 @@ class ShopCog(commands.Cog, name="shop"):
 
         badges = await db_manager.get_all_badges()
 
-        categories = {
-            "Common": [],
-            "Rare": [],
-            "Epic": [],
-            "Legendary": [],
-        }
-
-        rarity_emojis = {
-            "Common": "⭐",
-            "Rare": "💪",
-            "Epic": "⚡",
-            "Legendary": "💎",
-        }
-
-        for _, name, desc, icon_url, rarity in badges:
-            category = categories.get(rarity, [])
-            category.append(f"{icon_url} **{name}** - {desc}")
-
-        for rarity, badge_list in categories.items():
-            if badge_list:
-                emoji = rarity_emojis.get(rarity)
-                embed.add_field(name=f"{emoji} {rarity}", value="\n".join(badge_list), inline=False)
+        embed = add_badges_field_to_embed(embed, badges)
 
         await interaction.followup.send(embed=embed)
 

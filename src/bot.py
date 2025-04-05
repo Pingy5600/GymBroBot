@@ -15,7 +15,7 @@ import embeds
 import exceptions
 from helpers import db_manager
 from cogs.gamble import ResetCooldownView
-from helpers import insert_missing_badges
+from helpers.badges import insert_missing_badges
 
 load_dotenv()
 

@@ -1,6 +1,8 @@
 import asyncio
 import math
 from datetime import datetime
+import os
+import random
 
 import dateparser
 import discord
@@ -11,6 +13,7 @@ from reactionmenu import ViewButton, ViewMenu, ViewSelect
 import embeds
 from embeds import Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
+from helpers.badges import get_user_badges, add_badges_field_to_embed
 from helpers import (COLOR_MAP, db_manager, getClickableCommand,
                      getDiscordTimeStamp)
 from validations import validateEntryList, validateNotBot
@@ -131,7 +134,7 @@ class Common(commands.Cog, name="common"):
 
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed, view=ProfileView(self.bot, user))
 
 
 
@@ -233,6 +236,37 @@ class Common(commands.Cog, name="common"):
             description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'], full_time=True)}."
         )
         await interaction.followup.send(embed=embed)
+
+
+class ProfileView(discord.ui.View):
+    def __init__(self, bot, user):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.user = user
+
+    @discord.ui.button(label="See badges", style=discord.ButtonStyle.primary, emoji="🪪")
+    async def badges(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        badges = await get_user_badges(self.user.id)
+        if not badges:
+            embed = embeds.DefaultEmbed(
+                title="🪪 No badges yet",
+                description="You have no badges yet!",
+                user=self.user
+            )
+
+            return await interaction.response.send_message(embed=embed)
+        
+        embed = embeds.DefaultEmbed(
+            title=f"🪪 Badges for {self.user.display_name}",
+            description="These are the badges you have earned!",
+            user=self.user
+        )
+
+        embed = add_badges_field_to_embed(embed, badges, add_timestamp=True)
+
+        await interaction.response.send_message(embed=embed)
+
 
 
 async def setup(bot):

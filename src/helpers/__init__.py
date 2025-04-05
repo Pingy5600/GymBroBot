@@ -2,8 +2,6 @@ from discord import app_commands
 
 from .graph import *
 from .reps_calc import *
-from .badges import *
-
 
 def getDiscordTimeStamp(old_timestamp, full_time=False):
     timestamp = int(old_timestamp.timestamp())

@@ -63,8 +63,7 @@ CREATE TABLE IF NOT EXISTS badges (
   name TEXT UNIQUE NOT NULL,  -- Name of the badge
   description TEXT,  -- Short description of the badge
   icon_url TEXT,  -- URL to badge image/icon
-  rarity TEXT CHECK (rarity IN ('Common', 'Rare', 'Epic', 'Legendary')) NOT NULL DEFAULT 'Common',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  rarity TEXT CHECK (rarity IN ('Common', 'Rare', 'Epic', 'Legendary')) NOT NULL DEFAULT 'Common'
 );
 
 CREATE TABLE IF NOT EXISTS user_badges (

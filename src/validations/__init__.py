@@ -69,7 +69,7 @@ def validateDate(date):
         'DEFAULT_LANGUAGES': ["en", "nl"]
     }
     if date is None:
-            date = 'vandaag'
+        date = 'vandaag'
 
     try:    
         date_obj = dateparser.parse(date, settings=date_set)
@@ -79,3 +79,5 @@ def validateDate(date):
 
     except ValueError:
         raise InvalidDate()
+    
+    return date_obj
