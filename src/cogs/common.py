@@ -114,27 +114,25 @@ class Common(commands.Cog, name="common"):
         total_pushups = await db_manager.get_pushups(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
-        if user_color:
-            # Embed met de specifieke kleur van de gebruiker
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="This is your profile!",
-                color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
-            )
-        else:
-            # Standaard embed als de gebruiker geen kleur heeft
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="You have not set a custom color.",
-                color=discord.Color.default()
-            )
+        # Badges
+        badges = await get_user_badges(user.id)
+        badges_emojis = ' '.join([badge[3] for badge in badges]) if badges else 'No badges yet!'
+
+        # Color
+        color = discord.Color.default() if not user_color else discord.Color(int(user_color[1:], 16))
+
+        embed = discord.Embed(
+            title=f"Profile of {user}",
+            description=badges_emojis,
+            color=color
+        )
 
         embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
 
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        await interaction.followup.send(embed=embed, view=ProfileView(self.bot, user))
+        await interaction.followup.send(embed=embed, view=ProfileView(self.bot, user, badges) if badges else None)
 
 
 
@@ -239,31 +237,23 @@ class Common(commands.Cog, name="common"):
 
 
 class ProfileView(discord.ui.View):
-    def __init__(self, bot, user):
+    def __init__(self, bot, user, badges):
         super().__init__(timeout=None)
         self.bot = bot
         self.user = user
+        self.badges = badges
 
     @discord.ui.button(label="See badges", style=discord.ButtonStyle.primary, emoji="🪪")
-    async def badges(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        badges = await get_user_badges(self.user.id)
-        if not badges:
-            embed = embeds.DefaultEmbed(
-                title="🪪 No badges yet",
-                description="You have no badges yet!",
-                user=self.user
-            )
-
-            return await interaction.response.send_message(embed=embed)
+    async def badges_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         
         embed = embeds.DefaultEmbed(
             title=f"🪪 Badges for {self.user.display_name}",
             description="These are the badges you have earned!",
             user=self.user
         )
+        embed.set_thumbnail(url=self.user.display_avatar.url)
 
-        embed = add_badges_field_to_embed(embed, badges, add_timestamp=True)
+        embed = add_badges_field_to_embed(embed, self.badges, add_timestamp=True)
 
         await interaction.response.send_message(embed=embed)
 

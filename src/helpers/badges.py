@@ -151,7 +151,7 @@ def add_badges_field_to_embed(embed, badges, add_timestamp=False):
     for idOrTimestamp, name, desc, icon_url, rarity in badges:
         category = categories.get(rarity, [])
         if add_timestamp:
-            category.append(f"{icon_url} **{name}** - earned at {getDiscordTimeStamp(idOrTimestamp, full_time=False)} - {desc}")
+            category.append(f"{icon_url} **{name}** - Earned at {getDiscordTimeStamp(idOrTimestamp, full_time=False)} - {desc}")
         else:
             category.append(f"{icon_url} **{name}** - {desc}")
 
