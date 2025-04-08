@@ -69,11 +69,10 @@ class Gamble(commands.Cog, name="gamble"):
 
         # Update de pushups
         new_total = total_pushups - done
-        success = await db_manager.add_pushups(user.id, -done)
 
-        # Voeg de voltooide pushups toe
-        await db_manager.add_pushups_done(user.id, done)
-        await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
+        # Voeg het pushup event toe (gebruik hier de negatieve waarde)
+        success = await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
+
         total_done = await db_manager.get_pushups_done(user.id)
 
         if success:
@@ -106,7 +105,7 @@ class Gamble(commands.Cog, name="gamble"):
     @pushup_group.command(name="add", description="Adds pushups to a user's total. Admin only!")
     @checks.is_admin_or_has_permissions()  # Zorg ervoor dat alleen admins of gebruikers in de lijst dit kunnen uitvoeren
     @discord.app_commands.describe(add="The number of pushups to add", user="Which user")
-    async def add_pushups(self, interaction: discord.Interaction, add: int, user: discord.User):
+    async def add_pushup_event(self, interaction: discord.Interaction, add: int, user: discord.User):
         await interaction.response.defer(thinking=True)
 
         # Validaties (zorg ervoor dat de admin geen fout maakt)
@@ -119,9 +118,8 @@ class Gamble(commands.Cog, name="gamble"):
         # Voeg de opgegeven pushups toe
         new_total = total_pushups + add
 
-        # Werk de pushups bij in de database
-        success = await db_manager.add_pushups(user.id, add)
-        await db_manager.add_pushup_event(user.id, add, f"{interaction.user.display_name} added pushups")
+        success = await db_manager.add_pushup_event(user.id, add, f"{interaction.user.mention} added pushups")
+        await send_dm_pushups(user, interaction.user, add, 'Admin')
 
         if success:
             pushup_embed = embeds.DefaultEmbed(
@@ -244,8 +242,12 @@ class PushupTypeView(discord.ui.View):
             await db_manager.check_ban_gamble_win_streak(winner.id)
             await db_manager.check_ban_gamble_loss_streak(loser.id)
 
-            # Pushups opslaan en totaal ophalen
-            await db_manager.add_pushups(loser.id, amount)
+            await db_manager.add_pushup_event(loser.id, amount, f"🎰 Lost 50/50 to {winner.mention}")
+
+            # Stuur DM naar loser dat hij pushups heeft gekregen
+            if loser.id != self.gamble_starter.id:
+                await send_dm_pushups(loser, self.gamble_starter, amount, '50/50')
+            
             total_pushups = await db_manager.get_pushups(loser.id)
 
             # create embed to show who won
@@ -255,7 +257,6 @@ class PushupTypeView(discord.ui.View):
 
             # get winner current streak
             winner_current_streak = await db_manager.get_current_win_streak(winner.id)
-            await db_manager.add_pushup_event(loser.id, amount, f"🎰 Lost 50/50 to {winner.display_name}")
             if winner_current_streak[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", winner_current_streak[1]
@@ -425,18 +426,17 @@ class PushupTypeView(discord.ui.View):
 
         # 50/50 kans
         if random.choice([True, False]):
-            await db_manager.add_pushups(user_id, -current_pushups)  # Reset push-ups naar 0
+            # Reset de push-ups naar 0 en voeg een event toe
             await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing")
-            
-            result_text = f"🎉 **Je hebt gewonnen!**\nJe push-ups zijn gereset naar **0**!"
+
+            result_text = f"🎉 **You Won!**\nYour pushups have been reset to **0**!"
 
         else:
-            await db_manager.add_pushups(user_id, current_pushups)  # Push-ups verdubbelen
-            await db_manager.set_double_or_nothing(user_id, True)
+            # Verdubbel de push-ups en voeg een event toe
             await db_manager.add_pushup_event(user_id, current_pushups, f"😬 Lost double or nothing")
+            await db_manager.set_double_or_nothing(user_id, True)
 
-            result_text = f"😬 **Pech!**\nJe push-ups zijn verdubbeld naar **{current_pushups * 2}**!"
-
+            result_text = f"😬 **Big L!**\nYour pushups have been dubbled to **{current_pushups * 2}**!"
 
         # 📜 Embed met resultaat
         result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
@@ -520,8 +520,6 @@ class RPSView(discord.ui.View):
             result = "It's a draw! 🤝\nBoth players have to do pushups!"
 
             # Add pushups to both players
-            await db_manager.add_pushups(self.player1.id, self.amount)
-            await db_manager.add_pushups(self.player2.id, self.amount)
             await db_manager.add_pushup_event(self.player1.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player2.mention}")
             await db_manager.add_pushup_event(self.player2.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player1.mention}")
 
@@ -549,7 +547,6 @@ class RPSView(discord.ui.View):
             loser = self.player1 if winner != self.player1 else self.player2
             result = f"{winner.mention} wins! 🎉\n{loser.mention} gets the pushups!"
 
-            await db_manager.add_pushups(loser.id, self.amount)
             await db_manager.add_pushup_event(loser.id, self.amount, f"🪨 Lost Rock Paper Scissors vs. {winner.mention}")
             total_pushups = await db_manager.get_pushups(loser.id)
 
@@ -858,7 +855,8 @@ class MinesView(discord.ui.View):
         self.flip_tiles()
 
         if cashout:
-            await db_manager.add_pushup_event(self.player2.id, self.pushups, f"💰 {self.player1.display_name} Cashed out in mines")
+            await db_manager.add_pushup_event(self.player2.id, round(self.pushups), f"💰 {self.player1.mention} Cashed out in mines")
+            await send_dm_pushups(self.player2, self.player1, round(self.pushups), 'Mines')
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
                 f"{self.player1.mention} chose to cash out safely against {self.player2.mention}!",
@@ -868,14 +866,12 @@ class MinesView(discord.ui.View):
                 value=f"```{round(self.pushups)}```"
             )
             embed.set_thumbnail(url=self.player1.display_avatar.url)
-            await db_manager.add_pushups(self.player2.id, round(self.pushups))
 
         else:
             winner = self.player1 if win else self.player2
             loser = self.player2 if win else self.player1
 
-            await db_manager.add_pushups(loser.id, round(self.pushups))
-            await db_manager.add_pushup_event(loser.id, self.pushups, f"💣 Lost Mines to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, round(self.pushups), f"💣 Lost Mines to {winner.mention}")
             total = await db_manager.get_pushups(loser.id)
 
             # Stuur DM naar loser dat hij pushups heeft gekregen
@@ -889,7 +885,7 @@ class MinesView(discord.ui.View):
             )
             embed.add_field(
                 name="💪 Added pushups",
-                value=f"```{int(self.pushups)}```",
+                value=f"```{round(self.pushups)}```",
                 inline=True
             )
             embed.set_thumbnail(url=winner.display_avatar.url)
@@ -978,21 +974,19 @@ class BulletSelect(discord.ui.Select):
 
         # Resultaat embed
         if loser == self.gamble_starter:
-            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.mention}")
             result_embed = embeds.DefaultEmbed(
                 f"💀 RIP! You died to {winner.display_name}!",
                 f"Well, at least you didn't die as a degenerate gambling addict... right?"
             )
         else:
-            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.mention}")
             result_embed = embeds.DefaultEmbed(
                 f"🍀 PHEW! You survived against {loser.display_name}!",
                 "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
             )
         result_embed.set_thumbnail(url=winner.display_avatar.url)
 
-        # Push-ups opslaan
-        await db_manager.add_pushups(loser.id, pushups_to_add)
         if loser.id != self.gamble_starter.id:
             await send_dm_pushups(loser, self.gamble_starter, pushups_to_add, 'Russian Roulette')
 
@@ -1063,7 +1057,6 @@ class ResetCooldownView(discord.ui.View):
     @discord.ui.button(label="Reset Cooldown", style=discord.ButtonStyle.primary, emoji="⏲️")
     async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        await db_manager.add_pushups(self.user.id, 20)
         await db_manager.add_pushup_event(self.user.id, 20, "⏲️ Cooldown reset ")
         total = await db_manager.get_pushups(self.user.id)
         self.cooldown.reset()

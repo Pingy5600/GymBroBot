@@ -47,21 +47,14 @@ CREATE TABLE IF NOT EXISTS bangamble (
 CREATE TABLE IF NOT EXISTS pushups (
   user_id BIGINT PRIMARY KEY,
   count INT DEFAULT 0,
+  pushups_to_clear INT DEFAULT 0,
+  done INT NOT NULL DEFAULT 0,
   double_or_nothing_used BOOLEAN DEFAULT FALSE
-);
-
--- Nodig voor als table al bestond
-ALTER TABLE pushups ADD COLUMN IF NOT EXISTS double_or_nothing_used BOOLEAN DEFAULT FALSE;
-
-CREATE TABLE IF NOT EXISTS pushups_done (
-  user_id BIGINT PRIMARY KEY,
-  count INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS pushup_event (
   id SERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,
   amount INT NOT NULL,
-  reason TEXT NOT NULL,
-  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  reason TEXT NOT NULL
 );
