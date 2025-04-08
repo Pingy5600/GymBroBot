@@ -73,7 +73,7 @@ class Gamble(commands.Cog, name="gamble"):
 
         # Voeg de voltooide pushups toe
         await db_manager.add_pushups_done(user.id, done)
-        await db_manager.add_pushup_event(user.id, -done, f"Did {done} pushups")
+        await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
         total_done = await db_manager.get_pushups_done(user.id)
 
         if success:
@@ -255,7 +255,7 @@ class PushupTypeView(discord.ui.View):
 
             # get winner current streak
             winner_current_streak = await db_manager.get_current_win_streak(winner.id)
-            await db_manager.add_pushup_event(loser.id, amount, f"Lost 50/50 to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, amount, f"🎰 Lost 50/50 to {winner.display_name}")
             if winner_current_streak[0] == -1:
                 return await interaction.edit_original_response(embed=embeds.OperationFailedEmbed(
                     "Something went wrong...", winner_current_streak[1]
@@ -426,14 +426,14 @@ class PushupTypeView(discord.ui.View):
         # 50/50 kans
         if random.choice([True, False]):
             await db_manager.add_pushups(user_id, -current_pushups)  # Reset push-ups naar 0
-            await db_manager.add_pushup_event(user_id, -current_pushups, f"Won double or nothing")
+            await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing")
             
             result_text = f"🎉 **Je hebt gewonnen!**\nJe push-ups zijn gereset naar **0**!"
 
         else:
             await db_manager.add_pushups(user_id, current_pushups)  # Push-ups verdubbelen
             await db_manager.set_double_or_nothing(user_id, True)
-            await db_manager.add_pushup_event(user_id, current_pushups, f"Lost double or nothing")
+            await db_manager.add_pushup_event(user_id, current_pushups, f"😬 Lost double or nothing")
 
             result_text = f"😬 **Pech!**\nJe push-ups zijn verdubbeld naar **{current_pushups * 2}**!"
 
@@ -522,8 +522,8 @@ class RPSView(discord.ui.View):
             # Add pushups to both players
             await db_manager.add_pushups(self.player1.id, self.amount)
             await db_manager.add_pushups(self.player2.id, self.amount)
-            await db_manager.add_pushup_event(self.player1.id, self.amount, f"Drew Rock Paper Scissors to {self.player2.display_name}")
-            await db_manager.add_pushup_event(self.player2.id, self.amount, f"Drew Rock Paper Scissors to {self.player1.display_name}")
+            await db_manager.add_pushup_event(self.player1.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player2.mention}")
+            await db_manager.add_pushup_event(self.player2.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player1.mention}")
 
             total_pushups_p1 = await db_manager.get_pushups(self.player1.id)
             total_pushups_p2 = await db_manager.get_pushups(self.player2.id)
@@ -550,7 +550,7 @@ class RPSView(discord.ui.View):
             result = f"{winner.mention} wins! 🎉\n{loser.mention} gets the pushups!"
 
             await db_manager.add_pushups(loser.id, self.amount)
-            await db_manager.add_pushup_event(loser.id, self.amount, f"Lost Rock Paper Scissors to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, self.amount, f"🪨 Lost Rock Paper Scissors vs. {winner.mention}")
             total_pushups = await db_manager.get_pushups(loser.id)
 
             pushup_embed = embeds.DefaultEmbed(
@@ -858,7 +858,7 @@ class MinesView(discord.ui.View):
         self.flip_tiles()
 
         if cashout:
-            await db_manager.add_pushup_event(self.player2.id, self.pushups, f"{self.player1.display_name} Cashed out")
+            await db_manager.add_pushup_event(self.player2.id, self.pushups, f"💰 {self.player1.display_name} Cashed out in mines")
             embed = embeds.DefaultEmbed(
                 "💰 Cashout!", 
                 f"{self.player1.mention} chose to cash out safely against {self.player2.mention}!",
@@ -875,7 +875,7 @@ class MinesView(discord.ui.View):
             loser = self.player2 if win else self.player1
 
             await db_manager.add_pushups(loser.id, round(self.pushups))
-            await db_manager.add_pushup_event(loser.id, self.pushups, f"Lost Mines to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, self.pushups, f"💣 Lost Mines to {winner.display_name}")
             total = await db_manager.get_pushups(loser.id)
 
             # Stuur DM naar loser dat hij pushups heeft gekregen
@@ -978,13 +978,13 @@ class BulletSelect(discord.ui.Select):
 
         # Resultaat embed
         if loser == self.gamble_starter:
-            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"Lost Russian Roulette to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.display_name}")
             result_embed = embeds.DefaultEmbed(
                 f"💀 RIP! You died to {winner.display_name}!",
                 f"Well, at least you didn't die as a degenerate gambling addict... right?"
             )
         else:
-            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"Lost Russian Roulette to {winner.display_name}")
+            await db_manager.add_pushup_event(loser.id, pushups_to_add, f"💥 Lost Russian Roulette to {winner.display_name}")
             result_embed = embeds.DefaultEmbed(
                 f"🍀 PHEW! You survived against {loser.display_name}!",
                 "Pussy boy doesn't dare to go again... **(pussyyyyyyyy)**"
@@ -1064,7 +1064,7 @@ class ResetCooldownView(discord.ui.View):
     async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         await db_manager.add_pushups(self.user.id, 20)
-        await db_manager.add_pushup_event(self.user.id, 20, "Reset cooldown")
+        await db_manager.add_pushup_event(self.user.id, 20, "⏲️ Cooldown reset ")
         total = await db_manager.get_pushups(self.user.id)
         self.cooldown.reset()
 
