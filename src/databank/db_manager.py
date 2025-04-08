@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -930,3 +930,48 @@ async def set_double_or_nothing(user_id: int, used: bool) -> bool:
         return True
     except Exception:
         return False
+
+
+async def add_pushup_event(user_id: int, amount: int, reason: str) -> bool:
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO pushup_event (user_id, amount, reason) VALUES (%s, %s, %s)",
+                    (str(user_id), amount, reason)
+                )
+                con.commit()
+                return True
+    except Exception as e:
+        # Log the exception here for debugging
+        print(f"Error adding pushup event: {e}")
+        return False
+
+
+async def get_all_pushup_events(user_id: int) -> List[Tuple[int, str, str]]:
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT amount, reason, date FROM pushup_event WHERE user_id = %s ORDER BY date DESC",
+                    (str(user_id),)
+                )
+                # Fetch all results
+                events = cursor.fetchall()
+                
+                # Return a list of events
+                return events
+    except Exception as e:
+        # Log the exception here for debugging
+        print(f"Error fetching pushup events: {e}")
+        return []

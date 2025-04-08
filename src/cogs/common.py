@@ -1,5 +1,4 @@
 import asyncio
-import math
 from datetime import datetime
 
 import dateparser
@@ -11,8 +10,8 @@ from reactionmenu import ViewButton, ViewMenu, ViewSelect
 import embeds
 from embeds import Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import (COLOR_MAP, db_manager, getClickableCommand,
-                     getDiscordTimeStamp)
+from helpers import (COLOR_MAP, db_manager, getClickableCommand, getDiscordTimeStamp)
+from helpers import pagination
 from validations import validateEntryList, validateNotBot
 
 
@@ -23,7 +22,6 @@ class Common(commands.Cog, name="common"):
 
     command_remind_group = discord.app_commands.Group(name="remind", description="Remind Group")
 
- 
     @discord.app_commands.command(name="help", description="List all commands the bot has loaded")
     async def help(self, interaction: discord.Interaction) -> None:
         """Sends info about all available commands."""
@@ -32,7 +30,7 @@ class Common(commands.Cog, name="common"):
         page_numbers = {}
 
         # Specifieke volgorde voor de cogs
-        cog_order = ["common", "schema", "pr", "rep", "admin"]
+        cog_order = ["common", "schema", "pr", "rep", "gamble", "admin"]
         
         # Process each cog in de opgegeven volgorde
         for i, cog_name in enumerate(cog_order):
@@ -96,44 +94,38 @@ class Common(commands.Cog, name="common"):
     @discord.app_commands.command(name="profile", description="Gives the profile of the given user")
     @discord.app_commands.describe(user="Which user")
     async def profile(self, interaction: discord.Interaction, user: discord.User = None):
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(thinking=True)  # Geeft meer tijd voor interactie
 
         if user is None:
-            user = interaction.user
+            user = interaction.user  # Als geen gebruiker is opgegeven, gebruik de interactie gebruiker
 
         validateNotBot(user)
-
-        # Haal de kleur op uit COLOR_MAP
+        
         user_id = str(user.id)
         user_color = COLOR_MAP.get(user_id, None)
-
-        # Haal pushup-gegevens op
         total_pushups = await db_manager.get_pushups(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
         if user_color:
-            # Embed met de specifieke kleur van de gebruiker
             embed = discord.Embed(
                 title=f"Profile of {user}",
                 description="This is your profile!",
-                color=discord.Color(int(user_color[1:], 16))  # Hexcode omzetten naar kleur
+                color=discord.Color(int(user_color[1:], 16))  # Als een kleur is ingesteld
             )
         else:
-            # Standaard embed als de gebruiker geen kleur heeft
             embed = discord.Embed(
                 title=f"Profile of {user}",
                 description="You have not set a custom color.",
-                color=discord.Color.default()
+                color=discord.Color.default()  # Default kleur als geen kleur is ingesteld
             )
 
         embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
-
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        await interaction.followup.send(embed=embed)
-
-
+        # Voeg de PushupEventsView toe aan de reactie (met de juiste bot-object meegeven)
+        view = PushupEventsView(interaction.client, user)
+        await interaction.followup.send(embed=embed, view=view)  # Stuur de embed met de view (knop)
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine")
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
@@ -177,7 +169,6 @@ class Common(commands.Cog, name="common"):
             "Reminder set!", desc, emoji="⏳"
         )
         await interaction.followup.send(embed=embed)
-        
         
     @command_remind_group.command(name="delete", description="Delete a specific reminder")
     async def delete_reminder(self, interaction: discord.Interaction):
@@ -233,6 +224,39 @@ class Common(commands.Cog, name="common"):
             description=f"Successfully deleted the reminder for {getDiscordTimeStamp(selected_reminder['time'], full_time=True)}."
         )
         await interaction.followup.send(embed=embed)
+
+
+class PushupEventsView(discord.ui.View):
+    def __init__(self, bot, user):
+        self.bot = bot
+        self.user = user
+        super().__init__(timeout=500)
+
+    @discord.ui.button(label="See Pushup Events", emoji='📆', style=discord.ButtonStyle.blurple, disabled=False)
+    async def see_pushup_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        async def get_page(page: int):
+            L = 5 # elements per page
+            embed = embeds.DefaultEmbed(
+                f"💥 Pushup Events of {self.user.display_name}",
+                " ",
+                user=self.user
+            )
+            offset = (page-1) * L
+
+            events = await db_manager.get_all_pushup_events(self.user.id)
+
+            # error
+            if events[0] == -1:
+                events = []
+
+            for event in events[offset:offset+L]:
+                embed.description += f"{'+' if event[0] > 0 else ''}{event[0]} • {event[1]}\n"
+
+            n = pagination.Pagination.compute_total_pages(len(events), L)
+            embed.set_footer(text=f"Page {page} from {n}")
+            return embed, n
+
+        await pagination.Pagination(interaction, get_page).navegate()
 
 
 async def setup(bot):
