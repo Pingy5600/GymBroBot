@@ -123,9 +123,9 @@ class Common(commands.Cog, name="common"):
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        # Voeg de PushupEventsView toe aan de reactie (met de juiste bot-object meegeven)
         view = PushupEventsView(interaction.client, user)
-        await interaction.followup.send(embed=embed, view=view)  # Stuur de embed met de view (knop)
+        await view.setup()
+        await interaction.followup.send(embed=embed, view=view)
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine")
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
@@ -232,8 +232,14 @@ class PushupEventsView(discord.ui.View):
         self.user = user
         super().__init__(timeout=500)
 
-    @discord.ui.button(label="See Pushup Events", emoji='📆', style=discord.ButtonStyle.blurple, disabled=False)
+    async def setup(self):  
+        events = await db_manager.get_all_pushup_events(self.user.id)
+        if not events or (events and events[0] == -1):
+            self.see_pushup_events.disabled = True
+
+    @discord.ui.button(label="See Pushup Events", emoji='📆', style=discord.ButtonStyle.blurple, custom_id="see_pushup_events")
     async def see_pushup_events(self, interaction: discord.Interaction, button: discord.ui.Button):
+        events = await db_manager.get_all_pushup_events(self.user.id)
         async def get_page(page: int):
             L = 5 # elements per page
             embed = embeds.DefaultEmbed(
@@ -242,12 +248,6 @@ class PushupEventsView(discord.ui.View):
                 user=self.user
             )
             offset = (page-1) * L
-
-            events = await db_manager.get_all_pushup_events(self.user.id)
-
-            # error
-            if events[0] == -1:
-                events = []
 
             for event in events[offset:offset+L]:
                 embed.description += f"{'+' if event[0] > 0 else ''}{event[0]} • {event[1]}\n"
