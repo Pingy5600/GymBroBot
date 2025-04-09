@@ -1,7 +1,7 @@
 import psycopg2
 import os
 import embeds
-from .__init__ import getDiscordTimeStamp
+from .__init__ import getDiscordTimeStamp, db_manager
 
 #TODO icons
 structured_badges = [
@@ -22,8 +22,12 @@ structured_badges = [
     {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 40kg OHP", "threshold": 40, "badge_name": "Shoulder Soldier", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Rare"},
     {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 60kg OHP", "threshold": 60, "badge_name": "Deltoid Destroyer", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Epic"},
     {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 80kg OHP", "threshold": 80, "badge_name": "Overhead Overlord", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
-        
-    # TODO: pushups badges
+    
+    # Pushup Mastery
+    {"exercise": "pushups", "treshold": 500, "badge_name": "Pushup Beginner", "description": "500 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Common"},
+    {"exercise": "pushups", "treshold": 1000, "badge_name": "Pushup Challenger", "description": "1,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Common"},
+    {"exercise": "pushups", "treshold": 5000, "badge_name": "Pushup Warrior", "description": "5,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Rare"},
+    {"exercise": "pushups", "treshold": 10000, "badge_name": "Pushup God", "description": "10,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Legendary"},
 ]
 
 def insert_missing_badges():
@@ -78,8 +82,14 @@ async def check_for_badge(user, exercise, pr, date_obj, interaction):
                     if badge['exercise'].lower() != exercise.lower():
                         continue
 
+                    if badge['exercise'] == "pushups":
+                        pushups_done = await db_manager.get_pushups_done(user.id)
+                        should_trigger = pushups_done >= badge['treshold']
+                    else:
+                        should_trigger = pr >= badge['threshold']
+
                     # If the user's PR is greater than or equal to the badge threshold
-                    if pr >= badge['threshold'] and badge['badge_name'] not in owned_badges:
+                    if should_trigger and badge['badge_name'] not in owned_badges:
 
                         # 3. Get correct badge id
                         cursor.execute("SELECT id FROM badges WHERE name = %s", (badge['badge_name'],))

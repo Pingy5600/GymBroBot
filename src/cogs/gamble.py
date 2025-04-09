@@ -12,7 +12,8 @@ import checks
 import embeds
 from exceptions import InvalidPushups
 from helpers import db_manager, getClickableCommand
-from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
+from helpers.badges import check_for_badge
+from validations import validateAndCleanWeight, validateDate, validateNotBot, validatePermissions, validatePushups
 
 
 class Gamble(commands.Cog, name="gamble"):
@@ -98,6 +99,9 @@ class Gamble(commands.Cog, name="gamble"):
 
             await interaction.followup.send(embed=pushup_embed)
 
+            # validateDate(none) will give the date object of the current date
+            await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
+
         else:
             raise InvalidPushups()
 
@@ -134,6 +138,7 @@ class Gamble(commands.Cog, name="gamble"):
             )
             pushup_embed.set_footer(text="Keep pushing yourself!")
             await interaction.followup.send(embed=pushup_embed)
+            await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
 
         else:
             raise InvalidPushups()
