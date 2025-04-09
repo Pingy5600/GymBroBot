@@ -97,7 +97,7 @@ class Common(commands.Cog, name="common"):
         await interaction.response.defer(thinking=True)  # Geeft meer tijd voor interactie
 
         if user is None:
-            user = interaction.user  # Als geen gebruiker is opgegeven, gebruik de interactie gebruiker
+            user = interaction.user
 
         validateNotBot(user)
         
@@ -106,20 +106,27 @@ class Common(commands.Cog, name="common"):
         total_pushups = await db_manager.get_pushups(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
+        # Stel embed kleur in
         if user_color:
             embed = discord.Embed(
                 title=f"Profile of {user}",
                 description="This is your profile!",
-                color=discord.Color(int(user_color[1:], 16))  # Als een kleur is ingesteld
+                color=discord.Color(int(user_color[1:], 16))
             )
         else:
             embed = discord.Embed(
                 title=f"Profile of {user}",
                 description="You have not set a custom color.",
-                color=discord.Color.default()  # Default kleur als geen kleur is ingesteld
+                color=discord.Color.default()
             )
 
-        embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
+        # Toon ofwel pushups in reserve, ofwel pushups to do
+        if total_pushups < 0:
+            embed.add_field(name="📦 Pushups in reserve", value=f"```{abs(total_pushups)}```", inline=True)
+        else:
+            embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
+
+        # Altijd tonen wat er al is gedaan
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
         embed.set_thumbnail(url=user.display_avatar.url)
 

@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS reps (
   lifted_at timestamp DEFAULT CURRENT_TIMESTAMP,
   reps INTEGER NOT NULL DEFAULT 0
 );
- 
+
 CREATE TABLE IF NOT EXISTS reminders (
   id SERIAL PRIMARY KEY,
   user_id varchar(20) NOT NULL,

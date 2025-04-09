@@ -61,18 +61,11 @@ class Gamble(commands.Cog, name="gamble"):
         validateNotBot(user)
         validatePermissions(user, interaction)
 
-        # Haal het totaal aantal pushups op
-        total_pushups = await db_manager.get_pushups(user.id)
-
-        if done > total_pushups:
-            raise InvalidPushups()
-
-        # Update de pushups
-        new_total = total_pushups - done
-
         # Voeg het pushup event toe (gebruik hier de negatieve waarde)
         success = await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
 
+        # Haal bijgewerkte waarden op
+        total_pushups = await db_manager.get_pushups(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
         if success:
@@ -81,11 +74,19 @@ class Gamble(commands.Cog, name="gamble"):
                 f"Successfully removed {done} pushups from your total."
             )
 
-            pushup_embed.add_field(
-                name="📊 Total remaining pushups",
-                value=f"```{new_total}```",
-                inline=True
-            )
+            # Toon ofwel "in reserve" ofwel "to do"
+            if total_pushups < 0:
+                pushup_embed.add_field(
+                    name="📦 Pushups in reserve",
+                    value=f"```{abs(total_pushups)}```",
+                    inline=True
+                )
+            else:
+                pushup_embed.add_field(
+                    name="📊 Total remaining pushups",
+                    value=f"```{total_pushups}```",
+                    inline=True
+                )
 
             pushup_embed.add_field(
                 name="🏆 Pushups done",
@@ -112,14 +113,12 @@ class Gamble(commands.Cog, name="gamble"):
         validatePushups(add)
         validateNotBot(user)
 
-        # Haal het totaal aantal pushups voor de gebruiker op
-        total_pushups = await db_manager.get_pushups(user.id)
-
-        # Voeg de opgegeven pushups toe
-        new_total = total_pushups + add
-
+        # Voeg de opgegeven pushups toe via event
         success = await db_manager.add_pushup_event(user.id, add, f"{interaction.user.mention} added pushups")
         await send_dm_pushups(user, interaction.user, add, 'Admin')
+
+        # Haal nieuwe waarde op
+        total_pushups = await db_manager.get_pushups(user.id)
 
         if success:
             pushup_embed = embeds.DefaultEmbed(
@@ -127,11 +126,20 @@ class Gamble(commands.Cog, name="gamble"):
                 f"Successfully added {add} pushups to {user.display_name}'s total."
             )
 
-            pushup_embed.add_field(
-                name="📊 New Total remaining pushups",
-                value=f"```{new_total}```",
-                inline=True
-            )
+            # Toon opnieuw reserve als het negatief is
+            if total_pushups < 0:
+                pushup_embed.add_field(
+                    name="📦 Pushups in reserve",
+                    value=f"```{abs(total_pushups)}```",
+                    inline=True
+                )
+            else:
+                pushup_embed.add_field(
+                    name="📊 Total remaining pushups",
+                    value=f"```{total_pushups}```",
+                    inline=True
+                )
+
             pushup_embed.set_footer(text="Keep pushing yourself!")
             await interaction.followup.send(embed=pushup_embed)
 
@@ -181,11 +189,21 @@ class Gamble(commands.Cog, name="gamble"):
             name="💥 Russian Roulette",
             value="Choose the amount bullets in the chamber and pull the trigger. If you dare."
         )
+
+        pushups_in_reserve = await db_manager.has_pushups_in_reserve(interaction.user.id)
+
         should_explain_double_reset = await db_manager.has_used_double_or_nothing(interaction.user.id)
-        don_exlanation = f"Toss a coinflip and double your remaining pushups or make it zero. *You need to complete all your pushups before you can use this again!*" if should_explain_double_reset else "Toss a coinflip and double your remaining pushups or make it zero."
+
+        if pushups_in_reserve:
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*Can't use this if you have pushups in reserve!*"
+        elif should_explain_double_reset:
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*You need to complete all your pushups before you can use this again!*"
+        else:
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero."
+
         gamble_explanation_embed.add_field(
             name="💎 Double or Nothing",
-            value=don_exlanation
+            value=don_explanation
         )
 
         view = PushupTypeView(user, interaction.user, self.bot)
@@ -202,9 +220,10 @@ class PushupTypeView(discord.ui.View):
         self.bot = bot
 
     async def setup(self):
-        """update the double or nothing button's disabled state."""
-        should_disable = await db_manager.has_used_double_or_nothing(self.gamble_starter.id)
-        self.double_or_nothing_button.disabled = should_disable
+        """Update de double or nothing button's disabled state."""
+        already_used = await db_manager.has_used_double_or_nothing(self.gamble_starter.id)
+        has_reserve = await db_manager.has_pushups_in_reserve(self.gamble_starter.id)
+        self.double_or_nothing_button.disabled = already_used or has_reserve
 
     @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -320,11 +339,18 @@ class PushupTypeView(discord.ui.View):
                 inline=True
             )
 
-            result_embed.add_field(
-                name="📊 Total remaining pushups",
-                value=f"```{total_pushups}```",
-                inline=True
-            )
+            if total_pushups < 0:
+                result_embed.add_field(
+                    name="📦 Pushups in reserve",
+                    value=f"```{abs(total_pushups)}```",
+                    inline=True
+                )
+            else:
+                result_embed.add_field(
+                    name="📊 Total remaining pushups",
+                    value=f"```{total_pushups}```",
+                    inline=True
+                )
 
             # **Leeg veld om layout consistent te houden**
             result_embed.add_field(name="\u200b", value="\u200b", inline=True)
@@ -551,7 +577,7 @@ class RPSView(discord.ui.View):
             total_pushups = await db_manager.get_pushups(loser.id)
 
             pushup_embed = embeds.DefaultEmbed(
-                f"🏅 {winner} won!", f"{loser.mention} has {total_pushups} pushups to do", user=winner
+                f"🏅 {winner} won!", f"{loser.mention} has {abs(total_pushups)} pushups to do", user=winner
             )
 
             pushup_embed.add_field(
@@ -560,11 +586,18 @@ class RPSView(discord.ui.View):
                 inline=True
             )
 
-            pushup_embed.add_field(
-                name="📊 Total remaining pushups",
-                value=f"```{total_pushups}```",
-                inline=True
-            )
+            if total_pushups < 0:
+                pushup_embed.add_field(
+                    name="📦 Pushups in reserve",
+                    value=f"```{abs(total_pushups)}```",
+                    inline=True
+                )
+            else:
+                pushup_embed.add_field(
+                    name="📊 Total remaining pushups",
+                    value=f"```{total_pushups}```",
+                    inline=True
+                )
 
         # Send the results
         embed = discord.Embed(

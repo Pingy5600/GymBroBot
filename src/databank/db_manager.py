@@ -879,15 +879,17 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
             password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
+                # Log het event
                 cursor.execute(
                     "INSERT INTO pushup_event (user_id, amount, reason) VALUES (%s, %s, %s)",
                     (str(user_id), amount, reason)
                 )
 
+                # Pas de count aan (laat toe om onder 0 te gaan)
                 cursor.execute(
                     """
                     UPDATE pushups
-                    SET count = GREATEST(count + %s, 0)
+                    SET count = count + %s
                     WHERE user_id = %s
                     RETURNING count
                     """,
@@ -897,6 +899,7 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
                 if result is None:
                     raise Exception("User ID bestaat niet in de pushups tabel")
 
+                # Als het een pushup 'done' actie is (negatief)
                 if amount < 0:
                     cursor.execute(
                         """
@@ -910,6 +913,7 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
 
                     new_count = result[0]
 
+                    # Reset Double or Nothing status als count nu 0 is
                     if new_count == 0:
                         cursor.execute(
                             "UPDATE pushups SET double_or_nothing_used = FALSE WHERE user_id = %s",
@@ -944,3 +948,20 @@ async def get_all_pushup_events(user_id: int) -> List[Tuple[int, str, str]]:
     except Exception as e:
         print(f"Error fetching pushup events: {e}")
         return []
+
+
+async def has_pushups_in_reserve(user_id: int) -> bool:
+    """Controleer of de gebruiker pushups in reserve heeft (d.w.z. count < 0)."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute("SELECT count FROM pushups WHERE user_id = %s", (user_id,))
+                result = cursor.fetchone()
+                return result[0] < 0 if result else False
+    except Exception:
+        return False
