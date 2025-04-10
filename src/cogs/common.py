@@ -115,7 +115,7 @@ class Common(commands.Cog, name="common"):
         total_done = await db_manager.get_pushups_done(user.id)
 
         # Badges
-        badges = await get_user_badges(user.id)
+        badges = await get_user_badges(user.id, return_all=False)
         badges_emojis = ' '.join([badge[3] for badge in badges]) if badges else 'No badges yet!'
 
         # Color
@@ -132,7 +132,9 @@ class Common(commands.Cog, name="common"):
 
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        await interaction.followup.send(embed=embed, view=ProfileView(self.bot, user, badges) if badges else None)
+        view = ProfileView(self.bot, user)
+        await view.setup()
+        await interaction.followup.send(embed=embed, view=view)
 
 
 
@@ -237,11 +239,15 @@ class Common(commands.Cog, name="common"):
 
 
 class ProfileView(discord.ui.View):
-    def __init__(self, bot, user, badges):
+    def __init__(self, bot, user):
         super().__init__(timeout=None)
         self.bot = bot
         self.user = user
-        self.badges = badges
+
+    async def setup(self):
+        self.badges = await get_user_badges(self.user.id, return_all=True)
+        if not self.badges:
+            self.badges_button.disabled = True
 
     @discord.ui.button(label="See badges", style=discord.ButtonStyle.primary, emoji="🪪")
     async def badges_button(self, interaction: discord.Interaction, button: discord.ui.Button):

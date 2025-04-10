@@ -809,12 +809,13 @@ async def add_pushups(user_id: int, count: int):
                 # Update push-ups
                 cursor.execute(
                     """
-                    UPDATE pushups 
-                    SET count = GREATEST(count + %s, 0) 
-                    WHERE user_id = %s
+                    INSERT INTO pushups (user_id, count)
+                    VALUES (%s, GREATEST(%s, 0))
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET count = GREATEST(pushups.count + EXCLUDED.count, 0)
                     RETURNING count
                     """,
-                    (count, user_id)
+                    (user_id, count)
                 )
                 
                 new_count = cursor.fetchone()[0]  # Haal de nieuwe push-up count op

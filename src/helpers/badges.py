@@ -60,6 +60,7 @@ def insert_missing_badges():
         print("Error inserting badges:", err)
 
 
+
 async def check_for_badge(user, exercise, pr, date_obj, interaction):
     """Check if a user has earned a badge based on their PR and exercise type."""
     
@@ -118,7 +119,9 @@ async def check_for_badge(user, exercise, pr, date_obj, interaction):
         print(f"[Badge Check Error] {e}")
 
 
-async def get_user_badges(user_id: int) -> list:
+badge_lookup = {badge["badge_name"]: badge for badge in structured_badges}
+
+async def get_user_badges(user_id: int, return_all=True) -> list:
     """Returns a list of badges (earned_at, name, description, icon_url, rarity) earned by a given user."""
     try:
         with psycopg2.connect(
@@ -136,7 +139,33 @@ async def get_user_badges(user_id: int) -> list:
                     WHERE ub.user_id = %s
                     ORDER BY b.rarity DESC
                 """, (str(user_id),))
-                return cursor.fetchall()
+                badges = cursor.fetchall()
+
+                if return_all:
+                    return badges
+                
+                best_per_exercise = {}
+                for earned_at, name, description, icon_url, rarity in badges:
+                    badge_data = badge_lookup[name]
+                    exercise = badge_data["exercise"]
+                    threshold = badge_data.get("threshold")
+
+                    current = best_per_exercise.get(exercise)
+                    if not current or threshold > current["threshold"]:
+                        best_per_exercise[exercise] = {
+                            "earned_at": earned_at,
+                            "name": name,
+                            "description": description,
+                            "icon_url": icon_url,
+                            "rarity": rarity,
+                            "threshold": threshold
+                        }
+
+                return [
+                    (b["earned_at"], b["name"], b["description"], b["icon_url"], b["rarity"])
+                    for b in best_per_exercise.values()
+                ]
+
     
     except Exception as e:
         print(f"[Get User Badges Error] {e}")
