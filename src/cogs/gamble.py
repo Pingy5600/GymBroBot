@@ -12,7 +12,7 @@ import checks
 import embeds
 from exceptions import InvalidPushups
 from helpers import db_manager, getClickableCommand
-from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
+from validations import validateAndCleanWeight, validateNotBot, validateNotSelf, validatePermissions, validatePushups
 
 
 class Gamble(commands.Cog, name="gamble"):
@@ -145,6 +145,31 @@ class Gamble(commands.Cog, name="gamble"):
 
         else:
             raise InvalidPushups()
+
+
+    @pushup_group.command(name="trade", description="Trade pushups with someone else", extras={'cog': 'gamble'})
+    @discord.app_commands.describe(user="Which user", amount="How many pushups do you want to trade?")
+    @checks.not_in_dm()
+    async def trade(self, interaction: discord.Interaction, user: discord.User, amount: int):
+
+        # Validate the amount of pushups
+        validatePushups(amount)
+        validateNotBot(user)
+        validateNotSelf(user, interaction.user)
+
+        trade_sent_embed = embeds.DefaultEmbed(
+            title="🗪 Trade request sent!",
+            description=f"Waiting for {user.mention} to accept the trade for {amount} pushups!",
+        )
+
+        await interaction.response.send_message(embed=trade_sent_embed)
+
+        trade_request_embed = embeds.DefaultEmbed(
+            title="🗪 You have received a trade request!",
+            description=f"{interaction.user.mention} wants to trade {amount} pushups with you!\n Accepting this trade means you will get {amount} pushups from {interaction.user.mention}.\n\n**Do you accept?**",
+        )
+
+        await user.send(embed=trade_request_embed, view=TradeView(interaction.user, user, amount, interaction))
 
 
     @pushup_group.command(name="gamble", description="Give someone pushups by gambling", extras={'cog': 'gamble'})
@@ -1103,6 +1128,7 @@ class ResetCooldownView(discord.ui.View):
             embed=embed,
             view=None
         )
+
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
         Args:
@@ -1153,6 +1179,65 @@ async def send_dm_pushups(user, giver, pushups, game_type):
     )
 
     await user.send(embed=embed)
+
+
+class TradeView(discord.ui.View):
+    def __init__(self, sender, receiver, amount, interaction):
+        super().__init__(timeout=None)
+        self.sender = sender
+        self.receiver = receiver
+        self.amount = amount
+        self.interaction = interaction
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, emoji="✅")
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        embed = embeds.OperationSucceededEmbed(
+            "✅ Trade Accepted", 
+            f"You have received {self.amount} pushups from {self.sender.mention}"
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+
+        # send trade succeeded to sender
+        embed = embeds.OperationSucceededEmbed(
+            "Trade Accepted", 
+            f"You have sent {self.amount} pushups to {self.receiver.mention}"
+        )
+        await self.interaction.followup.send(
+            embed=embed,
+        )
+
+        # Add the pushup event for both users
+        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🗪 Trade with {self.receiver.mention}")
+        await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🗪 Trade with {self.sender.mention}")
+
+
+    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, emoji="❌")
+    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        embed = embeds.OperationFailedEmbed(
+            "Trade Declined", 
+            f"You have declined the trade with {self.sender.mention} for {self.amount} pushups"
+        )
+
+        await interaction.response.edit_message(
+            embed=embed,
+            view=None
+        )
+
+        # send trade failed to sender
+        embed = embeds.OperationFailedEmbed(
+            "❌ Trade Declined", 
+            f"{self.receiver.mention} has declined the trade for {self.amount} pushups"
+        )
+        await self.interaction.followup.send(
+            embed=embed,
+        )
+
 
 
 async def setup(bot):

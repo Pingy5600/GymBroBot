@@ -31,6 +31,10 @@ def validateReps(reps):
 def validateNotBot(user):
     if user.bot:
         raise BotNotUser()
+    
+def validateNotSelf(user, user2):
+    if user.id == user2.id:
+        raise BotNotUser("You cannot use yourself as a user.")
  
 
 def validateEntryList(entries, message="No entries found for the specified exercise."):
