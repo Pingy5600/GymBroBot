@@ -172,7 +172,7 @@ async def get_user_badges(user_id: int, return_all=True) -> list:
         return []
     
     
-def add_badges_field_to_embed(embed, badges, add_timestamp=False):
+def add_badges_field_to_embed(embed, badges, owned_badges=[], add_timestamp=False):
     categories = {
         "Common": [],
         "Rare": [],
@@ -187,16 +187,25 @@ def add_badges_field_to_embed(embed, badges, add_timestamp=False):
         "Legendary": "💎",
     }
 
+    owned_badges_titles = [badge[1] for badge in owned_badges]
+
     for idOrTimestamp, name, desc, icon_url, rarity in badges:
         category = categories.get(rarity, [])
         if add_timestamp:
             category.append(f"{icon_url} **{name}** - Earned at {getDiscordTimeStamp(idOrTimestamp, full_time=False)} - {desc}")
         else:
-            category.append(f"{icon_url} **{name}** - {desc}")
+            
+            if name in owned_badges_titles:
+                category.append(f"{icon_url} **{name}*** - {desc}")
+            else:
+                category.append(f"{icon_url} **{name}** - {desc}")
 
     for rarity, badge_list in categories.items():
         if badge_list:
             emoji = rarity_emojis.get(rarity)
             embed.add_field(name=f"{emoji} {rarity}", value="\n".join(badge_list), inline=False)
+
+    if owned_badges:
+        embed.set_footer(text="* Owned badges")
 
     return embed

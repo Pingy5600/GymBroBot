@@ -3,7 +3,7 @@ from discord.ext import commands
 
 import embeds
 from databank import db_manager
-from helpers.badges import add_badges_field_to_embed
+from helpers.badges import add_badges_field_to_embed, get_user_badges
 from shop import Shop
 
 
@@ -40,8 +40,9 @@ class ShopCog(commands.Cog, name="shop"):
         )
 
         badges = await db_manager.get_all_badges()
+        owned_badges = await get_user_badges(interaction.user.id)
 
-        embed = add_badges_field_to_embed(embed, badges)
+        embed = add_badges_field_to_embed(embed, badges, owned_badges)
 
         await interaction.followup.send(embed=embed)
 
