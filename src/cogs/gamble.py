@@ -460,7 +460,7 @@ class PushupTypeView(discord.ui.View):
             result_text = f"😬 **Big L!**\nYour pushups have been doubled to **{current_pushups * 2}**!"
 
         # 📜 Resultaat embed
-        result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
+        result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Result**", result_text)
         result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
         await interaction.edit_original_response(embed=result_embed, view=None)
 
