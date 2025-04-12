@@ -158,14 +158,14 @@ class Gamble(commands.Cog, name="gamble"):
         validateNotSelf(user, interaction.user)
 
         trade_sent_embed = embeds.DefaultEmbed(
-            title="🗪 Trade request sent!",
+            title="🤝 Trade request sent!",
             description=f"Waiting for {user.mention} to accept the trade for {amount} pushups!",
         )
 
         await interaction.response.send_message(embed=trade_sent_embed)
 
         trade_request_embed = embeds.DefaultEmbed(
-            title="🗪 You have received a trade request!",
+            title="🤝 You have received a trade request!",
             description=f"{interaction.user.mention} wants to trade {amount} pushups with you!\n Accepting this trade means you will get {amount} pushups from {interaction.user.mention}.\n\n**Do you accept?**",
         )
 
@@ -1193,7 +1193,7 @@ class TradeView(discord.ui.View):
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         embed = embeds.OperationSucceededEmbed(
-            "✅ Trade Accepted", 
+            "Trade Accepted", 
             f"You have received {self.amount} pushups from {self.sender.mention}"
         )
 
@@ -1212,8 +1212,8 @@ class TradeView(discord.ui.View):
         )
 
         # Add the pushup event for both users
-        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🗪 Trade with {self.receiver.mention}")
-        await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🗪 Trade with {self.sender.mention}")
+        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🤝 Trade with {self.receiver.mention}")
+        await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🤝 Trade with {self.sender.mention}")
 
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, emoji="❌")
@@ -1231,7 +1231,7 @@ class TradeView(discord.ui.View):
 
         # send trade failed to sender
         embed = embeds.OperationFailedEmbed(
-            "❌ Trade Declined", 
+            "Trade Declined", 
             f"{self.receiver.mention} has declined the trade for {self.amount} pushups"
         )
         await self.interaction.followup.send(
