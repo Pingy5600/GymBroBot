@@ -225,11 +225,10 @@ class PushupTypeView(discord.ui.View):
 
     async def setup(self):
         """Update de double or nothing button's disabled state."""
-        already_used = await db_manager.has_used_double_or_nothing(self.gamble_starter.id)
         has_reserve = await db_manager.has_pushups_in_reserve(self.gamble_starter.id)
         pending = await db_manager.get_pending_pushups(self.gamble_starter.id)
         current_pushups = await db_manager.get_pushups(self.gamble_starter.id)
-        self.double_or_nothing_button.disabled = already_used or has_reserve or pending > 0 or current_pushups == 0
+        self.double_or_nothing_button.disabled = has_reserve or pending > 0 or current_pushups == 0
 
     @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -1024,6 +1023,29 @@ class BulletSelect(discord.ui.Select):
 
         await interaction.edit_original_response(embed=result_embed, view=None)
 
+    async def interaction_check(self, interaction: discord.Interaction):
+        """Check that the user is the one who is clicking buttons
+        Args:
+            interaction (discord.Interaction): Users Interaction
+
+        Returns:
+            bool
+        """
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.gamble_starter.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+
+        return is_possible
 
 class Amount(discord.ui.View):
     def __init__(self, gamble_starter, bot, callback_func):

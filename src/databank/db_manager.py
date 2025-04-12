@@ -830,45 +830,6 @@ async def get_pushups_done(user_id: int):
         return 0
 
 
-async def has_used_double_or_nothing(user_id: int) -> bool:
-    """Checkt of de gebruiker Double or Nothing al heeft gebruikt."""
-    try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'), 
-            dbname=os.environ.get('POSTGRES_DB'), 
-            user=os.environ.get('POSTGRES_USER'), 
-            password=os.environ.get('POSTGRES_PASSWORD')
-        ) as con:
-            
-            with con.cursor() as cursor:
-                cursor.execute("SELECT double_or_nothing_used FROM pushups WHERE user_id = %s", (user_id,))
-                result = cursor.fetchone()
-                return result[0] if result else False
-    except Exception:
-        return False
-
-
-async def set_double_or_nothing(user_id: int, used: bool) -> bool:
-    """Zet de status van Double or Nothing voor een gebruiker."""
-    try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'), 
-            dbname=os.environ.get('POSTGRES_DB'), 
-            user=os.environ.get('POSTGRES_USER'), 
-            password=os.environ.get('POSTGRES_PASSWORD')
-        ) as con:
-            
-            with con.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE pushups SET double_or_nothing_used = %s WHERE user_id = %s",
-                    (used, user_id)
-                )
-                con.commit()
-        return True
-    except Exception:
-        return False
-
-
 async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
     """Voegt een push-up event toe of verlaagt de push-ups afhankelijk van de hoeveelheid (positief of negatief)."""
     try:
