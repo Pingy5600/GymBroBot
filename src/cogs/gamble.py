@@ -95,8 +95,9 @@ class Gamble(commands.Cog, name="gamble"):
                 value=f"```{total_done}```",
                 inline=False
             )
-
-            pushup_embed.add_field(name="⌛ Pending", value=f"```{pending}```")
+            if pending > 0:
+                pushup_embed.add_field(name="⌛ Pending", value=f"```{pending}```")
+                
             pushup_embed.set_footer(text="The time to gamble is now!")
             pushup_embed.set_thumbnail(url=user.display_avatar.url)
 

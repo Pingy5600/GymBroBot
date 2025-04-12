@@ -126,10 +126,11 @@ class Common(commands.Cog, name="common"):
             embed.add_field(name="📦 Pushups in reserve", value=f"```{abs(total_pushups)}```", inline=True)
         else:
             embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
-
-        # Altijd tonen wat er al is gedaan
+        
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
-        embed.add_field(name="⌛ Pending", value=f"```{pending}```", inline=False)
+
+        if pending > 0:
+            embed.add_field(name="⌛ Pending", value=f"```{pending}```", inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
 
         view = PushupEventsView(interaction.client, user)
