@@ -105,6 +105,7 @@ class Common(commands.Cog, name="common"):
         user_color = COLOR_MAP.get(user_id, None)
         total_pushups = await db_manager.get_pushups(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
+        pending = await db_manager.get_pending_pushups(user.id)
 
         # Stel embed kleur in
         if user_color:
@@ -128,6 +129,7 @@ class Common(commands.Cog, name="common"):
 
         # Altijd tonen wat er al is gedaan
         embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
+        embed.add_field(name="⌛ Pending", value=f"```{pending}```", inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
 
         view = PushupEventsView(interaction.client, user)

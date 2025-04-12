@@ -965,3 +965,56 @@ async def has_pushups_in_reserve(user_id: int) -> bool:
                 return result[0] < 0 if result else False
     except Exception:
         return False
+
+
+async def get_pending_pushups(user_id: int) -> int:
+    """Geeft het aantal pushups dat de gebruiker nog moet doen voordat ze weer Double or Nothing mogen gebruiken."""
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                cursor.execute("SELECT pushups_to_clear FROM pushups WHERE user_id = %s", (user_id,))
+                result = cursor.fetchone()
+                return result[0] if result else 0
+    except Exception as e:
+        print(f"Error getting pending pushups: {e}")
+        return 0
+
+
+async def set_pending_pushups(user_id: int, amount: int):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                if amount == 0:
+                    # Zet de pending pushups naar 0
+                    cursor.execute(
+                        "UPDATE pushups SET pushups_to_clear = 0 WHERE user_id = %s",
+                        (user_id,)
+                    )
+                else:
+                    # Haal de huidige waarde van pushups_to_clear op
+                    cursor.execute("SELECT pushups_to_clear FROM pushups WHERE user_id = %s", (user_id,))
+                    current_pending = cursor.fetchone()[0]
+
+                    # Bereken de nieuwe waarde (controleer of deze niet negatief wordt)
+                    new_pending = current_pending + amount
+                    if new_pending < 0:
+                        new_pending = 0  # Zet het naar 0 als het negatief is
+
+                    # Werk de waarde van pushups_to_clear bij
+                    cursor.execute(
+                        "UPDATE pushups SET pushups_to_clear = %s WHERE user_id = %s",
+                        (new_pending, user_id)
+                    )
+                con.commit()
+    except Exception as e:
+        print(f"Fout bij het instellen van pending pushups: {e}")

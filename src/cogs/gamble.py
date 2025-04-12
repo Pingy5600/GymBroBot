@@ -12,7 +12,7 @@ import checks
 import embeds
 from exceptions import InvalidPushups
 from helpers import db_manager, getClickableCommand
-from validations import validateAndCleanWeight, validateNotBot, validateNotSelf, validatePermissions, validatePushups
+from validations import validateAndCleanWeight, validateNotBot, validatePermissions, validatePushups
 
 
 class Gamble(commands.Cog, name="gamble"):
@@ -63,6 +63,8 @@ class Gamble(commands.Cog, name="gamble"):
 
         # Voeg het pushup event toe (gebruik hier de negatieve waarde)
         success = await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
+        await db_manager.set_pending_pushups(user.id, -done)
+        pending = await db_manager.get_pending_pushups(user.id)
 
         # Haal bijgewerkte waarden op
         total_pushups = await db_manager.get_pushups(user.id)
@@ -83,7 +85,7 @@ class Gamble(commands.Cog, name="gamble"):
                 )
             else:
                 pushup_embed.add_field(
-                    name="📊 Total remaining pushups",
+                    name="📊 Pushups to do",
                     value=f"```{total_pushups}```",
                     inline=True
                 )
@@ -91,9 +93,10 @@ class Gamble(commands.Cog, name="gamble"):
             pushup_embed.add_field(
                 name="🏆 Pushups done",
                 value=f"```{total_done}```",
-                inline=True
+                inline=False
             )
 
+            pushup_embed.add_field(name="⌛ Pending", value=f"```{pending}```")
             pushup_embed.set_footer(text="The time to gamble is now!")
             pushup_embed.set_thumbnail(url=user.display_avatar.url)
 
@@ -135,7 +138,7 @@ class Gamble(commands.Cog, name="gamble"):
                 )
             else:
                 pushup_embed.add_field(
-                    name="📊 Total remaining pushups",
+                    name="📊 Pushups to do",
                     value=f"```{total_pushups}```",
                     inline=True
                 )
@@ -145,31 +148,6 @@ class Gamble(commands.Cog, name="gamble"):
 
         else:
             raise InvalidPushups()
-
-
-    @pushup_group.command(name="trade", description="Trade pushups with someone else", extras={'cog': 'gamble'})
-    @discord.app_commands.describe(user="Which user", amount="How many pushups do you want to trade?")
-    @checks.not_in_dm()
-    async def trade(self, interaction: discord.Interaction, user: discord.User, amount: int):
-
-        # Validate the amount of pushups
-        validatePushups(amount)
-        validateNotBot(user)
-        validateNotSelf(user, interaction.user)
-
-        trade_sent_embed = embeds.DefaultEmbed(
-            title="🤝 Trade request sent!",
-            description=f"Waiting for {user.mention} to accept the trade for {amount} pushups!",
-        )
-
-        await interaction.response.send_message(embed=trade_sent_embed)
-
-        trade_request_embed = embeds.DefaultEmbed(
-            title="🤝 You have received a trade request!",
-            description=f"{interaction.user.mention} wants to trade {amount} pushups with you!\n Accepting this trade means you will get {amount} pushups from {interaction.user.mention}.\n\n**Do you accept?**",
-        )
-
-        await user.send(embed=trade_request_embed, view=TradeView(interaction.user, user, amount, interaction))
 
 
     @pushup_group.command(name="gamble", description="Give someone pushups by gambling", extras={'cog': 'gamble'})
@@ -216,13 +194,14 @@ class Gamble(commands.Cog, name="gamble"):
         )
 
         pushups_in_reserve = await db_manager.has_pushups_in_reserve(interaction.user.id)
-
-        should_explain_double_reset = await db_manager.has_used_double_or_nothing(interaction.user.id)
-
-        if pushups_in_reserve:
+        pending_pushups = await db_manager.get_pending_pushups(interaction.user.id)
+        current_pushups = await db_manager.get_pushups(interaction.user.id)
+        if current_pushups == 0:
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*You don't have pushups to gamble with!*"
+        elif pending_pushups > 0:
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*You need to complete all your pending pushups before you can use this again!*"
+        elif pushups_in_reserve:
             don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*Can't use this if you have pushups in reserve!*"
-        elif should_explain_double_reset:
-            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*You need to complete all your pushups before you can use this again!*"
         else:
             don_explanation = "Toss a coinflip and double your remaining pushups or make it zero."
 
@@ -248,7 +227,9 @@ class PushupTypeView(discord.ui.View):
         """Update de double or nothing button's disabled state."""
         already_used = await db_manager.has_used_double_or_nothing(self.gamble_starter.id)
         has_reserve = await db_manager.has_pushups_in_reserve(self.gamble_starter.id)
-        self.double_or_nothing_button.disabled = already_used or has_reserve
+        pending = await db_manager.get_pending_pushups(self.gamble_starter.id)
+        current_pushups = await db_manager.get_pushups(self.gamble_starter.id)
+        self.double_or_nothing_button.disabled = already_used or has_reserve or pending > 0 or current_pushups == 0
 
     @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
     async def gamble_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -372,7 +353,7 @@ class PushupTypeView(discord.ui.View):
                 )
             else:
                 result_embed.add_field(
-                    name="📊 Total remaining pushups",
+                    name="📊 Pushups to do",
                     value=f"```{total_pushups}```",
                     inline=True
                 )
@@ -453,14 +434,8 @@ class PushupTypeView(discord.ui.View):
     @discord.ui.button(label="💎 Double or Nothing", style=discord.ButtonStyle.danger, custom_id="double_or_nothing_button")
     async def double_or_nothing_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
-
-        # Haal huidige push-ups op
         current_pushups = await db_manager.get_pushups(user_id)
-        if current_pushups == 0:
-            await interaction.response.send_message("Je hebt geen push-ups om te gokken!", ephemeral=True)
-            return
 
-        # 🎰 Start de gamble animatie
         gifs = [
             "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXh2aHdrOGhteDVtM2twN2N0dDcwZmNrZmhmbWN3bTdqYzR4Y3QyNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/bubpLP4o75fmIVukRr/giphy.gif",
             "https://media.giphy.com/media/LRVnPYqM8DLag/giphy.gif?cid=790b7611eb6ynljhvv3ebixlsxwp65dngxtkgsbafx5tgnri&ep=v1_gifs_search&rid=giphy.gif&ct=g",
@@ -477,25 +452,18 @@ class PushupTypeView(discord.ui.View):
 
         # 50/50 kans
         if random.choice([True, False]):
-            # Reset de push-ups naar 0 en voeg een event toe
             await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing")
-
+            await db_manager.set_pending_pushups(user_id, -current_pushups)
             result_text = f"🎉 **You Won!**\nYour pushups have been reset to **0**!"
-
         else:
-            # Verdubbel de push-ups en voeg een event toe
             await db_manager.add_pushup_event(user_id, current_pushups, f"😬 Lost double or nothing")
-            await db_manager.set_double_or_nothing(user_id, True)
+            await db_manager.set_pending_pushups(user_id, current_pushups*2)
+            result_text = f"😬 **Big L!**\nYour pushups have been doubled to **{current_pushups * 2}**!"
 
-            result_text = f"😬 **Big L!**\nYour pushups have been dubbled to **{current_pushups * 2}**!"
-
-        # 📜 Embed met resultaat
+        # 📜 Resultaat embed
         result_embed = embeds.DefaultEmbed(f"💎 **Double or Nothing Resultaat**", result_text)
         result_embed.set_thumbnail(url=interaction.user.display_avatar.url)
-
-        # Stuur resultaat en verwijder knoppen
         await interaction.edit_original_response(embed=result_embed, view=None)
-
 
     async def interaction_check(self, interaction: discord.Interaction):
         """Check that the user is the one who is clicking buttons
@@ -619,7 +587,7 @@ class RPSView(discord.ui.View):
                 )
             else:
                 pushup_embed.add_field(
-                    name="📊 Total remaining pushups",
+                    name="📊 Pushups to do",
                     value=f"```{total_pushups}```",
                     inline=True
                 )
@@ -1179,65 +1147,6 @@ async def send_dm_pushups(user, giver, pushups, game_type):
     )
 
     await user.send(embed=embed)
-
-
-class TradeView(discord.ui.View):
-    def __init__(self, sender, receiver, amount, interaction):
-        super().__init__(timeout=None)
-        self.sender = sender
-        self.receiver = receiver
-        self.amount = amount
-        self.interaction = interaction
-
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.success, emoji="✅")
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        embed = embeds.OperationSucceededEmbed(
-            "Trade Accepted", 
-            f"You have received {self.amount} pushups from {self.sender.mention}"
-        )
-
-        await interaction.response.edit_message(
-            embed=embed,
-            view=None
-        )
-
-        # send trade succeeded to sender
-        embed = embeds.OperationSucceededEmbed(
-            "Trade Accepted", 
-            f"You have sent {self.amount} pushups to {self.receiver.mention}"
-        )
-        await self.interaction.followup.send(
-            embed=embed,
-        )
-
-        # Add the pushup event for both users
-        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🤝 Trade with {self.receiver.mention}")
-        await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🤝 Trade with {self.sender.mention}")
-
-
-    @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, emoji="❌")
-    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        embed = embeds.OperationFailedEmbed(
-            "Trade Declined", 
-            f"You have declined the trade with {self.sender.mention} for {self.amount} pushups"
-        )
-
-        await interaction.response.edit_message(
-            embed=embed,
-            view=None
-        )
-
-        # send trade failed to sender
-        embed = embeds.OperationFailedEmbed(
-            "Trade Declined", 
-            f"{self.receiver.mention} has declined the trade for {self.amount} pushups"
-        )
-        await self.interaction.followup.send(
-            embed=embed,
-        )
-
 
 
 async def setup(bot):
