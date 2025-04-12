@@ -126,7 +126,7 @@ class Gamble(commands.Cog, name="gamble"):
         if success:
             pushup_embed = embeds.DefaultEmbed(
                 f"Pushups added",
-                f"Successfully added {add} pushups to {user.display_name}'s total."
+                f"Successfully added **{add}** pushups to {user.display_name}'s total."
             )
 
             # Toon opnieuw reserve als het negatief is
@@ -203,7 +203,7 @@ class Gamble(commands.Cog, name="gamble"):
         elif pushups_in_reserve:
             don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*Can't use this if you have pushups in reserve!*"
         else:
-            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero. test"
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero."
 
         gamble_explanation_embed.add_field(
             name="💎 Double or Nothing",
