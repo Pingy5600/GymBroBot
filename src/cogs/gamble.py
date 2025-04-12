@@ -203,7 +203,7 @@ class Gamble(commands.Cog, name="gamble"):
         elif pushups_in_reserve:
             don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*Can't use this if you have pushups in reserve!*"
         else:
-            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero."
+            don_explanation = "Toss a coinflip and double your remaining pushups or make it zero. test"
 
         gamble_explanation_embed.add_field(
             name="💎 Double or Nothing",
