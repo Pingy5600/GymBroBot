@@ -7,7 +7,7 @@ from typing import Callable, TypeVar
 
 
 T = TypeVar("T")
-admin_list = [464400950702899211, 462932133170774036]
+admin_list = [464400950702899211, 462932133170774036, 1107604670647631983]
 
 def is_admin_or_has_permissions():
     def predicate(interaction: Interaction) -> bool:

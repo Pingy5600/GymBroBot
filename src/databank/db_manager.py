@@ -889,6 +889,34 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
         return False
 
 
+async def add_pushup_done(user_id: int, amount: int, reason: str = "") -> bool:
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            with con.cursor() as cursor:
+                # Verhoog pushups_done zonder een event te loggen
+                cursor.execute(
+                    """
+                    INSERT INTO pushups_done (user_id, count)
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET count = pushups_done.count + EXCLUDED.count
+                    """,
+                    (user_id, amount)
+                )
+
+                con.commit()
+
+        return True
+    except Exception as e:
+        print(f"Error adding pushup_done: {e}")
+        return False
+
+
 async def get_all_pushup_events(user_id: int) -> List[Tuple[int, str, str]]:
     try:
         with psycopg2.connect(
