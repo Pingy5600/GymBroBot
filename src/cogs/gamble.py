@@ -1261,8 +1261,7 @@ class ResetCooldownView(discord.ui.View):
         total = await db_manager.get_pushups(self.user.id)
         self.cooldown.reset()
 
-        pushup_group = self.bot.tree.get_command("pushup")
-        gamble_command = pushup_group.get_command("gamble")
+        gamble_command = self.bot.tree.get_command("gamble")
 
         embed = embeds.OperationSucceededEmbed("Cooldown Reset", f"🥳 Congratulations! You are a crippling gambling addict. You also have 20 extra pushups to complete, making a total of {total} pushups.\n\nGamble again: {getClickableCommand(gamble_command, self.bot.command_ids)}")
         embed.set_image(url=self.image)
