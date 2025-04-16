@@ -849,12 +849,13 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
                 # Pas de count aan (laat toe om onder 0 te gaan)
                 cursor.execute(
                     """
-                    UPDATE pushups
-                    SET count = count + %s
-                    WHERE user_id = %s
+                    INSERT INTO pushups (user_id, count)
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET count = pushups.count + EXCLUDED.count
                     RETURNING count
                     """,
-                    (amount, user_id)
+                    (user_id, amount)
                 )
                 result = cursor.fetchone()
                 if result is None:
