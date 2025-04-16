@@ -830,8 +830,7 @@ async def get_pushups_done(user_id: int):
         return 0
 
 
-async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
-    """Voegt een push-up event toe of verlaagt de push-ups afhankelijk van de hoeveelheid (positief of negatief)."""
+async def add_pushup_event(user_id: int, amount: int, reason: str = "", log_as_done: bool = True) -> bool:
     try:
         with psycopg2.connect(
             host=os.environ.get('POSTGRES_HOST'),
@@ -840,13 +839,11 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
             password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
-                # Log het event
                 cursor.execute(
                     "INSERT INTO pushup_event (user_id, amount, reason) VALUES (%s, %s, %s)",
                     (str(user_id), amount, reason)
                 )
 
-                # Pas de count aan (laat toe om onder 0 te gaan)
                 cursor.execute(
                     """
                     UPDATE pushups
@@ -860,8 +857,8 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
                 if result is None:
                     raise Exception("User ID bestaat niet in de pushups tabel")
 
-                # Als het een pushup 'done' actie is (negatief)
-                if amount < 0:
+                # Alleen pushups_done updaten als het mag én als het een negatieve waarde is
+                if log_as_done and amount < 0:
                     cursor.execute(
                         """
                         INSERT INTO pushups_done (user_id, count)
@@ -873,8 +870,6 @@ async def add_pushup_event(user_id: int, amount: int, reason: str = "") -> bool:
                     )
 
                     new_count = result[0]
-
-                    # Reset Double or Nothing status als count nu 0 is
                     if new_count == 0:
                         cursor.execute(
                             "UPDATE pushups SET double_or_nothing_used = FALSE WHERE user_id = %s",

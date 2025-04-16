@@ -106,12 +106,12 @@ class Gamble(commands.Cog, name="gamble"):
         else:
             raise InvalidPushups()
 
-    @pushup_group.command(name="add", description="Adds pushups to a user's total. Admin only!")
+    @pushup_group.command(name="update", description="Updates a user's pushups. Use negative numbers to remove. Admin only!")
     @checks.is_admin()
     @discord.app_commands.describe(
-        amount="The number of pushups to add",
+        amount="The number of pushups to add (positive) or remove (negative)",
         user="Which user",
-        type="Where to add the pushups"
+        type="What to update"
     )
     @discord.app_commands.choices(
         type=[
@@ -120,155 +120,60 @@ class Gamble(commands.Cog, name="gamble"):
             discord.app_commands.Choice(name="Pending", value="pending"),
         ]
     )
-    async def add_pushup_event(self, interaction: discord.Interaction, amount: int, user: discord.User, type: discord.app_commands.Choice[str]):
+    async def update_pushup_event(self, interaction: discord.Interaction, amount: int, user: discord.User, type: discord.app_commands.Choice[str]):
         await interaction.response.defer(thinking=True)
 
-        validatePushups(amount)
-        validateNotBot(user)
-
-        pushup_type = type.value
-
-        if pushup_type == "to_do":
-            success = await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 added pushups")
-            await send_dm_pushups(user, interaction.user, amount, 'Admin (To Do)')
-            total_pushups = await db_manager.get_pushups(user.id)
-
-            if success:
-                embed = embeds.DefaultEmbed(
-                    f"Pushups added (To Do)",
-                    f"Successfully added **{amount}** pushups to {user.display_name}'s **to do** list."
-                )
-                if total_pushups < 0:
-                    embed.add_field(
-                        name="📦 Pushups in reserve",
-                        value=f"```{abs(total_pushups)}```",
-                        inline=True
-                    )
-                else:
-                    embed.add_field(
-                        name="📊 Pushups to do",
-                        value=f"```{total_pushups}```",
-                        inline=True
-                    )
-
-        elif pushup_type == "done":
-            success = await db_manager.add_pushup_done(user.id, amount)
-            await send_dm_pushups(user, interaction.user, amount, 'Admin (Done)')
-            total_done = await db_manager.get_pushups_done(user.id)
-
-            if success:
-                embed = embeds.DefaultEmbed(
-                    f"Pushups marked as done",
-                    f"Successfully marked **{amount}** pushups as **done** for {user.display_name}."
-                )
-                embed.add_field(
-                    name="🏆 Pushups done",
-                    value=f"```{total_done}```",
-                    inline=True
-                )
-
-        elif pushup_type == "pending":
-            await db_manager.set_pending_pushups(user.id, amount)
-            await send_dm_pushups(user, interaction.user, amount, 'Admin (Pending)')
-            pending = await db_manager.get_pending_pushups(user.id)
-            success = True
-
-            embed = embeds.DefaultEmbed(
-                f"Pending pushups updated",
-                f"Successfully updated **{amount}** pending pushups for {user.display_name}."
-            )
-            embed.add_field(
-                name="⌛ Pending pushups",
-                value=f"```{pending}```",
-                inline=True
-            )
-
-        else:
-            raise InvalidPushups()
-
-        if success:
-            await interaction.followup.send(embed=embed)
-        else:
-            raise InvalidPushups()
-
-
-    @pushup_group.command(name="remove", description="Removes pushups from a user's total. Admin only!")
-    @checks.is_admin()
-    @discord.app_commands.describe(
-        amount="The number of pushups to remove",
-        user="Which user",
-        type="Where to remove the pushups"
-    )
-    @discord.app_commands.choices(
-        type=[
-            discord.app_commands.Choice(name="To Do", value="to_do"),
-            discord.app_commands.Choice(name="Done", value="done"),
-            discord.app_commands.Choice(name="Pending", value="pending"),
-        ]
-    )
-    async def remove_pushup_event(self, interaction: discord.Interaction, amount: int, user: discord.User, type: discord.app_commands.Choice[str]):
-        await interaction.response.defer(thinking=True)
-
-        validatePushups(amount)
+        validatePushups(abs(amount))  # validatie op absolute waarde
         validateNotBot(user)
 
         pushup_type = type.value
         success = False
+        direction = "added" if amount > 0 else "removed"
+        reason_suffix = {
+            "to_do": "To Do",
+            "done": "Done",
+            "pending": "Pending"
+        }
 
         if pushup_type == "to_do":
-            success = await db_manager.add_pushup_event(user.id, -amount, f"{interaction.user.mention} 🚧 removed pushups")
-            await send_dm_pushups(user, interaction.user, -amount, 'Admin Removed (To Do)')
+            # Bij negatieve amount moeten we log_as_done=False zetten zodat done niet omhooggaat
+            success = await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups", log_as_done=False)
+            await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} ({reason_suffix[pushup_type]})')
             total_pushups = await db_manager.get_pushups(user.id)
 
             if success:
                 embed = embeds.DefaultEmbed(
-                    f"Pushups removed (To Do)",
-                    f"Successfully removed **{amount}** pushups from {user.display_name}'s **to do** list."
+                    f"Pushups {direction} (To Do)",
+                    f"Successfully {direction} **{abs(amount)}** pushups {'to' if amount > 0 else 'from'} {user.display_name}'s **to do** list."
                 )
                 if total_pushups < 0:
-                    embed.add_field(
-                        name="📦 Pushups in reserve",
-                        value=f"```{abs(total_pushups)}```",
-                        inline=True
-                    )
+                    embed.add_field(name="📦 Pushups in reserve", value=f"```{abs(total_pushups)}```", inline=True)
                 else:
-                    embed.add_field(
-                        name="📊 Pushups to do",
-                        value=f"```{total_pushups}```",
-                        inline=True
-                    )
+                    embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
 
         elif pushup_type == "done":
-            success = await db_manager.add_pushup_done(user.id, -amount)
-            await send_dm_pushups(user, interaction.user, -amount, 'Admin Removed (Done)')
+            success = await db_manager.add_pushup_done(user.id, amount)
+            await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} (Done)')
             total_done = await db_manager.get_pushups_done(user.id)
 
             if success:
                 embed = embeds.DefaultEmbed(
-                    f"Pushups removed from done",
-                    f"Successfully removed **{amount}** pushups from {user.display_name}'s **done** count."
+                    f"Pushups {direction} (Done)",
+                    f"Successfully {direction} **{abs(amount)}** pushups {'to' if amount > 0 else 'from'} {user.display_name}'s **done** count."
                 )
-                embed.add_field(
-                    name="🏆 Pushups done",
-                    value=f"```{total_done}```",
-                    inline=True
-                )
+                embed.add_field(name="🏆 Pushups done", value=f"```{total_done}```", inline=True)
 
         elif pushup_type == "pending":
-            await db_manager.set_pending_pushups(user.id, -amount)
-            await send_dm_pushups(user, interaction.user, -amount, 'Admin Removed (Pending)')
+            await db_manager.set_pending_pushups(user.id, amount)
+            await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} (Pending)')
             pending = await db_manager.get_pending_pushups(user.id)
             success = True
 
             embed = embeds.DefaultEmbed(
-                f"Pending pushups updated",
-                f"Successfully removed **{amount}** pending pushups for {user.display_name}."
+                f"Pending pushups {direction}",
+                f"Successfully {direction} **{abs(amount)}** pending pushups {'to' if amount > 0 else 'from'} {user.display_name}."
             )
-            embed.add_field(
-                name="⌛ Pending pushups",
-                value=f"```{pending}```",
-                inline=True
-            )
+            embed.add_field(name="⌛ Pending pushups", value=f"```{pending}```", inline=True)
 
         else:
             raise InvalidPushups()
