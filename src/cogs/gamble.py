@@ -508,7 +508,7 @@ class PushupTypeView(discord.ui.View):
 
         # 50/50 kans
         if random.choice([True, False]):
-            await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing")
+            await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing", log_as_done=False)
             await db_manager.set_pending_pushups(user_id, -current_pushups)
             result_text = f"🎉 **You Won!**\nYour pushups have been reset to **0**!"
         else:
