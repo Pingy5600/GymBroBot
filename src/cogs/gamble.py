@@ -50,16 +50,14 @@ class Gamble(commands.Cog, name="gamble"):
 
 
     @pushup_group.command(name="done", description="Lowers the Total remaining pushups if you have done them. Be honest!")
-    @discord.app_commands.describe(done="The number of pushups you've completed", user="Which user")
-    async def done(self, interaction: discord.Interaction, done: int, user: discord.User = None):
+    @discord.app_commands.describe(done="The number of pushups you've completed")
+    async def done(self, interaction: discord.Interaction, done: int):
         await interaction.response.defer(thinking=True)
 
-        if user is None:
-            user = interaction.user
+        user = interaction.user
 
         validatePushups(done)
         validateNotBot(user)
-        validatePermissions(user, interaction)
 
         # Voeg het pushup event toe (gebruik hier de negatieve waarde)
         success = await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
@@ -1258,6 +1256,7 @@ class TradeView(discord.ui.View):
         )
 
         await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🤝 Trade with {self.sender.mention}")
+        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🤝 Trade with {self.receiver.mention}", log_as_done=False)
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, emoji="❌")
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
