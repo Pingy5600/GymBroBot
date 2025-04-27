@@ -1,5 +1,3 @@
--- ALTER TABLE pushups RENAME TO users;
-
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT PRIMARY KEY,
   color TEXT,
@@ -10,10 +8,6 @@ CREATE TABLE IF NOT EXISTS users (
 
   pushups_to_clear INT DEFAULT 0 /* to clear before double or nothing can be used again */
 );
-
-ALTER TABLE users ADD COLUMN IF NOT EXISTS color TEXT;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS bodyweight DECIMAL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS pushups_to_clear INT DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS pr (
   id SERIAL PRIMARY KEY,
