@@ -1,9 +1,35 @@
+-- ALTER TABLE pushups RENAME TO users;
+
+CREATE TABLE IF NOT EXISTS users (
+  user_id BIGINT PRIMARY KEY,
+  color TEXT,
+  bodyweight DECIMAL,
+
+  count INT DEFAULT 0, /* pushups todo */
+  done INT NOT NULL DEFAULT 0, /*pushups done */
+
+  pushups_to_clear INT DEFAULT 0 /* to clear before double or nothing can be used again */
+);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS color TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bodyweight DECIMAL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pushups_to_clear INT DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS pr (
   id SERIAL PRIMARY KEY,
   user_id varchar(30) NOT NULL,
   exercise varchar(75) NOT NULL,
   weight decimal NOT NULL DEFAULT 0,
   lifted_at timestamp DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS reps (
+  id SERIAL PRIMARY KEY,
+  user_id varchar(30) NOT NULL,
+  exercise varchar(75) NOT NULL,
+  weight decimal NOT NULL DEFAULT 0,
+  lifted_at timestamp DEFAULT CURRENT_TIMESTAMP,
+  reps INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS schema (
@@ -15,15 +41,6 @@ CREATE TABLE IF NOT EXISTS schema (
   friday varchar(256) NOT NULL,
   saturday varchar(256) NOT NULL,
   sunday varchar(256) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS reps (
-  id SERIAL PRIMARY KEY,
-  user_id varchar(30) NOT NULL,
-  exercise varchar(75) NOT NULL,
-  weight decimal NOT NULL DEFAULT 0,
-  lifted_at timestamp DEFAULT CURRENT_TIMESTAMP,
-  reps INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS reminders (
@@ -44,17 +61,12 @@ CREATE TABLE IF NOT EXISTS bangamble (
   total_losses INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS pushups (
-  user_id BIGINT PRIMARY KEY,
-  count INT DEFAULT 0,
-  pushups_to_clear INT DEFAULT 0,
-  done INT NOT NULL DEFAULT 0,
-  double_or_nothing_used BOOLEAN DEFAULT FALSE
-);
-
 CREATE TABLE IF NOT EXISTS pushup_event (
   id SERIAL PRIMARY KEY,
   user_id BIGINT NOT NULL,
   amount INT NOT NULL,
-  reason TEXT NOT NULL
+  reason TEXT NOT NULL,
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE pushup_event ADD COLUMN IF NOT EXISTS date TIMESTAMP DEFAULT CURRENT_TIMESTAMP; 

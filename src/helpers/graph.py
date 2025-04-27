@@ -10,22 +10,11 @@ from matplotlib.patches import Patch
 
 from databank import db_manager
 
-# Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
-COLOR_MAP = {
-    "464400950702899211": "#2613e3",
-    "462932133170774036": "#ff0000",
-    "559715606014984195": "#084808",
-    "733845345225670686": "#2ecc71",
-    "334371900170043402": "#fe6900",
-    "222415043550117888": "#fff200",
-    "548544519793016861": "#30D5C8"
-}
-
 FALLBACK_COLORS = ['#2a9d8f', '#e76f51', 'r', 'c', 'm', 'y', 'k']
 BACKGROUND_COLOR = '#fef9ef'
 
 async def setGraph(POOL, loop, message, users_prs, embed):
-    file = await loop.run_in_executor(POOL, generate_graph, users_prs)
+    file = await generate_graph(users_prs)
     embed.set_image(url="attachment://graph.gif")
 
     await message.edit(embed=embed, attachments=[file])
@@ -50,7 +39,7 @@ async def set3DGraph(POOL, loop, message, users, exercise, embed):
             failed_users.append(user.mention)
 
     # Genereer de 3D-grafiek
-    file, usersFailed = await loop.run_in_executor(POOL, generate_3d_graph, data)
+    file, usersFailed = await generate_3d_graph(data)
 
     usersFailed.extend(failed_users)
 
@@ -70,7 +59,7 @@ async def set3DGraph(POOL, loop, message, users, exercise, embed):
     await message.edit(embed=embed, attachments=[file] if file else [])
 
 
-def generate_graph(users_prs):
+async def generate_graph(users_prs):
 
     # Structuur van de data
     user_data = []
@@ -82,9 +71,10 @@ def generate_graph(users_prs):
         weights = [pr[2] for pr in prs]
 
         # Gebruik een specifieke kleur als die beschikbaar is, anders een fallback
-        color = COLOR_MAP.get(str(user.id), FALLBACK_COLORS[fallback_index % len(FALLBACK_COLORS)])
-        if str(user.id) not in COLOR_MAP:
-            fallback_index += 1
+        color = await db_manager.get_user_color(user.id)
+        if color is None:
+            color = FALLBACK_COLORS[fallback_index % len(FALLBACK_COLORS)]
+            fallback_index += 1            
 
         user_data.append((user.display_name, dates, weights, color))
 
@@ -174,7 +164,7 @@ def generate_graph(users_prs):
     return discord_file
 
 
-def generate_3d_graph(data):
+async def generate_3d_graph(data):
     
     # Data voorbereiden voor plotting
     fig = plt.figure(figsize=(10, 6))
@@ -199,8 +189,9 @@ def generate_3d_graph(data):
         
         # Gebruik een specifieke kleur als die beschikbaar is, anders een fallback
         # get user id from user_data
-        color = COLOR_MAP.get(str(user.id), FALLBACK_COLORS[fallback_index % len(FALLBACK_COLORS)])
-        if str(user.id) not in COLOR_MAP:
+        color = await db_manager.get_user_color(user.id)
+        if color is None:
+            color = FALLBACK_COLORS[fallback_index % len(FALLBACK_COLORS)]
             fallback_index += 1
 
         # Gebruik plot_trisurf om de punten te verbinden

@@ -236,6 +236,23 @@ class WrongChannel(app_commands.CheckFailure):
         self.message = message
         super().__init__(self.message)
 
+
+class BodyWeightRequired(CustomCheckFailure):
+    """
+    Thrown when a user is attempting something, but the bodyweight is required.
+    """
+
+    def __init__(self, message="Bodyweight is required for this exercise. Please input your bodyweight."):
+        self.message = message
+        super().__init__(self.message)
+
+    def getEmbed(self, command, command_ids):
+        return OperationFailedEmbed(
+            self.message,
+            "YOu can input your bodyweight using the `/profile` command.",
+            emoji="⚖️"
+        )
+
 class InvalidPushups(CustomCheckFailure):
     """
     Thrown when a user inputs an invalid pushup amount value

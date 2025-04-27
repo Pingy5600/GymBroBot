@@ -1,5 +1,7 @@
 import asyncio
 from datetime import datetime
+import os
+import random
 
 import dateparser
 import discord
@@ -10,9 +12,9 @@ from reactionmenu import ViewButton, ViewMenu, ViewSelect
 import embeds
 from embeds import Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
-from helpers import (COLOR_MAP, db_manager, getClickableCommand, getDiscordTimeStamp)
+from helpers import (db_manager, getClickableCommand, getDiscordTimeStamp)
 from helpers import pagination
-from validations import validateEntryList, validateNotBot
+from validations import validateAndCleanWeight, validateEntryList, validateNotBot
 
 
 class Common(commands.Cog, name="common"):
@@ -102,10 +104,11 @@ class Common(commands.Cog, name="common"):
         validateNotBot(user)
         
         user_id = str(user.id)
-        user_color = COLOR_MAP.get(user_id, None)
-        total_pushups = await db_manager.get_pushups(user.id)
+        user_color = await db_manager.get_color(user_id)
+        total_pushups = await db_manager.get_pushups_todo(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
         pending = await db_manager.get_pending_pushups(user.id)
+        bodyweight = await db_manager.get_bodyweight(user.id)
 
         # Stel embed kleur in
         if user_color:
@@ -133,9 +136,13 @@ class Common(commands.Cog, name="common"):
             embed.add_field(name="⌛ Pending", value=f"```{pending}```", inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        view = PushupEventsView(interaction.client, user)
+        if bodyweight is not None:
+            embed.add_field(name="⚖️ Bodyweight", value=f"```{bodyweight} kg```", inline=True)
+
+        view = ProfileView(interaction.client, user)
         await view.setup()
         await interaction.followup.send(embed=embed, view=view)
+
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine")
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
@@ -236,7 +243,7 @@ class Common(commands.Cog, name="common"):
         await interaction.followup.send(embed=embed)
 
 
-class PushupEventsView(discord.ui.View):
+class ProfileView(discord.ui.View):
     def __init__(self, bot, user):
         self.bot = bot
         self.user = user
@@ -267,6 +274,89 @@ class PushupEventsView(discord.ui.View):
             return embed, n
 
         await pagination.Pagination(interaction, get_page).navegate()
+
+    @discord.ui.button(label="Set Color", emoji='🎨', style=discord.ButtonStyle.blurple, custom_id="set_color")
+    async def set_color(self, interaction: discord.Interaction, button: discord.ui.Button):
+        #TODO refactor deze interaction check weg, wordt nu overal gebruikt
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.user.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+
+    
+        await interaction.response.send_modal(SetColorModal())
+
+
+    @discord.ui.button(label="Set Bodyweight", emoji='⚖️', style=discord.ButtonStyle.blurple, custom_id="set_bodyweight")
+    async def set_bodyweight(self, interaction: discord.Interaction, button: discord.ui.Button):
+        #TODO refactor deze interaction check weg, wordt nu overal gebruikt
+        responses = [
+            f"<@{interaction.user.id}> shatap lil bro",
+            f"<@{interaction.user.id}> you are NOT him",
+            f"<@{interaction.user.id}> blud thinks he's funny",
+            f"<@{interaction.user.id}> it's on sight now",
+        ]
+
+        # can only be triggered by the profile owner or an owner
+        is_possible = (interaction.user.id == self.user.id) or str(interaction.user.id) in list(os.environ.get("OWNERS").split(","))
+
+        # send message if usr cannot interact with button
+        if not is_possible:
+            await interaction.response.send_message(random.choice(responses), ephemeral=True)
+        await interaction.response.send_modal(SetBodyweightModal())
+
+
+class SetColorModal(discord.ui.Modal, title="Set Color"):
+    color = discord.ui.TextInput(
+        label="Color",
+        placeholder="Enter a hex color code (e.g. #FF5733)",
+        max_length=7,
+        required=True
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        color = self.color.value.strip()
+        if not color.startswith("#") or len(color) != 7:
+            return await interaction.response.send_message("Invalid color format. Please use a hex code (e.g. #FF5733).", ephemeral=True)
+
+        await db_manager.set_color(interaction.user.id, color)
+        embed = embeds.DefaultEmbed(
+            title="Color Changed",
+            description=f"Your color has been changed to {color}.",
+        )
+        #TODO update originele embed met geupdate kleur
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class SetBodyweightModal(discord.ui.Modal, title="Set Bodyweight"):
+    bodyweight = discord.ui.TextInput(
+        label="Bodyweight",
+        placeholder="Enter your bodyweight in kg",
+        max_length=5,
+        required=True
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        weight = validateAndCleanWeight(self.bodyweight.value.strip())
+        await db_manager.set_bodyweight(interaction.user.id, weight)
+
+        embed = embeds.OperationSucceededEmbed(
+            title="Bodyweight Set",
+            description=f"Your bodyweight has been set to {weight} kg.",
+            emoji="⚖️"
+        )
+
+        #TODO update originele embed met geupdate bodyweight
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 async def setup(bot):

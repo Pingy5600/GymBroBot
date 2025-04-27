@@ -796,14 +796,14 @@ async def get_ban_total_losses(user_id) -> list:
         return [-1, err]
 
 
-async def get_pushups(user_id: int):
+async def get_pushups_todo(user_id: int):
     try:
         with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
     ) as con:
             
             with con.cursor() as cursor:
-                cursor.execute("SELECT count FROM pushups WHERE user_id = %s", (user_id,))
+                cursor.execute("SELECT count FROM users WHERE user_id = %s", (user_id,))
                 result = cursor.fetchone()
                 return result[0] if result else 0
             
@@ -822,7 +822,7 @@ async def get_pushups_done(user_id: int):
         ) as con:
             
             with con.cursor() as cursor:
-                cursor.execute("SELECT count FROM pushups_done WHERE user_id = %s", (user_id,))
+                cursor.execute("SELECT done FROM users WHERE user_id = %s", (user_id,))
                 result = cursor.fetchone()
                 return result[0] if result else 0
             
@@ -831,86 +831,55 @@ async def get_pushups_done(user_id: int):
 
 
 async def add_pushup_event(user_id: int, amount: int, reason: str = "", log_as_done: bool = True) -> bool:
-    try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
-        ) as con:
-            with con.cursor() as cursor:
-                cursor.execute(
-                    "INSERT INTO pushup_event (user_id, amount, reason) VALUES (%s, %s, %s)",
-                    (str(user_id), amount, reason)
-                )
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'),
+        dbname=os.environ.get('POSTGRES_DB'),
+        user=os.environ.get('POSTGRES_USER'),
+        password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        with con.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO pushup_event (user_id, amount, reason) VALUES (%s, %s, %s)",
+                (str(user_id), amount, reason)
+            )
 
-                cursor.execute(
-                    """
-                    INSERT INTO pushups (user_id, count)
-                    VALUES (%s, %s)
-                    ON CONFLICT (user_id)
-                    DO UPDATE SET count = pushups.count + EXCLUDED.count
-                    RETURNING count
-                    """,
-                    (user_id, amount)
-                )
-                result = cursor.fetchone()
-                if result is None:
-                    raise Exception("User ID bestaat niet in de pushups tabel")
+            cursor.execute(
+                """
+                INSERT INTO users (user_id, count)
+                VALUES (%s, %s)
+                ON CONFLICT (user_id)
+                DO UPDATE SET count = users.count + EXCLUDED.count
+                RETURNING count
+                """,
+                (user_id, amount)
+            )
+            
+            con.commit()
 
-                # Alleen pushups_done updaten als het mag én als het een negatieve waarde is
-                if log_as_done and amount < 0:
-                    cursor.execute(
-                        """
-                        INSERT INTO pushups_done (user_id, count)
-                        VALUES (%s, %s)
-                        ON CONFLICT (user_id)
-                        DO UPDATE SET count = pushups_done.count + EXCLUDED.count
-                        """,
-                        (user_id, abs(amount))
-                    )
-
-                    new_count = result[0]
-                    if new_count == 0:
-                        cursor.execute(
-                            "UPDATE pushups SET double_or_nothing_used = FALSE WHERE user_id = %s",
-                            (user_id,)
-                        )
-
-                con.commit()
-
-        return True
-    except Exception as e:
-        print(f"Error adding pushup event: {e}")
-        return False
+    if log_as_done:
+        await add_pushup_done(user_id, -amount)
 
 
-async def add_pushup_done(user_id: int, amount: int, reason: str = "") -> bool:
-    try:
-        with psycopg2.connect(
-            host=os.environ.get('POSTGRES_HOST'),
-            dbname=os.environ.get('POSTGRES_DB'),
-            user=os.environ.get('POSTGRES_USER'),
-            password=os.environ.get('POSTGRES_PASSWORD')
-        ) as con:
-            with con.cursor() as cursor:
-                # Verhoog pushups_done zonder een event te loggen
-                cursor.execute(
-                    """
-                    INSERT INTO pushups_done (user_id, count)
-                    VALUES (%s, %s)
-                    ON CONFLICT (user_id)
-                    DO UPDATE SET count = pushups_done.count + EXCLUDED.count
-                    """,
-                    (user_id, amount)
-                )
+async def add_pushup_done(user_id: int, amount: int) -> bool:
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'),
+        dbname=os.environ.get('POSTGRES_DB'),
+        user=os.environ.get('POSTGRES_USER'),
+        password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        with con.cursor() as cursor:
+            # Verhoog pushups_done zonder een event te loggen
+            cursor.execute(
+                """
+                INSERT INTO users (user_id, done)
+                VALUES (%s, %s)
+                ON CONFLICT (user_id)
+                DO UPDATE SET done = EXCLUDED.done + users.done
+                """,
+                (user_id, amount)
+            )
 
-                con.commit()
-
-        return True
-    except Exception as e:
-        print(f"Error adding pushup_done: {e}")
-        return False
+            con.commit()
 
 
 async def get_all_pushup_events(user_id: int) -> List[Tuple[int, str, str]]:
@@ -945,7 +914,7 @@ async def has_pushups_in_reserve(user_id: int) -> bool:
             password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
-                cursor.execute("SELECT count FROM pushups WHERE user_id = %s", (user_id,))
+                cursor.execute("SELECT count FROM users WHERE user_id = %s", (user_id,))
                 result = cursor.fetchone()
                 return result[0] < 0 if result else False
     except Exception:
@@ -962,9 +931,10 @@ async def get_pending_pushups(user_id: int) -> int:
             password=os.environ.get('POSTGRES_PASSWORD')
         ) as con:
             with con.cursor() as cursor:
-                cursor.execute("SELECT pushups_to_clear FROM pushups WHERE user_id = %s", (user_id,))
+                cursor.execute("SELECT pushups_to_clear FROM users WHERE user_id = %s", (user_id,))
                 result = cursor.fetchone()
                 return result[0] if result else 0
+            
     except Exception as e:
         print(f"Error getting pending pushups: {e}")
         return 0
@@ -982,12 +952,12 @@ async def set_pending_pushups(user_id: int, amount: int):
                 if amount == 0:
                     # Zet de pending pushups naar 0
                     cursor.execute(
-                        "UPDATE pushups SET pushups_to_clear = 0 WHERE user_id = %s",
+                        "UPDATE users SET pushups_to_clear = 0 WHERE user_id = %s",
                         (user_id,)
                     )
                 else:
                     # Haal de huidige waarde van pushups_to_clear op
-                    cursor.execute("SELECT pushups_to_clear FROM pushups WHERE user_id = %s", (user_id,))
+                    cursor.execute("SELECT pushups_to_clear FROM users WHERE user_id = %s", (user_id,))
                     current_pending = cursor.fetchone()[0]
 
                     # Bereken de nieuwe waarde (controleer of deze niet negatief wordt)
@@ -997,9 +967,109 @@ async def set_pending_pushups(user_id: int, amount: int):
 
                     # Werk de waarde van pushups_to_clear bij
                     cursor.execute(
-                        "UPDATE pushups SET pushups_to_clear = %s WHERE user_id = %s",
+                        "UPDATE users SET pushups_to_clear = %s WHERE user_id = %s",
                         (new_pending, user_id)
                     )
                 con.commit()
+                
     except Exception as e:
         print(f"Fout bij het instellen van pending pushups: {e}")
+
+
+# PROFILE #
+async def set_bodyweight(user_id, weight):
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO users (user_id, bodyweight)
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET bodyweight = EXCLUDED.bodyweight
+                    """,
+                    (user_id, float(weight))
+                )
+                con.commit()
+                return True
+                
+        except Exception as err:
+            print(err)
+            return False
+
+async def get_bodyweight(user_id):
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT bodyweight FROM users WHERE user_id = %s",
+                    (str(user_id),)
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except Exception as err:
+            print(err)
+            return None
+        
+
+async def set_color(user_id, color):
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO users (user_id, color)
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET color = EXCLUDED.color
+                    """,
+                    (user_id, str(color))
+                )
+                con.commit()
+                return True
+                
+        except Exception as err:
+            print(err)
+            return False
+
+async def get_color(user_id):
+    
+    # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
+    # COLOR_MAP = {
+    #     "464400950702899211": "#2613e3",
+    #     "462932133170774036": "#ff0000",
+    #     "559715606014984195": "#084808",
+    #     "733845345225670686": "#2ecc71",
+    #     "334371900170043402": "#fe6900",
+    #     "222415043550117888": "#fff200",
+    #     "548544519793016861": "#30D5C8"
+    # }
+    #
+    # return COLOR_MAP.get(user_id, None)
+
+    with psycopg2.connect(
+        host=os.environ.get('POSTGRES_HOST'), dbname=os.environ.get('POSTGRES_DB'), user=os.environ.get('POSTGRES_USER'), password=os.environ.get('POSTGRES_PASSWORD')
+    ) as con:
+        
+        try:
+            with con.cursor() as cursor:
+                cursor.execute(
+                    "SELECT color FROM users WHERE user_id = %s",
+                    (str(user_id),)
+                )
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except Exception as err:
+            print(err)
+            return None

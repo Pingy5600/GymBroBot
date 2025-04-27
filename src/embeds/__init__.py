@@ -11,11 +11,11 @@ SUCCES_COLOR = 0x39AC39
 
 
 class DefaultEmbed(discord.Embed):
-    def __init__(self, title, description=None, user=None):
+    def __init__(self, title, description=None, user=None, color=None):
         super().__init__(
             title=f"{title}",
             description=description,
-            color=DEFAULT_COLOR,
+            color=DEFAULT_COLOR if color is None else color,
             timestamp=datetime.now(),
         )
 

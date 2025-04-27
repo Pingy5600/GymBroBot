@@ -10,7 +10,7 @@ from discord.ext import commands
 from autocomplete import getMetaFromExercise
 import checks
 import embeds
-from exceptions import InvalidPushups
+from exceptions import BodyWeightRequired, InvalidPushups
 from helpers import db_manager, getClickableCommand
 from validations import validateAndCleanWeight, validateNotBot, validateNotSelf, validatePermissions, validatePushups
 
@@ -50,59 +50,84 @@ class Gamble(commands.Cog, name="gamble"):
 
 
     @pushup_group.command(name="done", description="Lowers the Total remaining pushups if you have done them. Be honest!")
-    @discord.app_commands.describe(done="The number of pushups you've completed")
-    async def done(self, interaction: discord.Interaction, done: int):
+    @discord.app_commands.describe(amount="The number of pushups you've completed")
+    @discord.app_commands.choices(
+        variant=[
+            discord.app_commands.Choice(name="Regular pushups", value=1.0),
+            discord.app_commands.Choice(name="Pike pushups", value=3.0),
+            discord.app_commands.Choice(name="Weighted pushups (10kg)", value=-10.0), # means (BW +10 / BW) ^ 5
+            discord.app_commands.Choice(name="Weighted pushups (20kg)", value=-10.0), # means (BW +20 / BW) ^ 5
+            discord.app_commands.Choice(name="Pseudo-planche pushups", value=3.0),
+            discord.app_commands.Choice(name="Tricep pushups", value=2.5),
+            discord.app_commands.Choice(name="Archer pushups", value=2.5),
+            discord.app_commands.Choice(name="Handstand pushups", value=10.0),
+        ]
+    )
+    async def done(self, interaction: discord.Interaction, amount: int, variant: discord.app_commands.Choice[float] = 1.0):
         await interaction.response.defer(thinking=True)
 
         user = interaction.user
 
-        validatePushups(done)
+        validatePushups(amount)
         validateNotBot(user)
 
+        if type(variant) is float:
+            variant = discord.app_commands.Choice(name="Regular pushups", value=1.0)
+
+        multiplier = variant.value
+
+        # als multiplier negatief is, dan is het weighted pushup
+        if multiplier < 0:
+            
+            bodyweight = float(await db_manager.get_bodyweight(user.id))
+            if bodyweight is None:
+                raise BodyWeightRequired()
+            
+            calculated_amount = math.floor(amount * (((bodyweight + abs(multiplier)) / bodyweight) ** 5))
+
+        else:
+            calculated_amount = math.floor(amount * multiplier)
+
         # Voeg het pushup event toe (gebruik hier de negatieve waarde)
-        success = await db_manager.add_pushup_event(user.id, -done, f"💪 Did {done} pushups")
-        await db_manager.set_pending_pushups(user.id, -done)
+        await db_manager.add_pushup_event(user.id, -calculated_amount, f"💪 Did {amount} {variant.name}")
+        await db_manager.set_pending_pushups(user.id, -calculated_amount)
         pending = await db_manager.get_pending_pushups(user.id)
 
         # Haal bijgewerkte waarden op
-        total_pushups = await db_manager.get_pushups(user.id)
+        total_pushups = await db_manager.get_pushups_todo(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
-        if success:
-            pushup_embed = embeds.DefaultEmbed(
-                f"Great job {user.display_name} 💪",
-                f"Successfully removed {done} pushups from your total."
-            )
-
-            # Toon ofwel "in reserve" ofwel "to do"
-            if total_pushups < 0:
-                pushup_embed.add_field(
-                    name="📦 Pushups in reserve",
-                    value=f"```{abs(total_pushups)}```",
-                    inline=True
-                )
-            else:
-                pushup_embed.add_field(
-                    name="📊 Pushups to do",
-                    value=f"```{total_pushups}```",
-                    inline=True
-                )
-
+        pushup_embed = embeds.DefaultEmbed(
+            f"Great job {user.display_name} 💪",
+            f"Successfully removed {amount} {variant.name} from your total.\n This totals {calculated_amount} pushups."
+        )
+        # Toon ofwel "in reserve" ofwel "to do"
+        if total_pushups < 0:
             pushup_embed.add_field(
-                name="🏆 Pushups done",
-                value=f"```{total_done}```",
+                name="📦 Pushups in reserve",
+                value=f"```{abs(total_pushups)}```",
                 inline=True
             )
-            if pending > 0:
-                pushup_embed.add_field(name="⌛ Pending", value=f"```{pending}```")
-                
-            pushup_embed.set_footer(text="The time to gamble is now!")
-            pushup_embed.set_thumbnail(url=user.display_avatar.url)
-
-            await interaction.followup.send(embed=pushup_embed)
-
         else:
-            raise InvalidPushups()
+            pushup_embed.add_field(
+                name="📊 Pushups to do",
+                value=f"```{total_pushups}```",
+                inline=True
+            )
+
+        pushup_embed.add_field(
+            name="🏆 Pushups done",
+            value=f"```{total_done}```",
+            inline=True
+        )
+        if pending > 0:
+            pushup_embed.add_field(name="⌛ Pending", value=f"```{pending}```")
+            
+        pushup_embed.set_footer(text="The time to gamble is now!")
+        pushup_embed.set_thumbnail(url=user.display_avatar.url)
+
+        await interaction.followup.send(embed=pushup_embed)
+
 
     @pushup_group.command(name="update", description="Updates a user's pushups. Use negative numbers to remove. Admin only!")
     @checks.is_admin()
@@ -135,19 +160,18 @@ class Gamble(commands.Cog, name="gamble"):
 
         if pushup_type == "to_do":
             # Bij negatieve amount moeten we log_as_done=False zetten zodat done niet omhooggaat
-            success = await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups", log_as_done=False)
+            await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups", log_as_done=False)
             await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} ({reason_suffix[pushup_type]})')
-            total_pushups = await db_manager.get_pushups(user.id)
+            total_pushups = await db_manager.get_pushups_todo(user.id)
 
-            if success:
-                embed = embeds.DefaultEmbed(
-                    f"Pushups {direction} (To Do)",
-                    f"Successfully {direction} **{abs(amount)}** pushups {'to' if amount > 0 else 'from'} {user.display_name}'s **to do** list."
-                )
-                if total_pushups < 0:
-                    embed.add_field(name="📦 Pushups in reserve", value=f"```{abs(total_pushups)}```", inline=True)
-                else:
-                    embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
+            embed = embeds.DefaultEmbed(
+                f"Pushups {direction} (To Do)",
+                f"Successfully {direction} **{abs(amount)}** pushups {'to' if amount > 0 else 'from'} {user.display_name}'s **to do** list."
+            )
+            if total_pushups < 0:
+                embed.add_field(name="📦 Pushups in reserve", value=f"```{abs(total_pushups)}```", inline=True)
+            else:
+                embed.add_field(name="📊 Pushups to do", value=f"```{total_pushups}```", inline=True)
 
         elif pushup_type == "done":
             success = await db_manager.add_pushup_done(user.id, amount)
@@ -250,7 +274,7 @@ class Gamble(commands.Cog, name="gamble"):
 
         pushups_in_reserve = await db_manager.has_pushups_in_reserve(interaction.user.id)
         pending_pushups = await db_manager.get_pending_pushups(interaction.user.id)
-        current_pushups = await db_manager.get_pushups(interaction.user.id)
+        current_pushups = await db_manager.get_pushups_todo(interaction.user.id)
         if current_pushups == 0:
             don_explanation = "Toss a coinflip and double your remaining pushups or make it zero.\n*You don't have pushups to gamble with!*"
         elif pending_pushups > 0:
@@ -282,7 +306,7 @@ class PushupTypeView(discord.ui.View):
         """Update de double or nothing button's disabled state."""
         has_reserve = await db_manager.has_pushups_in_reserve(self.gamble_starter.id)
         pending = await db_manager.get_pending_pushups(self.gamble_starter.id)
-        current_pushups = await db_manager.get_pushups(self.gamble_starter.id)
+        current_pushups = await db_manager.get_pushups_todo(self.gamble_starter.id)
         self.double_or_nothing_button.disabled = has_reserve or pending > 0 or current_pushups == 0
 
     @discord.ui.button(label="50/50", style=discord.ButtonStyle.blurple, emoji='🎰')
@@ -327,7 +351,7 @@ class PushupTypeView(discord.ui.View):
             if loser.id != self.gamble_starter.id:
                 await send_dm_pushups(loser, self.gamble_starter, amount, '50/50')
             
-            total_pushups = await db_manager.get_pushups(loser.id)
+            total_pushups = await db_manager.get_pushups_todo(loser.id)
 
             # create embed to show who won
             result_embed = embeds.DefaultEmbed(
@@ -488,7 +512,7 @@ class PushupTypeView(discord.ui.View):
     @discord.ui.button(label="💎 Double or Nothing", style=discord.ButtonStyle.danger, custom_id="double_or_nothing_button")
     async def double_or_nothing_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
-        current_pushups = await db_manager.get_pushups(user_id)
+        current_pushups = await db_manager.get_pushups_todo(user_id)
 
         gifs = [
             "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExaXh2aHdrOGhteDVtM2twN2N0dDcwZmNrZmhmbWN3bTdqYzR4Y3QyNCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/bubpLP4o75fmIVukRr/giphy.gif",
@@ -596,8 +620,8 @@ class RPSView(discord.ui.View):
             await db_manager.add_pushup_event(self.player1.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player2.mention}")
             await db_manager.add_pushup_event(self.player2.id, self.amount, f"🪨 Drew Rock Paper Scissors vs. {self.player1.mention}")
 
-            total_pushups_p1 = await db_manager.get_pushups(self.player1.id)
-            total_pushups_p2 = await db_manager.get_pushups(self.player2.id)
+            total_pushups_p1 = await db_manager.get_pushups_todo(self.player1.id)
+            total_pushups_p2 = await db_manager.get_pushups_todo(self.player2.id)
 
             pushup_embed = embeds.DefaultEmbed(
                 "🏅 It's a draw!",
@@ -621,7 +645,7 @@ class RPSView(discord.ui.View):
             result = f"{winner.mention} wins! 🎉\n{loser.mention} gets the pushups!"
 
             await db_manager.add_pushup_event(loser.id, self.amount, f"🪨 Lost Rock Paper Scissors vs. {winner.mention}")
-            total_pushups = await db_manager.get_pushups(loser.id)
+            total_pushups = await db_manager.get_pushups_todo(loser.id)
 
             pushup_embed = embeds.DefaultEmbed(
                 f"🏅 {winner} won!", f"{loser.mention} has {abs(total_pushups)} pushups to do", user=winner
@@ -952,7 +976,7 @@ class MinesView(discord.ui.View):
             loser = self.player2 if win else self.player1
 
             await db_manager.add_pushup_event(loser.id, round(self.pushups), f"💣 Lost Mines to {winner.mention}")
-            total = await db_manager.get_pushups(loser.id)
+            total = await db_manager.get_pushups_todo(loser.id)
 
             # Stuur DM naar loser dat hij pushups heeft gekregen
             if loser.id != self.player1.id:
@@ -1161,7 +1185,7 @@ class ResetCooldownView(discord.ui.View):
     async def reset_cooldown_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         await db_manager.add_pushup_event(self.user.id, 20, "⏲️ Cooldown reset ")
-        total = await db_manager.get_pushups(self.user.id)
+        total = await db_manager.get_pushups_todo(self.user.id)
         self.cooldown.reset()
 
         gamble_command = self.bot.tree.get_command("gamble")
