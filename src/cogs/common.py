@@ -104,7 +104,7 @@ class Common(commands.Cog, name="common"):
         validateNotBot(user)
         
         user_id = str(user.id)
-        user_color = await db_manager.get_color(user_id)
+        user_color = await db_manager.get_user_color(user_id)
         total_pushups = await db_manager.get_pushups_todo(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
         pending = await db_manager.get_pending_pushups(user.id)
@@ -293,7 +293,7 @@ class ProfileView(discord.ui.View):
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
 
     
-        await interaction.response.send_modal(SetColorModal())
+        await interaction.response.send_modal(SetColorModal(self.user))
 
 
     @discord.ui.button(label="Set Bodyweight", emoji='⚖️', style=discord.ButtonStyle.blurple, custom_id="set_bodyweight")
@@ -312,10 +312,13 @@ class ProfileView(discord.ui.View):
         # send message if usr cannot interact with button
         if not is_possible:
             await interaction.response.send_message(random.choice(responses), ephemeral=True)
-        await interaction.response.send_modal(SetBodyweightModal())
+        await interaction.response.send_modal(SetBodyweightModal(self.user))
 
 
 class SetColorModal(discord.ui.Modal, title="Set Color"):
+    def __init__(self, user):
+        self.user = user
+
     color = discord.ui.TextInput(
         label="Color",
         placeholder="Enter a hex color code (e.g. #FF5733)",
@@ -328,16 +331,21 @@ class SetColorModal(discord.ui.Modal, title="Set Color"):
         if not color.startswith("#") or len(color) != 7:
             return await interaction.response.send_message("Invalid color format. Please use a hex code (e.g. #FF5733).", ephemeral=True)
 
-        await db_manager.set_color(interaction.user.id, color)
+        await db_manager.set_color(self.user.id, color)
         embed = embeds.DefaultEmbed(
             title="Color Changed",
             description=f"Your color has been changed to {color}.",
+            color=discord.Color(int(color[1:], 16))
         )
+        
         #TODO update originele embed met geupdate kleur
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class SetBodyweightModal(discord.ui.Modal, title="Set Bodyweight"):
+    def __init__(self, user):
+        self.user = user
+
     bodyweight = discord.ui.TextInput(
         label="Bodyweight",
         placeholder="Enter your bodyweight in kg",
@@ -347,7 +355,7 @@ class SetBodyweightModal(discord.ui.Modal, title="Set Bodyweight"):
 
     async def on_submit(self, interaction: discord.Interaction):
         weight = validateAndCleanWeight(self.bodyweight.value.strip())
-        await db_manager.set_bodyweight(interaction.user.id, weight)
+        await db_manager.set_bodyweight(self.user.id, weight)
 
         embed = embeds.OperationSucceededEmbed(
             title="Bodyweight Set",
