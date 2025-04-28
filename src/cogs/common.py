@@ -253,7 +253,7 @@ class ProfileView(discord.ui.View):
     async def badges_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         
         embed = embeds.DefaultEmbed(
-            title=f"🪪 Badges for {self.user.display_name}",
+            title=f"🪪 {self.user.display_name}'s Badges",
             description="These are the badges you have earned!",
             user=self.user
         )

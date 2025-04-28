@@ -1,34 +1,62 @@
+from typing import List
 import psycopg2
 import os
 import embeds
+import discord
+
+from validations import validateDate
 from .__init__ import getDiscordTimeStamp, db_manager
 
-#TODO icons
 structured_badges = [
-    {"exercise": "bench", "description": "Earned for achieving a 40kg bench", "threshold": 40, "badge_name": "Novice Bench", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Common"},
-    {"exercise": "bench", "description": "Earned for achieving a 60kg bench", "threshold": 60, "badge_name": "Intermediate Bench", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Common"},
-    {"exercise": "bench", "description": "Earned for achieving a 80kg bench", "threshold": 80, "badge_name": "Advanced Bench", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Rare"},
-    {"exercise": "bench", "description": "Earned for achieving a 100kg bench", "threshold": 100, "badge_name": "Elite Bench", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Epic"},
-    {"exercise": "bench", "description": "Earned for achieving a 120kg bench", "threshold": 120, "badge_name": "Master Bench", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
-    {"exercise": "squats", "description": "Earned for achieving a 40kg squat", "threshold": 40, "badge_name": "Novice Squat", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Common"},
-    {"exercise": "squats", "description": "Earned for achieving a 80kg squat", "threshold": 80, "badge_name": "Intermediate Squat", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Rare"},
-    {"exercise": "squats", "description": "Earned for achieving a 100kg squat", "threshold": 100, "badge_name": "Advanced Squat", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Epic"},
-    {"exercise": "squats", "description": "Earned for achieving a 120kg squat", "threshold": 120, "badge_name": "Glute Gladiator", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
-    {"exercise": "deadlift", "description": "Earned for achieving a 60kg deadlift", "threshold": 60, "badge_name": "First Pull", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Common"},
-    {"exercise": "deadlift", "description": "Earned for achieving a 100kg deadlift", "threshold": 100, "badge_name": "Grip Grinder", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Rare"},
-    {"exercise": "deadlift", "description": "Earned for achieving a 140kg deadlift", "threshold": 140, "badge_name": "Titan of Tension", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Epic"},
-    {"exercise": "deadlift", "description": "Earned for achieving a 180kg deadlift", "threshold": 180, "badge_name": "Barbell Behemoth", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 20kg OHP", "threshold": 20, "badge_name": "Novice Presser", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Common"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 40kg OHP", "threshold": 40, "badge_name": "Shoulder Soldier", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Rare"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 60kg OHP", "threshold": 60, "badge_name": "Deltoid Destroyer", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Epic"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 80kg OHP", "threshold": 80, "badge_name": "Overhead Overlord", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
+    {"exercise": "bench", "description": "Earned for achieving a 40kg bench",  "threshold": 40,  "badge_name": "Noobie Bench", "icon": "<:40kgBench:1366393140470222858>", "rarity": "Common"},
+    {"exercise": "bench", "description": "Earned for achieving a 50kg bench",  "threshold": 50,  "badge_name": "Starter Bench", "icon": "<:50kgBench:1366393067661426800>", "rarity": "Common"},
+    {"exercise": "bench", "description": "Earned for achieving a 60kg bench",  "threshold": 60,  "badge_name": "Novice Bench", "icon": "<:60kgBench:1366393090989883394>", "rarity": "Common"},
+    {"exercise": "bench", "description": "Earned for achieving a 40kg bench",  "threshold": 70,  "badge_name": "Intermediate Bench", "icon": "<:70kgBench:1366393152008617985>", "rarity": "Rare"},
+    {"exercise": "bench", "description": "Earned for achieving a 80kg bench",  "threshold": 80,  "badge_name": "Advanced Bench", "icon": "<:80kgBench:1366393103560343562>", "rarity": "Rare"},
+    {"exercise": "bench", "description": "Earned for achieving a 40kg bench",  "threshold": 90,  "badge_name": "Gymbro Bench", "icon": "<:90kgBench:1366393115686080522>", "rarity": "Epic"},
+    {"exercise": "bench", "description": "Earned for achieving a 100kg bench", "threshold": 100, "badge_name": "Elite Bench", "icon": "<:100kgBench:1366393162603429918>", "rarity": "Epic"},
+    {"exercise": "bench", "description": "Earned for achieving a 120kg bench", "threshold": 120, "badge_name": "Master Bench", "icon": "<:120kgBench:1366393127681916988>", "rarity": "Legendary"},
     
-    # Pushup Mastery
-    {"exercise": "pushups", "treshold": 500, "badge_name": "Pushup Beginner", "description": "500 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Common"},
-    {"exercise": "pushups", "treshold": 1000, "badge_name": "Pushup Challenger", "description": "1,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Common"},
-    {"exercise": "pushups", "treshold": 5000, "badge_name": "Pushup Warrior", "description": "5,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Rare"},
-    {"exercise": "pushups", "treshold": 10000, "badge_name": "Pushup God", "description": "10,000 pushups done", "icon": "<:500_pushups_badge:1356324823672033580>", "rarity": "Legendary"},
+    {"exercise": "squats", "description": "Earned for achieving a 40kg squat",  "threshold": 40,  "badge_name": "Novice Squat", "icon": "<:40kgSquat:1366388967624147015>", "rarity": "Common"},
+    {"exercise": "squats", "description": "Earned for achieving a 80kg squat",  "threshold": 80,  "badge_name": "Intermediate Squat", "icon": "<:80kgSquat:1366389017884496013>", "rarity": "Rare"},
+    {"exercise": "squats", "description": "Earned for achieving a 100kg squat", "threshold": 100, "badge_name": "Advanced Squat", "icon": "<:100kgSquat:1366389049560137789>", "rarity": "Epic"},
+    {"exercise": "squats", "description": "Earned for achieving a 120kg squat", "threshold": 120, "badge_name": "Glute Gladiator", "icon": "<:120kgSquat:1366389067402575893>", "rarity": "Legendary"},
+    
+    {"exercise": "deadlift", "description": "Earned for achieving a 60kg deadlift",  "threshold": 60,  "badge_name": "First Pull", "icon": "<:60kgDeadlift:1366388988562243664>", "rarity": "Common"},
+    {"exercise": "deadlift", "description": "Earned for achieving a 100kg deadlift", "threshold": 100, "badge_name": "Grip Grinder", "icon": "<:100kgDeadlift:1366389033747615826>", "rarity": "Rare"},
+    {"exercise": "deadlift", "description": "Earned for achieving a 140kg deadlift", "threshold": 140, "badge_name": "Titan of Tension", "icon": "<:140kgDeadlift:1366389081491247195>", "rarity": "Epic"},
+    {"exercise": "deadlift", "description": "Earned for achieving a 180kg deadlift", "threshold": 180, "badge_name": "Barbell Behemoth", "icon": "<:180kgDeadlift:1366389095302959114>", "rarity": "Legendary"},
+    
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 20kg OHP", "threshold": 20, "badge_name": "Novice Presser", "icon": "<:20kgOverhead:1366388935009239060>", "rarity": "Common"},
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 40kg OHP", "threshold": 40, "badge_name": "Shoulder Soldier", "icon": "<:40kgOverhead:1366388953753845862>", "rarity": "Rare"},
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 60kg OHP", "threshold": 60, "badge_name": "Deltoid Destroyer", "icon": "TODO", "rarity": "Epic"},
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 80kg OHP", "threshold": 80, "badge_name": "Overhead Overlord", "icon": "TODO", "rarity": "Legendary"},
+    
+    {"exercise": "pushups", "threshold": 500,   "badge_name": "Pushup Beginner", "description": "500 pushups done", "icon": "<:500pushupsbadge:1358166213775331509>", "rarity": "Common"},
+    {"exercise": "pushups", "threshold": 1000,  "badge_name": "Pushup Challenger", "description": "1,000 pushups done", "icon": "<:100pushupsbadge:1358166112411324598>", "rarity": "Rare"},
+    {"exercise": "pushups", "threshold": 5000,  "badge_name": "Pushup Warrior", "description": "5,000 pushups done", "icon": "<:5000pushupsbadge:1358166282230567052>", "rarity": "Epic"},
+    {"exercise": "pushups", "threshold": 10000, "badge_name": "Pushup God", "description": "10,000 pushups done", "icon": "<:10000pushupsbadge:1358166534551507106>", "rarity": "Legendary"},
+
+    {"exercise": "muscleup", "threshold": 1, "badge_name": "Muscle-up", "description": "Unlock the muscle-up", "icon": "<:MuscleUpBadge:1366389160121733141>", "rarity": "Epic"},
+    {"exercise": "lsit", "threshold": 1, "badge_name": "L-sit", "description": "Unlock the L-sit", "icon": "<:LSitBadge:1366389144632426566>", "rarity": "Common"},
+    {"exercise": "human-flag", "threshold": 1, "badge_name": "Human flag", "description": "Unlock the human flag", "icon": "<:HumanFlagBadge:1366389129461502052>", "rarity": "Legendary"},
+    {"exercise": "plank-knee-to-elbow", "threshold": 1, "badge_name": "Elbow lever", "description": "Unlock the elbow-lever", "icon": "<:ElbowLeverBadge:1366389110704574565>", "rarity": "Rare"},
+
 ]
+
+async def badge_autocomplete(
+    interaction: discord.Interaction,
+    current: str,
+) -> List[discord.app_commands.Choice[str]]:
+    
+    choices = []
+
+    for badge in structured_badges:
+        if current.lower() in badge["badge_name"].lower():
+            choices.append(discord.app_commands.Choice(name=badge["badge_name"], value=badge["badge_name"]))
+
+    return choices[:25]
+
 
 def insert_missing_badges():
     try:
@@ -60,6 +88,42 @@ def insert_missing_badges():
         print("Error inserting badges:", err)
 
 
+async def grant_badge(user, badge_name, date_obj=validateDate(None)):
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+
+            with con.cursor() as cursor:
+                # 1. Fetch the list of badges the user has already earned
+                owned_badges = await get_user_badges(user.id)
+                owned_badges = [badge[1] for badge in owned_badges]
+
+                # If the user's PR is greater than or equal to the badge threshold
+                if badge_name not in owned_badges:
+
+                    # 3. Get correct badge id
+                    cursor.execute("SELECT id FROM badges WHERE name = %s", (badge_name,))
+                    badge_id = cursor.fetchone()
+
+                    # 4. Award the badge by inserting it into the database
+                    cursor.execute("""
+                        INSERT INTO user_badges (user_id, badge_id, earned_at)
+                        VALUES (%s, %s, %s)
+                    """, (str(user.id), badge_id[0], date_obj))
+                    con.commit()
+
+                    return f"Gave user the {badge_name} badge!"
+
+                else:
+                    return "User already has this badge"
+
+    except Exception as e:
+        print(f"[Badge Check Error] {e}")
+
 
 async def check_for_badge(user, exercise, pr, date_obj, interaction):
     """Check if a user has earned a badge based on their PR and exercise type."""
@@ -85,7 +149,7 @@ async def check_for_badge(user, exercise, pr, date_obj, interaction):
 
                     if badge['exercise'] == "pushups":
                         pushups_done = await db_manager.get_pushups_done(user.id)
-                        should_trigger = pushups_done >= badge['treshold']
+                        should_trigger = pushups_done >= badge['threshold']
                     else:
                         should_trigger = pr >= badge['threshold']
 
