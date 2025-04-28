@@ -317,6 +317,7 @@ class ProfileView(discord.ui.View):
 
 class SetColorModal(discord.ui.Modal, title="Set Color"):
     def __init__(self, user):
+        super().__init__()
         self.user = user
 
     color = discord.ui.TextInput(
@@ -344,6 +345,7 @@ class SetColorModal(discord.ui.Modal, title="Set Color"):
 
 class SetBodyweightModal(discord.ui.Modal, title="Set Bodyweight"):
     def __init__(self, user):
+        super().__init__()
         self.user = user
 
     bodyweight = discord.ui.TextInput(
