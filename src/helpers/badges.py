@@ -13,7 +13,7 @@ structured_badges = [
     {"exercise": "bench", "description": "Earned for achieving a 60kg bench",  "threshold": 60,  "badge_name": "Novice Bench", "icon": "<:60kgBench:1366393090989883394>", "rarity": "Common"},
     {"exercise": "bench", "description": "Earned for achieving a 40kg bench",  "threshold": 70,  "badge_name": "Intermediate Bench", "icon": "<:70kgBench:1366393152008617985>", "rarity": "Rare"},
     {"exercise": "bench", "description": "Earned for achieving a 80kg bench",  "threshold": 80,  "badge_name": "Advanced Bench", "icon": "<:80kgBench:1366393103560343562>", "rarity": "Rare"},
-    {"exercise": "bench", "description": "Earned for achieving a 40kg bench",  "threshold": 90,  "badge_name": "Gymbro Bench", "icon": "<:90kgBench:1366393115686080522>", "rarity": "Epic"},
+    {"exercise": "bench", "description": "Earned for achieving a 90kg bench",  "threshold": 90,  "badge_name": "Gymbro Bench", "icon": "<:90kgBench:1366393115686080522>", "rarity": "Epic"},
     {"exercise": "bench", "description": "Earned for achieving a 100kg bench", "threshold": 100, "badge_name": "Elite Bench", "icon": "<:100kgBench:1366393162603429918>", "rarity": "Epic"},
     {"exercise": "bench", "description": "Earned for achieving a 120kg bench", "threshold": 120, "badge_name": "Master Bench", "icon": "<:120kgBench:1366393127681916988>", "rarity": "Legendary"},
     
@@ -238,17 +238,17 @@ async def get_user_badges(user_id: int, return_all=True) -> list:
     
 def add_badges_field_to_embed(embed, badges, owned_badges=[], add_timestamp=False):
     categories = {
-        "Common": [],
-        "Rare": [],
-        "Epic": [],
         "Legendary": [],
+        "Epic": [],
+        "Rare": [],
+        "Common": [],
     }
 
     rarity_emojis = {
-        "Common": "⭐",
-        "Rare": "💪",
-        "Epic": "⚡",
         "Legendary": "💎",
+        "Epic": "⚡",
+        "Rare": "💪",
+        "Common": "⭐",
     }
 
     owned_badges_titles = [badge[1] for badge in owned_badges]
@@ -260,14 +260,14 @@ def add_badges_field_to_embed(embed, badges, owned_badges=[], add_timestamp=Fals
         else:
             
             if name in owned_badges_titles:
-                category.append(f"{icon_url} **{name}*** - {desc}")
+                category.append(f"{icon_url} {name}* - {desc}")
             else:
-                category.append(f"{icon_url} **{name}** - {desc}")
+                category.append(f"{icon_url} {name} - {desc}")
 
     for rarity, badge_list in categories.items():
         if badge_list:
             emoji = rarity_emojis.get(rarity)
-            embed.add_field(name=f"{emoji} {rarity}", value="\n".join(badge_list), inline=False)
+            embed.add_field(name=f"{emoji} **{rarity}**", value="\n".join(badge_list), inline=False)
 
     if owned_badges:
         embed.set_footer(text="* Owned badges")
