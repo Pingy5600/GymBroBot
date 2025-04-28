@@ -1042,7 +1042,7 @@ async def set_color(user_id, color):
             print(err)
             return False
 
-async def get_color(user_id):
+async def get_user_color(user_id):
     
     # Specifieke kleurtoewijzing voor bepaalde gebruikers-ID's
     # COLOR_MAP = {
