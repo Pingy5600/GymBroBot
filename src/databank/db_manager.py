@@ -873,6 +873,7 @@ async def add_pushup_done(user_id: int, amount: int) -> bool:
             )
 
             con.commit()
+            return True
 
 
 async def get_all_pushup_events(user_id: int) -> List[Tuple[int, str, str]]:

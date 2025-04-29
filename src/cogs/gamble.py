@@ -158,6 +158,8 @@ class Gamble(commands.Cog, name="gamble"):
             "pending": "Pending"
         }
 
+        success = True
+
         if pushup_type == "to_do":
             # Bij negatieve amount moeten we log_as_done=False zetten zodat done niet omhooggaat
             await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups", log_as_done=False)
@@ -189,7 +191,6 @@ class Gamble(commands.Cog, name="gamble"):
             await db_manager.set_pending_pushups(user.id, amount)
             await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} (Pending)')
             pending = await db_manager.get_pending_pushups(user.id)
-            success = True
 
             embed = embeds.DefaultEmbed(
                 f"Pending pushups {direction}",
