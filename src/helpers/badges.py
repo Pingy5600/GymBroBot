@@ -29,8 +29,8 @@ structured_badges = [
     
     {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 20kg OHP", "threshold": 20, "badge_name": "Novice Presser", "icon": "<:20kgOverhead:1366388935009239060>", "rarity": "Common"},
     {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 40kg OHP", "threshold": 40, "badge_name": "Shoulder Soldier", "icon": "<:40kgOverhead:1366388953753845862>", "rarity": "Rare"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 60kg OHP", "threshold": 60, "badge_name": "Deltoid Destroyer", "icon": "TODO", "rarity": "Epic"},
-    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 80kg OHP", "threshold": 80, "badge_name": "Overhead Overlord", "icon": "TODO", "rarity": "Legendary"},
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 60kg OHP", "threshold": 60, "badge_name": "Deltoid Destroyer", "icon": "<:60kgOverhead:1368677903507656714>", "rarity": "Epic"},
+    {"exercise": "barbell-military-press-overhead-press", "description": "Earned for achieving a 80kg OHP", "threshold": 80, "badge_name": "Overhead Overlord", "icon": "<:80kgOverhead:1368677885157576774>", "rarity": "Legendary"},
     
     {"exercise": "pushups", "threshold": 500,   "badge_name": "Pushup Beginner", "description": "500 pushups done", "icon": "<:500pushupsbadge:1358166213775331509>", "rarity": "Common"},
     {"exercise": "pushups", "threshold": 1000,  "badge_name": "Pushup Challenger", "description": "1,000 pushups done", "icon": "<:100pushupsbadge:1358166112411324598>", "rarity": "Rare"},
@@ -41,7 +41,7 @@ structured_badges = [
     {"exercise": "lsit", "threshold": 1, "badge_name": "L-sit", "description": "Unlock the L-sit", "icon": "<:LSitBadge:1366389144632426566>", "rarity": "Common"},
     {"exercise": "human-flag", "threshold": 1, "badge_name": "Human flag", "description": "Unlock the human flag", "icon": "<:HumanFlagBadge:1366389129461502052>", "rarity": "Legendary"},
     {"exercise": "plank-knee-to-elbow", "threshold": 1, "badge_name": "Elbow lever", "description": "Unlock the elbow-lever", "icon": "<:ElbowLeverBadge:1366389110704574565>", "rarity": "Rare"},
-
+    
 ]
 
 async def badge_autocomplete(
