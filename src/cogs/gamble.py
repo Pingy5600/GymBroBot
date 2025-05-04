@@ -97,10 +97,16 @@ class Gamble(commands.Cog, name="gamble"):
         total_pushups = await db_manager.get_pushups_todo(user.id)
         total_done = await db_manager.get_pushups_done(user.id)
 
-        pushup_embed = embeds.DefaultEmbed(
-            f"Great job {user.display_name} 💪",
-            f"Successfully removed {amount} {variant.name} from your total.\n This totals {calculated_amount} pushups."
-        )
+        if variant.name == "Regular pushups":
+             pushup_embed = embeds.DefaultEmbed(
+                f"Great job {user.display_name} 💪",
+                f"Successfully removed {amount} {variant.name} from your total."
+            )
+        else:
+            pushup_embed = embeds.DefaultEmbed(
+                f"Great job {user.display_name} 💪",
+                f"Successfully removed {amount} {variant.name} from your total.\nThis totals {calculated_amount} pushups."
+            )
         # Toon ofwel "in reserve" ofwel "to do"
         if total_pushups < 0:
             pushup_embed.add_field(
