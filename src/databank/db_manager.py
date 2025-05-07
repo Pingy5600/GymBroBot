@@ -823,7 +823,7 @@ async def get_pushups_done(user_id: int):
             return result[0] if result else 0
 
 
-async def add_pushup_event(user_id: int, amount: int, reason: str = "", log_as_done: bool = True) -> bool:
+async def add_pushup_event(user_id: int, amount: int, reason: str = "", log_as_done: bool = False) -> bool:
     with psycopg2.connect(
         host=os.environ.get('POSTGRES_HOST'),
         dbname=os.environ.get('POSTGRES_DB'),

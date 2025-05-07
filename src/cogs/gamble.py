@@ -89,7 +89,7 @@ class Gamble(commands.Cog, name="gamble"):
             calculated_amount = math.floor(amount * multiplier)
 
         # Voeg het pushup event toe (gebruik hier de negatieve waarde)
-        await db_manager.add_pushup_event(user.id, -calculated_amount, f"💪 Did {amount} {variant.name}")
+        await db_manager.add_pushup_event(user.id, -calculated_amount, f"💪 Did {amount} {variant.name}", log_as_done=True)
         await db_manager.set_pending_pushups(user.id, -calculated_amount)
         pending = await db_manager.get_pending_pushups(user.id)
 
@@ -168,7 +168,7 @@ class Gamble(commands.Cog, name="gamble"):
 
         if pushup_type == "to_do":
             # Bij negatieve amount moeten we log_as_done=False zetten zodat done niet omhooggaat
-            await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups", log_as_done=False)
+            await db_manager.add_pushup_event(user.id, amount, f"{interaction.user.mention} 🚧 {direction} pushups")
             await send_dm_pushups(user, interaction.user, amount, f'Admin {direction.capitalize()} ({reason_suffix[pushup_type]})')
             total_pushups = await db_manager.get_pushups_todo(user.id)
 
@@ -537,7 +537,7 @@ class PushupTypeView(discord.ui.View):
 
         # 50/50 kans
         if random.choice([True, False]):
-            await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing", log_as_done=False)
+            await db_manager.add_pushup_event(user_id, -current_pushups, f"💎 Won double or nothing")
             await db_manager.set_pending_pushups(user_id, -current_pushups)
             result_text = f"🎉 **You Won!**\nYour pushups have been reset to **0**!"
         else:
@@ -1287,7 +1287,7 @@ class TradeView(discord.ui.View):
         )
 
         await db_manager.add_pushup_event(self.receiver.id, self.amount, f"🤝 Trade with {self.sender.mention}")
-        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🤝 Trade with {self.receiver.mention}", log_as_done=False)
+        await db_manager.add_pushup_event(self.sender.id, -self.amount, f"🤝 Trade with {self.receiver.mention}")
 
     @discord.ui.button(label="Decline", style=discord.ButtonStyle.danger, emoji="❌")
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
