@@ -135,11 +135,7 @@ class Gamble(commands.Cog, name="gamble"):
 
         await interaction.followup.send(embed=pushup_embed)
 
-            # validateDate(none) will give the date object of the current date
-            await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
-
-        else:
-            raise InvalidPushups()
+        await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
 
 
     @pushup_group.command(name="update", description="Updates a user's pushups. Use negative numbers to remove. Admin only!")
