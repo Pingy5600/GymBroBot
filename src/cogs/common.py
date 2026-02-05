@@ -140,10 +140,6 @@ class Common(commands.Cog, name="common"):
         await view.setup()
         await interaction.followup.send(embed=embed, view=view)
 
-        view = ProfileView(interaction.client, user)
-        await view.setup()
-        await interaction.followup.send(embed=embed, view=view)
-
 
     @command_remind_group.command(name="me", description="Remind me when to take my creatine")
     @discord.app_commands.describe(wanneer="When should the bot send you a reminder", waarover="What should the bot remind you for")
