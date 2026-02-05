@@ -12,7 +12,8 @@ import checks
 import embeds
 from exceptions import BodyWeightRequired, InvalidPushups
 from helpers import db_manager, getClickableCommand
-from validations import validateAndCleanWeight, validateNotBot, validateNotSelf, validatePermissions, validatePushups
+from helpers.badges import check_for_badge
+from validations import validateAndCleanWeight, validateDate, validateNotBot, validateNotSelf, validatePermissions, validatePushups
 
 
 class Gamble(commands.Cog, name="gamble"):
@@ -134,6 +135,12 @@ class Gamble(commands.Cog, name="gamble"):
 
         await interaction.followup.send(embed=pushup_embed)
 
+            # validateDate(none) will give the date object of the current date
+            await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
+
+        else:
+            raise InvalidPushups()
+
 
     @pushup_group.command(name="update", description="Updates a user's pushups. Use negative numbers to remove. Admin only!")
     @checks.is_admin()
@@ -203,6 +210,7 @@ class Gamble(commands.Cog, name="gamble"):
                 f"Successfully {direction} **{abs(amount)}** pending pushups {'to' if amount > 0 else 'from'} {user.display_name}."
             )
             embed.add_field(name="⌛ Pending pushups", value=f"```{pending}```", inline=True)
+            await check_for_badge(user, "pushups", 0, validateDate(None), interaction)
 
         else:
             raise InvalidPushups()

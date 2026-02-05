@@ -1018,3 +1018,19 @@ async def get_user_color(user_id):
             )
             result = cursor.fetchone()
             return result[0] if result else None
+    
+async def get_all_badges():
+    try:
+        with psycopg2.connect(
+            host=os.environ.get('POSTGRES_HOST'),
+            dbname=os.environ.get('POSTGRES_DB'),
+            user=os.environ.get('POSTGRES_USER'),
+            password=os.environ.get('POSTGRES_PASSWORD')
+        ) as con:
+            
+            with con.cursor() as cursor:
+                cursor.execute("SELECT id, name, description, icon_url, rarity FROM badges")
+                return cursor.fetchall()  # Returns a list of tuples with badge data
+
+    except Exception as err:
+        return [-1, err]  # Return an error if something goes wrong

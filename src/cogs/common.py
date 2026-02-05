@@ -12,6 +12,7 @@ from reactionmenu import ViewButton, ViewMenu, ViewSelect
 import embeds
 from embeds import Paginator, ReminderFieldGenerator
 from exceptions import DeletionFailed, InvalidTime, TimeoutCommand
+from helpers.badges import get_user_badges, add_badges_field_to_embed
 from helpers import (db_manager, getClickableCommand, getDiscordTimeStamp)
 from helpers import pagination
 from validations import validateAndCleanWeight, validateEntryList, validateNotBot
@@ -110,19 +111,18 @@ class Common(commands.Cog, name="common"):
         pending = await db_manager.get_pending_pushups(user.id)
         bodyweight = await db_manager.get_bodyweight(user.id)
 
-        # Stel embed kleur in
-        if user_color:
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="This is your profile!",
-                color=discord.Color(int(user_color[1:], 16))
-            )
-        else:
-            embed = discord.Embed(
-                title=f"Profile of {user}",
-                description="You have not set a custom color.",
-                color=discord.Color.default()
-            )
+        # Badges
+        badges = await get_user_badges(user.id, return_all=False)
+        badges_emojis = ' '.join([badge[3] for badge in badges]) if badges else 'No badges yet!'
+
+        # Color
+        color = discord.Color.default() if not user_color else discord.Color(int(user_color[1:], 16))
+
+        embed = discord.Embed(
+            title=f"Profile of {user}",
+            description=badges_emojis,
+            color=color
+        )
 
         # Toon ofwel pushups in reserve, ofwel pushups to do
         if total_pushups < 0:
@@ -136,8 +136,9 @@ class Common(commands.Cog, name="common"):
             embed.add_field(name="⌛ Pending", value=f"```{pending}```", inline=False)
         embed.set_thumbnail(url=user.display_avatar.url)
 
-        if bodyweight is not None:
-            embed.add_field(name="⚖️ Bodyweight", value=f"```{bodyweight} kg```", inline=True)
+        view = ProfileView(self.bot, user)
+        await view.setup()
+        await interaction.followup.send(embed=embed, view=view)
 
         view = ProfileView(interaction.client, user)
         await view.setup()
@@ -367,6 +368,33 @@ class SetBodyweightModal(discord.ui.Modal, title="Set Bodyweight"):
 
         #TODO update originele embed met geupdate bodyweight
         await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
+class ProfileView(discord.ui.View):
+    def __init__(self, bot, user):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.user = user
+
+    async def setup(self):
+        self.badges = await get_user_badges(self.user.id, return_all=True)
+        if not self.badges:
+            self.badges_button.disabled = True
+
+    @discord.ui.button(label="See badges", style=discord.ButtonStyle.primary, emoji="🪪")
+    async def badges_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+        embed = embeds.DefaultEmbed(
+            title=f"🪪 {self.user.display_name}'s Badges",
+            description="These are the badges you have earned!",
+            user=self.user
+        )
+        embed.set_thumbnail(url=self.user.display_avatar.url)
+
+        embed = add_badges_field_to_embed(embed, self.badges, add_timestamp=True)
+
+        await interaction.response.send_message(embed=embed)
+
 
 
 async def setup(bot):
